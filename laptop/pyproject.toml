@@ -4,10 +4,14 @@ version = "0.1.0"
 description = "Arabic subtitle overlay for PS5 on a Google TV (personal tool)"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "freetype-py>=2.5",
     "numpy>=2.0",
+    "opencv-python-headless>=4.10",
     "pillow>=11.0",
     # GPL-3.0. Used only for its vendored, patched pyremoteplay (receive-only).
     "ps5-remoteplay-mcp==0.2.2",
+    "pyyaml>=6",
+    "uharfbuzz>=0.45",
 ]
 
 [project.scripts]
