@@ -99,8 +99,15 @@ class RemotePlaySource:
                 await self._session_once(device)
             except SourceError as exc:
                 self.last_error = str(exc)
+            except Exception as exc:
+                # The library raises plain network errors too (a reset connection while
+                # starting a session, for instance). A drop is a drop: reconnect.
+                self.last_error = f"{type(exc).__name__}: {str(exc)[:160]}"
             finally:
-                device.disconnect()
+                try:
+                    device.disconnect()
+                except Exception as exc:  # a half-open session must not stop the reconnect loop
+                    self.last_error = self.last_error or f"{type(exc).__name__}: {str(exc)[:160]}"
             if self._stop.is_set():
                 break
             self.state = "reconnecting"

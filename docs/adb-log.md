@@ -113,3 +113,7 @@ Every adb command Tarjim ran against the TV, oldest first.
 - 2026-11-15 20:05:14 [192.168.172.251:5555] `adb devices` -> exit 0
 - 2026-11-15 20:05:15 [192.168.172.251:5555] `adb shell am start-foreground-service -n dev.tarjim.tv/.OverlayService` -> exit 0
 - 2026-11-15 20:05:15 [192.168.172.251:5555] `adb shell dumpsys activity services dev.tarjim.tv` -> exit 0
+- 2026-11-15 20:13:59 [192.168.172.251:5555] `adb connect 192.168.172.251:5555` -> exit 0
+- 2026-11-15 20:13:59 [192.168.172.251:5555] `adb devices` -> exit 0
+- 2026-11-15 20:13:59 [192.168.172.251:5555] `adb shell am start-foreground-service -n dev.tarjim.tv/.OverlayService` -> exit 0
+- 2026-11-15 20:13:59 [192.168.172.251:5555] `adb shell dumpsys activity services dev.tarjim.tv` -> exit 0
