@@ -184,7 +184,122 @@ class OpusTranslator:
         return join_sentences(parts, [self._tgt.decode(r.hypotheses[0]) for r in res])
 
 
+GEMINI_MODEL = "gemini-3.5-flash-lite"
+GEMINI_TIMEOUT_S = 1.2
+
+SYSTEM_PROMPT = """You translate English video-game dialogue subtitles into Arabic subtitles.
+Rules:
+- Natural, concise {style}. Keep the speaker's tone (rough, polite, joking, angry).
+- Translate the meaning, not word by word. Slang and contractions are normal speech.
+- Write names of people and places in Arabic letters, using the glossary spelling when one is given.
+- Keep it short enough to read quickly; never add explanations, notes, quotes or the English.
+- Output only the Arabic line."""
+
+STYLES = {
+    "msa": "simple Modern Standard Arabic",
+    "gulf": "Gulf (Saudi) colloquial Arabic",
+}
+
+
+def load_env_key(name: str = "GEMINI_API_KEY") -> str | None:
+    """Read a key from the environment or the repo's .env file (never logged)."""
+    import os
+
+    value = os.environ.get(name)
+    if value:
+        return value.strip()
+    env = paths.REPO / ".env"
+    if env.exists():
+        for line in env.read_text(encoding="utf-8-sig").splitlines():
+            line = line.strip()
+            if line.startswith(f"{name}=") and not line.startswith("#"):
+                value = line.split("=", 1)[1].strip().strip('"').strip("'")
+                return value or None
+    return None
+
+
+class GeminiTranslator:
+    """Gemini through the Google Gen AI SDK (Interactions API). Falls back to a
+    local engine when the call fails or takes longer than the timeout."""
+
+    name = "gemini"
+
+    def __init__(self, fallback: Translator | None = None, model: str | None = None, style: str = "msa",
+                 glossary: dict[str, str] | None = None, timeout_s: float = GEMINI_TIMEOUT_S) -> None:
+        key = load_env_key()
+        if not key:
+            raise TranslateError("no GEMINI_API_KEY in .env")
+        from google import genai
+
+        self._client = genai.Client(api_key=key)
+        self.model = model or paths.load_config().get("gemini_model", GEMINI_MODEL)
+        self.fallback = fallback
+        self.timeout_s = timeout_s
+        self.glossary = glossary or {}
+        self._system = SYSTEM_PROMPT.format(style=STYLES.get(style, style))
+        self.fallbacks = 0
+        self.last_used = "gemini"
+        self.last_error: str | None = None
+
+    def _input(self, text: str, context: list[tuple[str, str]] | None) -> str:
+        parts = []
+        used = {en: ar for en, ar in self.glossary.items() if re.search(rf"\b{re.escape(en)}\b", text, re.IGNORECASE)}
+        if used:
+            parts.append("Glossary: " + "; ".join(f"{en} = {ar}" for en, ar in used.items()))
+        if context:
+            parts.append("Previous lines (for context only, do not translate again):")
+            parts.extend(f"- {en} => {ar}" for en, ar in context[-4:])
+        parts.append(f"Translate this line:\n{text}")
+        return "\n".join(parts)
+
+    def translate(self, text: str, context: list[tuple[str, str]] | None = None) -> str:
+        try:
+            interaction = self._client.interactions.create(
+                model=self.model,
+                system_instruction=self._system,
+                input=self._input(text, context),
+                generation_config={"thinking_level": "minimal"},
+                timeout=self.timeout_s,
+            )
+            out = (interaction.output_text or "").strip()
+            if not out:
+                raise TranslateError("empty answer")
+            self.last_used = "gemini"
+            return " ".join(line.strip() for line in out.splitlines() if line.strip())
+        except Exception as exc:  # network, quota, timeout, bad key: all handled the same way
+            self.last_error = f"{type(exc).__name__}: {str(exc)[:200]}"
+            if self.fallback is None:
+                raise TranslateError(f"Gemini failed: {self.last_error}") from exc
+            self.fallbacks += 1
+            self.last_used = self.fallback.name
+            return self.fallback.translate(text, context)
+
+
 ENGINES = {"nllb-600m": NllbTranslator, "opus-big": OpusTranslator}
+LOCAL_DEFAULT = "opus-big"
+
+
+def make_engine(name: str, glossary: dict[str, str] | None = None, style: str = "msa") -> Translator:
+    if name == "gemini":
+        return GeminiTranslator(fallback=ENGINES[LOCAL_DEFAULT](), glossary=glossary, style=style)
+    if name not in ENGINES:
+        raise TranslateError(f"unknown engine {name!r}; choose from gemini, {', '.join(ENGINES)}")
+    return ENGINES[name]()
+
+
+def load_profile(name: str) -> dict:
+    """profiles/<name>.yaml: glossary, style and detection settings for one game."""
+    import yaml
+
+    path = paths.REPO / "profiles" / f"{name}.yaml"
+    if not path.exists():
+        if name == "default":
+            return {}
+        raise TranslateError(f"no profile file: {path}")
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(data, dict):
+        raise TranslateError(f"profile {name} is not a mapping")
+    return data
 
 
 def default_engine_name() -> str:
@@ -226,7 +341,10 @@ class CachedTranslator:
         ar = normalize_arabic(apply_glossary(raw, key, self.glossary))
         if not ar:
             raise TranslateError(f"empty translation for {key!r}")
-        self.cache.put(self.profile, key, self.engine.name, self.style, ar)
+        # When Gemini fell back to the local engine, file the answer under the
+        # engine that really produced it, so Gemini gets another try next time.
+        produced_by = getattr(self.engine, "last_used", self.engine.name)
+        self.cache.put(self.profile, key, produced_by, self.style, ar)
         self.history.append((key, ar))
         del self.history[:-8]
         return ar, False, (time.perf_counter() - t0) * 1000.0

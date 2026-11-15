@@ -21,12 +21,15 @@ from .vision.tracker import Event
 
 
 def build_translator(engine: str | None, profile: str, cache_path: str | None = None) -> CachedTranslator:
-    name = engine or default_engine_name()
-    if name not in ENGINES:
-        raise TranslateError(f"unknown engine {name!r}; choose from {', '.join(ENGINES)}")
-    engine_obj = ENGINES[name]()
+    from .translate import load_env_key, load_profile, make_engine
+
+    prof = load_profile(profile)
+    glossary = {str(k): str(v) for k, v in (prof.get("glossary") or {}).items()}
+    style = str(prof.get("style", "msa"))
+    name = engine or paths.load_config().get("mt_engine") or ("gemini" if load_env_key() else default_engine_name())
+    engine_obj = make_engine(name, glossary=glossary, style=style)
     engine_obj.translate("Hello.")  # warm-up: the first call is several times slower
-    return CachedTranslator(engine_obj, Cache(cache_path), profile=profile)
+    return CachedTranslator(engine_obj, Cache(cache_path), profile=profile, style=style, glossary=glossary)
 
 
 def _print_summary(pipe: Pipeline) -> None:
