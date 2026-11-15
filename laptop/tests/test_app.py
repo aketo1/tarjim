@@ -1,0 +1,118 @@
+import json
+import threading
+import urllib.error
+import urllib.request
+from http.server import ThreadingHTTPServer
+
+import pytest
+
+import tarjim.vision.arabic  # noqa: F401  (resolve the font folder before any test moves paths.REPO)
+from tarjim import paths
+from tarjim.app import server
+from tarjim.app.session import Hub, friendly_error
+
+
+@pytest.fixture()
+def sandbox(tmp_path, monkeypatch):
+    """Profiles and config in a temp folder, so tests never touch the user's files."""
+    repo = tmp_path / "repo"
+    (repo / "profiles").mkdir(parents=True)
+    (repo / "profiles" / "default.yaml").write_text("title: Any game\nglossary: {}\n", encoding="utf-8")
+    home = tmp_path / "home"
+    monkeypatch.setattr(paths, "HOME_DIR", home)
+    monkeypatch.setattr(paths, "CONFIG_FILE", home / "config.json")
+    real_repo = paths.REPO
+    monkeypatch.setattr(paths, "REPO", repo)
+    yield repo, real_repo
+
+
+def test_profile_roundtrip_and_limits(sandbox):
+    server.profile_save({
+        "name": "default", "title": "My game", "font": "noto-naskh", "font_size": 500, "fill": False,
+        "read_scale": 9, "settle_ms": 280,
+        "glossary": [{"en": "Morgan", "ar": "مورغان"}, {"en": " ", "ar": "x"}, {"en": "Dutch", "ar": ""}],
+    })
+    view = server.profile_view("default")
+    assert view["title"] == "My game" and view["font"] == "noto-naskh"
+    assert view["font_size"] == 90 and view["font_auto"] is False  # clamped
+    assert view["read_scale"] == 2.5 and view["fill"] is False and view["settle_ms"] == 280
+    assert view["glossary"] == [{"en": "Morgan", "ar": "مورغان"}]  # incomplete rows are dropped
+
+    server.profile_save({"name": "default", "font": "not-a-font", "font_size": None})
+    view = server.profile_view("default")
+    assert view["font"] == "noto-naskh"  # an unknown font is ignored
+    assert view["font_auto"] is True and view["font_size"] is None  # back to automatic
+
+
+def test_profile_names_cannot_escape_the_folder(sandbox):
+    from tarjim.translate import TranslateError, save_profile
+
+    for bad in ("../evil", "a/b", "A B", "", "x" * 60):
+        with pytest.raises(TranslateError):
+            save_profile(bad, {})
+
+
+def test_preview_renders_every_font(sandbox, monkeypatch):
+    repo, real_repo = sandbox
+    monkeypatch.setattr(paths, "REPO", real_repo)  # the renderer needs the real fonts
+    server._preview_cache.clear()
+    seen = set()
+    for font in ("harmattan", "harmattan-bold", "noto-naskh", "noto-sans-arabic"):
+        png = server.preview_png(font, 44, "تجربة الخط 123", True)
+        assert png[:8] == b"\x89PNG\r\n\x1a\n" and len(png) > 5000
+        seen.add(png)
+    assert len(seen) == 4  # each font really draws differently
+    assert server.preview_png("harmattan", None, "", False)[:4] == b"\x89PNG"
+
+
+def test_errors_become_plain_arabic():
+    assert "تلفزيون" in friendly_error(RuntimeError("cannot connect to 192.168.1.5:5555"))
+    assert "وضع الراحة" in friendly_error(RuntimeError("the console is in rest mode"))
+    assert "الدليل" in friendly_error(RuntimeError("this laptop is not linked to the console; run: tarjim source setup"))
+    assert friendly_error(RuntimeError("شي ثاني")) == "شي ثاني"
+
+
+def test_hub_fans_out_and_drops_when_a_window_is_stuck():
+    hub = Hub()
+    a, b = hub.subscribe(), hub.subscribe()
+    hub.publish("line", {"n": 1})
+    assert a.get_nowait() == ("line", {"n": 1}) and b.get_nowait() == ("line", {"n": 1})
+    for i in range(1000):  # nobody reads: must not block or raise
+        hub.publish("line", {"n": i})
+    hub.unsubscribe(a)
+    assert hub.clients == 1
+
+
+def test_http_is_local_only_and_serves_no_files_outside_web(sandbox, monkeypatch):
+    repo, real_repo = sandbox
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
+    port = httpd.server_address[1]
+    monkeypatch.setattr(server, "PORT", port)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{port}"
+
+    def get(path, headers=None):
+        req = urllib.request.Request(base + path, headers=headers or {})
+        try:
+            with urllib.request.urlopen(req, timeout=5) as r:
+                return r.status, r.read()
+        except urllib.error.HTTPError as e:
+            return e.code, e.read()
+
+    try:
+        status, body = get("/")
+        assert status == 200 and "ترجِم".encode("utf-8") in body
+        assert get("/app.js")[0] == 200 and get("/app.css")[0] == 200
+        assert get("/..%2fserver.py")[0] == 404 and get("/../session.py")[0] == 404
+        state = json.loads(get("/api/state")[1])
+        assert state["live"]["state"] == "idle" and state["profiles"][0]["name"] == "default"
+        # A web page on another site must not be able to drive the app.
+        assert get("/api/state", {"Origin": "http://evil.example"})[0] == 403
+        assert get("/api/state", {"Host": "evil.example"})[0] == 403
+        req = urllib.request.Request(base + "/api/tv/setup", data=b'{"ip":"not an ip"}',
+                                     headers={"Content-Type": "application/json"}, method="POST")
+        with pytest.raises(urllib.error.HTTPError) as err:
+            urllib.request.urlopen(req, timeout=5)
+        assert err.value.code == 400
+    finally:
+        httpd.shutdown()

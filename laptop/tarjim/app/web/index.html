@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ترجِم</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<aside class="rail">
+  <div class="brand" title="ترجِم">
+    <svg viewBox="0 0 48 48" aria-hidden="true">
+      <defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34e0c4"/><stop offset="1" stop-color="#ffc857"/></linearGradient></defs>
+      <rect x="4" y="8" width="40" height="28" rx="7" fill="none" stroke="url(#g1)" stroke-width="3"/>
+      <path d="M13 24h22" stroke="url(#g1)" stroke-width="3.4" stroke-linecap="round"/>
+      <path d="M19 30h10" stroke="#eef4ff" stroke-width="3.4" stroke-linecap="round" opacity=".85"/>
+      <path d="M18 42h12" stroke="url(#g1)" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+    <span>ترجِم</span>
+  </div>
+  <nav>
+    <button class="nav on" data-view="home">
+      <svg viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg><span>الرئيسية</span>
+    </button>
+    <button class="nav" data-view="game">
+      <svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h14"/><circle cx="9" cy="7" r="2.2"/><circle cx="15" cy="12" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg><span>الإعدادات</span>
+    </button>
+    <button class="nav" data-view="guide">
+      <svg viewBox="0 0 24 24"><path d="M5 5.5A2.5 2.5 0 0 1 7.5 3H19v15H7.5A2.5 2.5 0 0 0 5 20.5z"/><path d="M5 20.5A2.5 2.5 0 0 0 7.5 23H19"/><path d="M9.5 8h6M9.5 12h4"/></svg><span>الدليل</span>
+    </button>
+  </nav>
+  <button class="nav quit" id="quit" title="إغلاق البرنامج">
+    <svg viewBox="0 0 24 24"><path d="M12 3v9"/><path d="M6.3 7.2a8 8 0 1 0 11.4 0"/></svg><span>إغلاق</span>
+  </button>
+</aside>
+
+<main>
+  <!-- ============================ HOME ============================ -->
+  <section class="view on" id="view-home">
+    <header class="top">
+      <div>
+        <h1>ترجمة عربية فوق لعبتك</h1>
+        <p class="sub" id="home-sub">اختر اللعبة واضغط الزر. الباقي علينا.</p>
+      </div>
+      <label class="pill-select">
+        <span>اللعبة</span>
+        <select id="game"></select>
+      </label>
+    </header>
+
+    <div class="grid-home">
+      <div class="card stage" id="stage" data-state="idle">
+        <div class="chain">
+          <div class="node" id="n-ps5">
+            <svg viewBox="0 0 48 48"><rect x="9" y="6" width="13" height="36" rx="4"/><rect x="26" y="10" width="13" height="32" rx="4"/><path d="M22 36h4"/></svg>
+            <b>الـPS5</b><small id="n-ps5-t">—</small>
+          </div>
+          <div class="flow" id="f1"><i></i></div>
+          <div class="node" id="n-pc">
+            <svg viewBox="0 0 48 48"><rect x="9" y="10" width="30" height="20" rx="3"/><path d="M4 36h40l-3 4H7z"/></svg>
+            <b>اللابتوب</b><small id="n-pc-t">يقرأ ويترجم</small>
+          </div>
+          <div class="flow" id="f2"><i></i></div>
+          <div class="node" id="n-tv">
+            <svg viewBox="0 0 48 48"><rect x="5" y="8" width="38" height="24" rx="3"/><path d="M17 40h14M24 32v8"/><path d="M14 25h20" class="hl"/></svg>
+            <b>التلفزيون</b><small id="n-tv-t">—</small>
+          </div>
+        </div>
+
+        <button class="orb" id="orb" aria-label="تشغيل الترجمة">
+          <span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span>
+          <span class="spin"></span>
+          <span class="core">
+            <svg class="ic-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>
+            <svg class="ic-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5"/></svg>
+          </span>
+        </button>
+        <div class="orb-label">
+          <b id="orb-title">ابدأ الترجمة</b>
+          <span id="orb-step">جاهز</span>
+        </div>
+        <div class="alert" id="alert" hidden></div>
+      </div>
+
+      <div class="col">
+        <div class="card screen">
+          <div class="screen-head"><span class="dot"></span>اللي يطلع على التلفزيون</div>
+          <div class="tv">
+            <div class="tv-en" id="tv-en">English subtitle</div>
+            <div class="tv-ar" id="tv-ar">هنا تطلع الترجمة العربية</div>
+          </div>
+        </div>
+        <div class="stats">
+          <div class="stat"><b id="s-ms">—</b><span>سرعة الترجمة</span></div>
+          <div class="stat"><b id="s-lines">0</b><span>سطر مترجم</span></div>
+          <div class="stat"><b id="s-fps">—</b><span>صورة بالثانية</span></div>
+        </div>
+      </div>
+
+      <div class="card checks">
+        <div class="card-head">
+          <h3>فحص سريع</h3>
+          <button class="ghost" id="recheck">أعد الفحص</button>
+        </div>
+        <ul id="checklist"></ul>
+        <button class="link" data-goto="guide">افتح الدليل خطوة بخطوة ←</button>
+      </div>
+
+      <div class="card feed">
+        <div class="card-head"><h3>آخر السطور</h3><span class="muted" id="feed-count"></span></div>
+        <ol id="feed"><li class="empty">لما تبدأ اللعبة تتكلم، السطور تطلع هنا.</li></ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ GAME SETTINGS ============================ -->
+  <section class="view" id="view-game">
+    <header class="top">
+      <div>
+        <h1>إعدادات <span id="g-title" class="grad">اللعبة</span></h1>
+        <p class="sub">كل تغيير ينحفظ لحاله وتشوف شكله على طول.</p>
+      </div>
+      <div class="row">
+        <label class="pill-select"><span>اللعبة</span><select id="game2"></select></label>
+        <button class="btn soft" id="new-game">+ لعبة جديدة</button>
+      </div>
+    </header>
+
+    <div class="grid-game">
+      <div class="card preview">
+        <div class="card-head"><h3>المعاينة</h3><span class="muted">شكل الترجمة على الشاشة</span></div>
+        <div class="preview-box"><img id="preview" alt="معاينة الترجمة"><div class="shimmer" id="preview-load"></div></div>
+        <input class="text" id="preview-text" value="يجب أن نغادر قبل وصول العاصفة." aria-label="نص المعاينة">
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>الخط</h3></div>
+        <div class="fonts" id="fonts"></div>
+        <div class="field">
+          <div class="field-head"><b>حجم الخط</b><span id="size-val" class="muted"></span></div>
+          <label class="switch"><input type="checkbox" id="size-auto"><i></i><span>تلقائي (يقيسه من خط اللعبة مرة وحدة ويثبّته)</span></label>
+          <input type="range" id="size" min="22" max="70" step="1">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>طريقة العرض</h3></div>
+        <label class="switch big"><input type="checkbox" id="fill"><i></i>
+          <span><b>غطِّ الإنجليزي</b><small>يخفي السطر الإنجليزي ويحط العربي مكانه. لو طفيته يطلع العربي فوق الإنجليزي.</small></span></label>
+        <label class="switch big"><input type="checkbox" id="typewriter"><i></i>
+          <span><b>اللعبة تكتب النص حرف حرف</b><small>فعّلها لو الترجمة تطلع قبل ما يكتمل السطر.</small></span></label>
+        <div class="field">
+          <div class="field-head"><b>مدة بقاء العربي</b><span id="read-val" class="muted"></span></div>
+          <input type="range" id="read" min="0.6" max="2" step="0.1">
+          <div class="range-ends"><span>أقصر</span><span>أطول</span></div>
+        </div>
+      </div>
+
+      <div class="card glossary">
+        <div class="card-head">
+          <h3>قاموس الأسماء</h3>
+          <button class="btn soft" id="add-name">+ اسم</button>
+        </div>
+        <p class="muted">اكتب الاسم مثل ما يطلع بالإنجليزي، وكيف تبيه ينكتب بالعربي. يثبت في كل السطور.</p>
+        <div id="names"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ GUIDE ============================ -->
+  <section class="view" id="view-guide">
+    <header class="top">
+      <div>
+        <h1>الدليل</h1>
+        <p class="sub">خطوة بخطوة، مرة وحدة بس. بعدها زر واحد.</p>
+      </div>
+    </header>
+    <div class="steps" id="steps"></div>
+    <div class="card guide-body" id="guide-body"></div>
+    <div class="guide-nav">
+      <button class="btn soft" id="g-prev">→ السابق</button>
+      <span class="muted" id="g-pos"></span>
+      <button class="btn" id="g-next">التالي ←</button>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<dialog id="dlg-new">
+  <form method="dialog" class="dlg">
+    <h3>لعبة جديدة</h3>
+    <p class="muted">اكتب اسم اللعبة. تقدر تضيف أسماء الشخصيات بعدين.</p>
+    <input class="text" id="new-title" placeholder="مثال: Silent Hill 2" dir="auto" maxlength="60">
+    <div class="row end">
+      <button class="btn soft" value="cancel">إلغاء</button>
+      <button class="btn" value="ok">أضف</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>

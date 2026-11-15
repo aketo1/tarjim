@@ -258,3 +258,27 @@ class CachedTranslator:
 
 def dump_json(obj) -> str:
     return json.dumps(obj, ensure_ascii=False)
+
+
+def list_profiles() -> list[dict]:
+    """Every game profile: file name and display title."""
+    import yaml
+
+    out = []
+    for path in sorted((paths.REPO / "profiles").glob("*.yaml")):
+        try:
+            data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        except yaml.YAMLError:
+            data = {}
+        title = data.get("title") if isinstance(data, dict) else None
+        out.append({"name": path.stem, "title": str(title or path.stem)})
+    return out
+
+
+def save_profile(name: str, data: dict) -> None:
+    import yaml
+
+    if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,40}", name):
+        raise TranslateError("profile names use small English letters, digits, - and _ only")
+    path = paths.REPO / "profiles" / f"{name}.yaml"
+    path.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")

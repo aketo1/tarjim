@@ -1,4 +1,4 @@
-"""The `tarjim` command."""
+﻿"""The `tarjim` command."""
 
 from __future__ import annotations
 
@@ -74,6 +74,8 @@ def build_parser() -> argparse.ArgumentParser:
     bench = sub.add_parser("bench", help="قياسات").add_subparsers(dest="bench_cmd", required=True)
     p = bench.add_parser("latency", help="يقيس سرعة كل مرحلة على هذا اللابتوب")
     p.add_argument("--engine")
+    p = sub.add_parser("app", help="يفتح تطبيق ترجِم (الواجهة)")
+    p.add_argument("--no-window", action="store_true", help="بدون فتح النافذة")
     p = sub.add_parser("run", help="يشغّل الترجمة الحية على التلفزيون")
     p.add_argument("--profile", default="default")
     p.add_argument("--engine")
@@ -118,6 +120,10 @@ def main(argv: list[str] | None = None) -> int:
         from . import bench
 
         return bench.latency(args.engine)
+    if args.cmd == "app":
+        from .app import server
+
+        return server.main(window=not args.no_window)
     if args.cmd == "run":
         from . import run_cli
 

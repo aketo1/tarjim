@@ -1,0 +1,571 @@
+"""Local HTTP server behind the Tarjim window. Listens on 127.0.0.1 only."""
+
+from __future__ import annotations
+
+import io
+import json
+import mimetypes
+import os
+import queue
+import shutil
+import socket
+import subprocess
+import sys
+import threading
+import time
+import webbrowser
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import parse_qs, urlparse
+
+from .. import paths
+from ..protocol import DEFAULT_PORT
+from .session import Hub, LiveSession, Tasks, friendly_error
+
+HOST = "127.0.0.1"
+PORT = 47900
+WEB = Path(__file__).parent / "web"
+IDLE_EXIT_S = 40.0  # quit when no window has been open for this long and nothing is running
+
+hub = Hub()
+live = LiveSession(hub)
+tasks = Tasks(hub)
+_shutdown = threading.Event()
+
+
+# -- helpers --------------------------------------------------------------------
+
+
+def _port_open(host: str, port: int, timeout: float = 0.8) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+def _ps5_status(host: str) -> dict | None:
+    from ..sources import ps5
+
+    try:
+        device = ps5.device_for(host)
+    except Exception:
+        return None
+    return {
+        "name": device.host_name, "on": bool(device.is_on), "status": device.status_name,
+        "linked": ps5.linked_users(device),
+    }
+
+
+def checks() -> dict:
+    """The quick health check shown on the home screen."""
+    cfg = paths.load_config()
+    tv_ip = cfg.get("tv_ip")
+    ps5_host = cfg.get("ps5_host")
+    models = (paths.REPO / "models" / "opus-mt-tc-big-en-ar-ct2" / "model.bin").exists()
+    # Probe the three things at the same time and never wait long: a device
+    # that is switched off would otherwise hold the whole screen for seconds.
+    from concurrent.futures import ThreadPoolExecutor
+    from concurrent.futures import TimeoutError as FutureTimeout
+
+    pool = ThreadPoolExecutor(max_workers=3)
+    f_tv = pool.submit(lambda: bool(tv_ip) and _port_open(tv_ip, 5555))
+    f_app = pool.submit(lambda: bool(tv_ip) and _port_open(tv_ip, DEFAULT_PORT))
+    f_ps5 = pool.submit(lambda: _ps5_status(ps5_host) if ps5_host else None)
+
+    def result(future, default):
+        try:
+            return future.result(timeout=3.0)
+        except (FutureTimeout, Exception):
+            return default
+
+    tv_reach, tv_app, ps5 = result(f_tv, False), result(f_app, False), result(f_ps5, None)
+    pool.shutdown(wait=False)
+    items = [
+        {"id": "power", "ok": not paths.on_battery(), "title": "اللابتوب على الشاحن",
+         "hint": "شبّك الشاحن: على البطارية الترجمة أبطأ أربع مرات تقريباً."},
+        {"id": "models", "ok": models, "title": "ملفات الترجمة موجودة", "hint": "مجلد models ناقص."},
+        {"id": "tv", "ok": tv_reach, "title": "التلفزيون على الشبكة",
+         "hint": "شغّل التلفزيون وتأكد إنه على نفس الشبكة." if tv_ip else "التلفزيون ما تجهّز للحين. افتح الدليل."},
+        {"id": "ps5", "ok": bool(ps5 and ps5["on"]), "title": "الـPS5 شغّال",
+         "hint": "شغّل الـPS5 (مو وضع الراحة)." if ps5_host else "الـPS5 ما انربط للحين. افتح الدليل."},
+        {"id": "link", "ok": bool(ps5 and ps5["linked"]) or bool(cfg.get("ps5_user")), "title": "اللابتوب مربوط بالـPS5",
+         "hint": "كمّل خطوة ربط الـPS5 في الدليل."},
+    ]
+    return {
+        "items": items, "ready": all(i["ok"] for i in items if i["id"] != "power"),
+        "tv_ip": tv_ip, "tv_app": tv_app, "tv_model": (cfg.get("tv") or {}).get("model"),
+        "ps5_host": ps5_host, "ps5_name": (ps5 or {}).get("name") or (cfg.get("ps5") or {}).get("name"),
+        "ps5_user": cfg.get("ps5_user"), "setup_done": bool(tv_ip and cfg.get("ps5_user")),
+    }
+
+
+def profile_view(name: str) -> dict:
+    from ..translate import load_profile
+
+    prof = load_profile(name)
+    cfg = paths.load_config()
+    return {
+        "name": name,
+        "title": prof.get("title") or name,
+        "glossary": [{"en": str(k), "ar": str(v)} for k, v in (prof.get("glossary") or {}).items()],
+        "font": prof.get("font", "harmattan"),
+        "font_size": prof.get("font_size") or cfg.get("font_sizes", {}).get(name),
+        "font_auto": not prof.get("font_size"),
+        "fill": bool(prof.get("fill", True)),
+        "read_scale": float(prof.get("read_scale", 1.0)),
+        "settle_ms": float(prof.get("settle_ms", 60)),
+        "style": prof.get("style", "msa"),
+    }
+
+
+def profile_save(body: dict) -> dict:
+    from ..translate import load_profile, save_profile
+    from ..vision.arabic import FONT_FILES
+
+    name = str(body["name"])
+    try:
+        prof = load_profile(name)
+    except Exception:
+        prof = {}
+    if "title" in body:
+        prof["title"] = str(body["title"]).strip()[:60] or name
+    if "glossary" in body:
+        glossary = {}
+        for row in body["glossary"]:
+            en, ar = str(row.get("en", "")).strip(), str(row.get("ar", "")).strip()
+            if en and ar:
+                glossary[en[:60]] = ar[:60]
+        prof["glossary"] = glossary
+    if "font" in body and body["font"] in FONT_FILES:
+        prof["font"] = body["font"]
+    if "font_size" in body:
+        if body["font_size"] in (None, "", 0):
+            prof.pop("font_size", None)  # back to automatic
+            cfg = paths.load_config()
+            if cfg.get("font_sizes", {}).pop(name, None) is not None:
+                paths.save_config(cfg)
+        else:
+            prof["font_size"] = max(18, min(90, int(body["font_size"])))
+    if "fill" in body:
+        prof["fill"] = bool(body["fill"])
+    if "read_scale" in body:
+        prof["read_scale"] = max(0.5, min(2.5, float(body["read_scale"])))
+    if "settle_ms" in body:
+        prof["settle_ms"] = max(0.0, min(600.0, float(body["settle_ms"])))
+    save_profile(name, prof)
+    return profile_view(name)
+
+
+_preview_cache: dict = {}
+
+
+def preview_png(font: str, size: int | None, text: str, fill: bool) -> bytes:
+    """How the Arabic will look: a neutral scene with an English line, run through the real renderer."""
+    import cv2
+    import numpy as np
+    from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+    from ..vision import render
+    from ..vision.arabic import FONT_DIR, FONT_FILES
+    from ..vision.detect import detect
+
+    if font not in FONT_FILES:
+        font = "harmattan"
+    if "scene" not in _preview_cache:
+        w, h = 1920, 1080
+        yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+        r = 18 + 26 * (xx / w) + 30 * np.exp(-(((xx - 1350) / 420) ** 2 + ((yy - 520) / 300) ** 2))
+        g = 26 + 34 * (yy / h) + 22 * np.exp(-(((xx - 500) / 500) ** 2 + ((yy - 800) / 260) ** 2))
+        b = 46 + 44 * (1 - yy / h)
+        scene = np.clip(np.dstack([r, g, b]), 0, 255).astype(np.uint8)
+        img = Image.fromarray(scene)
+        latin = ImageFont.truetype(str(FONT_DIR / "NotoSans-VF.ttf"), 40)
+        line = "We should leave before the storm gets here."
+        tw = ImageDraw.Draw(img).textlength(line, font=latin)
+        x, y = int((w - tw) / 2), 940
+        shadow = Image.new("L", img.size, 0)
+        ImageDraw.Draw(shadow).text((x + 2, y + 2), line, font=latin, fill=230)
+        img = Image.composite(Image.new("RGB", img.size, (0, 0, 0)), img, shadow.filter(ImageFilter.GaussianBlur(2.2)))
+        ImageDraw.Draw(img).text((x, y), line, font=latin, fill=(242, 247, 241))
+        frame = np.ascontiguousarray(np.asarray(img)[:, :, ::-1])
+        _preview_cache["scene"] = (frame, detect(frame))
+    frame, block = _preview_cache["scene"]
+    if block is None:
+        raise RuntimeError("preview scene has no detectable line")
+    style = render.Style(font=font, fixed_size=int(size) if size else None)
+    layers = [render.make_fill(frame, block)] if fill else []
+    layers.append(render.make_text(frame, block, text or "يجب أن نغادر قبل وصول العاصفة.", style))
+    out = render.composite(frame, layers)
+    crop = out[800:1040, 460:1460]
+    ok, buf = cv2.imencode(".png", crop)
+    if not ok:
+        raise RuntimeError("preview encoding failed")
+    return buf.tobytes()
+
+
+# -- setup actions ----------------------------------------------------------------
+
+
+def do_tv_setup(ip: str):
+    from .. import tv
+
+    tv.setup(ip.strip())
+    return {"ok": True}
+
+
+def do_tv_test():
+    from .. import tv
+
+    tv.test(None, 25, False)
+    return {"ok": True}
+
+
+def ps5_discover() -> dict:
+    from ..sources import ps5
+
+    found = [f for f in ps5.discover() if f.host_type == "PS5"]
+    if not found:
+        return {"found": False}
+    first = found[0]
+    cfg = paths.load_config()
+    cfg["ps5_host"] = first.host
+    cfg["ps5"] = {"name": first.name, "firmware": first.firmware, "mac": first.mac}
+    paths.save_config(cfg)
+    device = ps5.device_for(first.host)
+    linked = ps5.linked_users(device)
+    if linked and cfg.get("ps5_user") not in linked:
+        cfg["ps5_user"] = linked[0]
+        paths.save_config(cfg)
+    return {"found": True, "host": first.host, "name": first.name, "status": first.status,
+            "on": first.status.lower().startswith("ok"), "linked": linked, "pending": ps5.pending_users()}
+
+
+def ps5_redirect(url: str) -> dict:
+    from ..sources import ps5
+
+    return {"user": ps5.add_user_from_redirect(url)}
+
+
+def ps5_pin(pin: str) -> dict:
+    from ..sources import ps5
+
+    cfg = paths.load_config()
+    host = cfg.get("ps5_host")
+    if not host:
+        raise RuntimeError("دوّر على الـPS5 أول.")
+    pending = ps5.pending_users()
+    if not pending:
+        raise RuntimeError("سجّل دخول بالحساب الثاني أول (الخطوة اللي قبلها).")
+    device = ps5.device_for(host)
+    ps5.link(device, pending[-1], pin)
+    cfg["ps5_user"] = pending[-1]
+    paths.save_config(cfg)
+    return {"user": pending[-1]}
+
+
+def ps5_error(exc: Exception) -> str:
+    text = str(exc)
+    if "redirect" in text:
+        return "هذا مو عنوان صفحة redirect. انسخ العنوان كامل من شريط المتصفح بعد تسجيل الدخول."
+    if "rejected the sign-in code" in text:
+        return "الرمز انتهى (يصلح دقايق بس). افتح صفحة الدخول من جديد وانسخ العنوان على طول."
+    if "PIN must be 8 digits" in text:
+        return "الرقم لازم يكون 8 خانات."
+    if "rejected the PIN" in text:
+        return "الـPS5 رفض الرقم (يتغيّر كل كم دقيقة). طلّع رقم جديد وجرّب."
+    return friendly_error(exc)
+
+
+# -- HTTP -------------------------------------------------------------------------
+
+
+class Handler(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+    server_version = "Tarjim"
+
+    def log_message(self, fmt, *args) -> None:  # keep the console quiet
+        return
+
+    def _local_only(self) -> bool:
+        host = (self.headers.get("Host") or "").split(":")[0]
+        origin = self.headers.get("Origin")
+        if host not in ("127.0.0.1", "localhost"):
+            return False
+        return origin is None or origin in (f"http://127.0.0.1:{PORT}", f"http://localhost:{PORT}")
+
+    def _send(self, code: int, body: bytes, ctype: str, cache: bool = False) -> None:
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "max-age=3600" if cache else "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _json(self, obj, code: int = 200) -> None:
+        self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8")
+
+    def _body(self) -> dict:
+        length = int(self.headers.get("Content-Length") or 0)
+        if length <= 0 or length > 200_000:
+            return {}
+        data = json.loads(self.rfile.read(length).decode("utf-8"))
+        return data if isinstance(data, dict) else {}
+
+    def do_GET(self) -> None:
+        if not self._local_only():
+            return self._send(403, b"forbidden", "text/plain")
+        url = urlparse(self.path)
+        q = {k: v[0] for k, v in parse_qs(url.query).items()}
+        try:
+            if url.path == "/api/events":
+                return self._events()
+            if url.path == "/api/state":
+                from ..translate import list_profiles
+
+                cfg = paths.load_config()
+                return self._json({
+                    "live": live.snapshot(), "task": tasks.snapshot(), "profiles": list_profiles(),
+                    "last_profile": cfg.get("last_profile"), "guide_seen": bool(cfg.get("guide_seen")),
+                    "setup_done": bool(cfg.get("tv_ip") and cfg.get("ps5_user")),
+                })
+            if url.path == "/api/check":
+                return self._json(checks())
+            if url.path == "/api/profile":
+                return self._json(profile_view(q.get("name", "default")))
+            if url.path == "/api/preview":
+                size = int(q["size"]) if q.get("size", "").isdigit() else None
+                png = preview_png(q.get("font", "harmattan"), size, q.get("text", ""), q.get("fill", "1") == "1")
+                return self._send(200, png, "image/png")
+            if url.path == "/api/ps5/login-url":
+                from ..sources import ps5
+
+                return self._json({"url": ps5.login_url()})
+            if url.path.startswith("/fonts/"):
+                return self._file(paths.REPO / "fonts" / Path(url.path).name, cache=True)
+            name = "index.html" if url.path in ("/", "") else url.path.lstrip("/")
+            return self._file(WEB / name)
+        except Exception as exc:
+            return self._json({"error": friendly_error(exc)}, 500)
+
+    def _file(self, path: Path, cache: bool = False) -> None:
+        base = (paths.REPO / "fonts") if cache else WEB
+        try:
+            resolved = path.resolve()
+            resolved.relative_to(base.resolve())
+        except (ValueError, OSError):
+            return self._send(404, b"not found", "text/plain")
+        if not resolved.is_file():
+            return self._send(404, b"not found", "text/plain")
+        ctype = mimetypes.guess_type(resolved.name)[0] or "application/octet-stream"
+        if resolved.suffix in (".html", ".css", ".js"):
+            ctype += "; charset=utf-8"
+        self._send(200, resolved.read_bytes(), ctype, cache=cache)
+
+    def _events(self) -> None:
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Connection", "keep-alive")
+        self.end_headers()
+        q = hub.subscribe()
+        try:
+            self.wfile.write(b"retry: 1500\n\n")
+            self.wfile.flush()
+            while not _shutdown.is_set():
+                try:
+                    kind, data = q.get(timeout=8.0)
+                    chunk = f"event: {kind}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+                except queue.Empty:
+                    chunk = ": ping\n\n"
+                self.wfile.write(chunk.encode("utf-8"))
+                self.wfile.flush()
+        except OSError:
+            pass  # the window was closed
+        finally:
+            hub.unsubscribe(q)
+
+    def do_POST(self) -> None:
+        if not self._local_only():
+            return self._send(403, b"forbidden", "text/plain")
+        path = urlparse(self.path).path
+        try:
+            body = self._body()
+            if path == "/api/start":
+                profile = str(body.get("profile") or "default")
+                cfg = paths.load_config()
+                cfg["last_profile"] = profile
+                paths.save_config(cfg)
+                return self._json({"started": live.start(profile)})
+            if path == "/api/stop":
+                live.stop()
+                return self._json({"ok": True})
+            if path == "/api/profile":
+                return self._json(profile_save(body))
+            if path == "/api/profile/new":
+                from ..translate import save_profile
+
+                title = str(body.get("title", "")).strip()[:60]
+                slug = "".join(c if c.isalnum() and c.isascii() else "-" for c in title.lower()).strip("-")
+                slug = "-".join(p for p in slug.split("-") if p)[:30] or f"game-{int(time.time()) % 100000}"
+                if (paths.REPO / "profiles" / f"{slug}.yaml").exists():
+                    slug = f"{slug}-{int(time.time()) % 1000}"
+                save_profile(slug, {"title": title or slug, "style": "msa", "settle_ms": 60, "glossary": {}})
+                return self._json(profile_view(slug))
+            if path == "/api/guide-seen":
+                cfg = paths.load_config()
+                cfg["guide_seen"] = True
+                paths.save_config(cfg)
+                return self._json({"ok": True})
+            if path == "/api/tv/setup":
+                ip = str(body.get("ip", "")).strip()
+                parts = ip.split(".")
+                if len(parts) != 4 or not all(p.isdigit() and 0 <= int(p) <= 255 for p in parts):
+                    return self._json({"error": "اكتب عنوان التلفزيون بهذا الشكل: 192.168.1.50"}, 400)
+                return self._json({"started": tasks.run("tv-setup", lambda: do_tv_setup(ip))})
+            if path == "/api/tv/test":
+                if live.state != "idle":
+                    return self._json({"error": "وقّف الترجمة أول ثم جرّب المربعات."}, 400)
+                return self._json({"started": tasks.run("tv-test", do_tv_test)})
+            if path == "/api/ps5/discover":
+                return self._json(ps5_discover())
+            if path == "/api/ps5/open-login":
+                from ..sources import ps5
+
+                _open_url(ps5.login_url())
+                return self._json({"ok": True})
+            if path == "/api/ps5/redirect":
+                try:
+                    return self._json(ps5_redirect(str(body.get("url", ""))))
+                except Exception as exc:
+                    return self._json({"error": ps5_error(exc)}, 400)
+            if path == "/api/ps5/pin":
+                try:
+                    return self._json(ps5_pin(str(body.get("pin", ""))))
+                except Exception as exc:
+                    return self._json({"error": ps5_error(exc)}, 400)
+            if path == "/api/quit":
+                live.stop()
+                self._json({"ok": True})
+                threading.Thread(target=_quit_soon, daemon=True).start()
+                return None
+            return self._json({"error": "unknown"}, 404)
+        except Exception as exc:
+            return self._json({"error": friendly_error(exc)}, 500)
+
+
+# -- process life -------------------------------------------------------------------
+
+
+def _chrome() -> str | None:
+    candidates = [
+        os.path.join(os.environ.get("ProgramFiles", ""), "Google", "Chrome", "Application", "chrome.exe"),
+        os.path.join(os.environ.get("ProgramFiles(x86)", ""), "Google", "Chrome", "Application", "chrome.exe"),
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), "Google", "Chrome", "Application", "chrome.exe"),
+        os.path.join(os.environ.get("ProgramFiles(x86)", ""), "Microsoft", "Edge", "Application", "msedge.exe"),
+    ]
+    for c in candidates:
+        if c and os.path.exists(c):
+            return c
+    return shutil.which("chrome") or shutil.which("msedge")
+
+
+def _open_url(url: str) -> None:
+    """Open a normal browser tab (used for Sony's sign-in page)."""
+    chrome = _chrome()
+    if chrome:
+        subprocess.Popen([chrome, "--new-window", url])
+    else:
+        webbrowser.open(url)
+
+
+def open_browser_window() -> None:
+    """Fallback when the native window is unavailable: the browser in app mode (no tabs, no address bar)."""
+    url = f"http://{HOST}:{PORT}/"
+    chrome = _chrome()
+    if chrome:
+        profile_dir = paths.ensure_home() / "app-window"
+        subprocess.Popen([
+            chrome, f"--app={url}", "--window-size=1200,860", f"--user-data-dir={profile_dir}",
+            "--no-first-run", "--no-default-browser-check",
+        ])
+    else:
+        webbrowser.open(url)
+
+
+def _quit_soon() -> None:
+    deadline = time.monotonic() + 6
+    while live.state != "idle" and time.monotonic() < deadline:
+        time.sleep(0.1)
+    _shutdown.set()
+
+
+def _watch_idle() -> None:
+    """Browser fallback only: close the program when its window has been gone for a while."""
+    while not _shutdown.wait(5.0):
+        if hub.clients == 0 and live.state == "idle" and not tasks.running:
+            if time.monotonic() - hub.last_client_seen > IDLE_EXIT_S:
+                _shutdown.set()
+
+
+def _native_window() -> bool:
+    """Show the interface in the program's own desktop window. Blocks until it is closed."""
+    try:
+        import webview
+    except Exception:
+        return False
+    icon = WEB / "icon.ico"
+    try:
+        webview.create_window(
+            "ترجِم", f"http://{HOST}:{PORT}/", width=1200, height=860, min_size=(960, 680),
+            background_color="#0a0f1c", text_select=True,
+        )
+        kwargs = {"icon": str(icon)} if icon.exists() else {}
+        try:
+            webview.start(**kwargs)
+        except TypeError:  # older pywebview without the icon argument
+            webview.start()
+        return True
+    except Exception:
+        return False
+
+
+def _set_app_id() -> None:
+    """Give the window its own taskbar entry and icon instead of Python's."""
+    if sys.platform == "win32":
+        try:
+            import ctypes
+
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("dev.tarjim.app")
+        except (OSError, AttributeError):
+            pass
+
+
+def main(window: bool = True) -> int:
+    os.environ.setdefault("PYTHONUTF8", "1")
+    if _port_open(HOST, PORT, 0.4):  # already running: its window is somewhere on screen
+        if window:
+            open_browser_window()
+        return 0
+    try:
+        server = ThreadingHTTPServer((HOST, PORT), Handler)
+    except OSError as exc:
+        print(f"cannot start on port {PORT}: {exc}", file=sys.stderr)
+        return 1
+    server.daemon_threads = True
+    threading.Thread(target=server.serve_forever, name="tarjim-http", daemon=True).start()
+    _set_app_id()
+    shown = _native_window() if window else False  # returns when the user closes the window
+    if not shown and not _shutdown.is_set():
+        if window:
+            open_browser_window()
+            threading.Thread(target=_watch_idle, name="tarjim-idle", daemon=True).start()
+        try:
+            while not _shutdown.wait(0.5):
+                pass
+        except KeyboardInterrupt:
+            pass
+    live.stop()
+    _quit_soon()
+    server.shutdown()
+    return 0

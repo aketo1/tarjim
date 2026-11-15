@@ -314,7 +314,6 @@ live run, then tuning from the user's feedback. The findings that cost time:
 
 | Item | Notes |
 | --- | --- |
-| User interface | Section 6 lists what it needs |
 | `README-AR.md` | Arabic how-to for the user |
 | `calibrate geometry / colour` | Not needed so far: position was right without it |
 | `profile new` | Profiles are written by hand for now |
@@ -349,3 +348,51 @@ live run, then tuning from the user's feedback. The findings that cost time:
 - **Licences.** This is a personal, non-distributed project. It depends on
   GPL-3.0 code (`ps5-remoteplay-mcp`) and on NLLB weights that are
   non-commercial; see `LICENSES.md` before sharing anything.
+
+## 12. The desktop app (added 2026-11-16)
+
+`laptop/tarjim/app/` is a desktop program on top of everything above. Start it
+from the "Tarjim" shortcut on the desktop or Start menu (they run
+`pythonw -m tarjim.app`, so no console window appears) or with `tarjim app`.
+
+How it is put together:
+
+| File | What it holds |
+| --- | --- |
+| `app/server.py` | A small HTTP server on `127.0.0.1:47900` (standard library only) with a JSON API, a server-sent-events stream, the native window (pywebview, i.e. Edge WebView2) and a browser app-mode fallback |
+| `app/session.py` | `LiveSession` (start, watch, stop the live translation in a thread; models stay loaded between runs), `Tasks` (TV setup and test patterns in the background with their progress messages), `Hub` (event fan-out), `friendly_error` (technical failures as one plain Arabic sentence) |
+| `app/shortcut.py` | Creates the desktop and Start-menu shortcuts with the icon |
+| `app/web/index.html`, `app.css`, `app.js` | The interface: plain HTML, CSS and JavaScript, Arabic, right to left, no build step and no external files |
+
+The three screens:
+
+- **Home**: one round button (start or stop), the three devices with their
+  state, what is on the TV right now, live speed / line count / frames per
+  second, a quick health check with the fix for each failed item, and the
+  recent lines.
+- **Settings** (per game): live preview rendered by the real renderer, font,
+  font size (automatic or fixed), cover the English or not, typewriter-text
+  switch, how long the Arabic stays, the name glossary, and "new game".
+  Every change is saved to `profiles/<game>.yaml` at once and applies the next
+  time the translation is started.
+- **Guide**: four steps for a first-time user: how it works, preparing the TV
+  (with the address field, the setup button and the A/B test patterns),
+  linking the PS5 (find it, open Sony's sign-in page, paste the redirect
+  address, type the PIN), and tips.
+
+API (all on `127.0.0.1`, refused for any other `Host` or `Origin`):
+`GET /api/state`, `/api/check`, `/api/profile?name=`, `/api/preview?font=&size=&text=&fill=`,
+`/api/events` (events `state`, `line`, `stats`, `task`);
+`POST /api/start {profile}`, `/api/stop`, `/api/profile`, `/api/profile/new {title}`,
+`/api/tv/setup {ip}`, `/api/tv/test`, `/api/ps5/discover`, `/api/ps5/open-login`,
+`/api/ps5/redirect {url}`, `/api/ps5/pin {pin}`, `/api/guide-seen`, `/api/quit`.
+
+For screenshots without a live connection, open
+`http://127.0.0.1:47900/?still&demo`, `?still&view=game` or
+`?still&view=guide&step=1` while the app is running.
+
+Profile keys the app reads and writes: `title`, `glossary`, `font`,
+`font_size`, `fill`, `read_scale`, `settle_ms`, `style`, `engine`.
+
+Not in the app yet: `tv revert`, a font preview on a real game frame, editing
+the detection area, and showing the session history from `out/sessions/`.

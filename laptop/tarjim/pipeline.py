@@ -100,6 +100,7 @@ class Pipeline:
         track_params: TrackParams | None = None,
         log_path: Path | None = None,
         show_fill: bool = True,
+        read_scale: float = 1.0,
     ) -> None:
         self.link = link
         self.translator = translator
@@ -110,6 +111,7 @@ class Pipeline:
         self.tracker = SubtitleTracker(track_params)
         self.times = StageTimes()
         self.show_fill = show_fill
+        self.read_scale = read_scale  # above 1: Arabic stays longer; below 1: shorter
         self.enabled = True
         self.lines_shown = 0
         self.rejected = 0
@@ -292,7 +294,7 @@ class Pipeline:
             self._last_keep = t_sent
         self._last_fill = t_sent
         self._shown_at = t_sent
-        self._read_ms = reading_time_ms(job.arabic)
+        self._read_ms = reading_time_ms(job.arabic) * self.read_scale
         self._text_layer = job.text_layer
         self.lines_shown += 1
         self._pending[seq] = {
