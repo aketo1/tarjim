@@ -65,6 +65,8 @@ def test_text_helpers():
     assert split_speaker("We go around: now.") == (None, "We go around: now.")
     assert looks_like_subtitle("Keep your voice down.")
     assert not looks_like_subtitle("12:45") and not looks_like_subtitle("警告 危険")
+    assert not looks_like_subtitle("PS5") and not looks_like_subtitle("OLD TOWN")
+    assert looks_like_subtitle("No.") and looks_like_subtitle("RUN!") and looks_like_subtitle("We have 12 men.")
 
 
 # -- translation plumbing (no model) ------------------------------------------------
@@ -97,6 +99,8 @@ def test_arabic_and_english_normalisation():
     assert normalize_arabic('"هل سمعت ذلك ?"') == "هل سمعت ذلك؟"
     assert normalize_arabic("نعم , لا ;") == "نعم، لا؛"
     assert normalize_arabic("انتظر......") == "انتظر..."
+    assert normalize_arabic("بَنَى أَبِي هَذَا المَنْزِلَ") == "بنى أبي هذا المنزل"
+    assert normalize_arabic("شكراً جزيلاً، تحرّك") == "شكراً جزيلاً، تحرّك"  # tanween and shadda stay
     assert normalize_arabic("Arthur, come here") == "Arthur, come here"  # Latin text keeps its commas
     assert apply_glossary("ذهب Arthur إلى البلدة", "Arthur went to town", {"Arthur": "آرثر"}) == "ذهب آرثر إلى البلدة"
 
@@ -197,3 +201,50 @@ def test_reading_time_scales_with_length():
     assert reading_time_ms("نعم.") == 1600.0
     assert 3000 < reading_time_ms("س" * 50) < 5000
     assert reading_time_ms("س" * 300) == 6000.0
+
+
+def test_gemini_engine_falls_back_and_backs_off_without_network(monkeypatch):
+    """No real request is made: the client is replaced by one that fails."""
+    from tarjim import translate as T
+
+    monkeypatch.setattr(T, "load_env_key", lambda name="GEMINI_API_KEY": "test-key")
+
+    class Local:
+        name = "local"
+
+        def __init__(self):
+            self.calls = 0
+
+        def translate(self, text, context=None):
+            self.calls += 1
+            return "محلي"
+
+    class Boom:
+        def __init__(self, message):
+            self.message = message
+            self.calls = 0
+
+        def create(self, **kwargs):
+            self.calls += 1
+            assert kwargs["store"] is False and kwargs["timeout"] == 1.2
+            assert kwargs["generation_config"]["thinking_level"] == "minimal"
+            raise RuntimeError(self.message)
+
+    local = Local()
+    g = T.GeminiTranslator(fallback=local, glossary={"Morgan": "مورغان"})
+    boom = Boom("429 RESOURCE_EXHAUSTED")
+    g._client = type("C", (), {"interactions": boom})()
+    assert g.translate("Hello, Mr. Morgan.") == "محلي" and g.last_used == "local"
+    assert g.translate("Again.") == "محلي"
+    assert boom.calls == 1  # after a quota error Gemini is not asked again for a while
+    assert local.calls == 2 and g.fallbacks == 2
+
+    text = g._input("Hello, Mr. Morgan.", [("a", "x"), ("b", "y"), ("c", "z")])
+    assert "Morgan=مورغان" in text and "Before: b / c" in text and text.endswith("Line: Hello, Mr. Morgan.")
+
+    # A fallback answer is cached under the local engine's name, so Gemini is tried again later.
+    cache = Cache(":memory:")
+    tr = CachedTranslator(g, cache)
+    tr.translate("Keep it coming.")
+    assert cache.get("default", "Keep it coming.", "gemini", "msa") is None
+    assert cache.get("default", "Keep it coming.", "local", "msa") == "محلي"

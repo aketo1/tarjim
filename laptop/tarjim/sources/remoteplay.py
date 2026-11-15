@@ -52,6 +52,10 @@ def _make_receiver(box: FrameBox):
         def handle_video(self, frame) -> None:  # called from the library's decoder thread
             box.put(frame)
 
+        def close(self) -> None:
+            # The library calls decoder.close(), which current PyAV no longer has.
+            self._video_decoder = self._audio_decoder = None
+
     return VideoOnlyReceiver()
 
 

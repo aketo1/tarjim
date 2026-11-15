@@ -39,7 +39,9 @@ def normalize_english(text: str) -> str:
 
 def normalize_arabic(text: str) -> str:
     """Arabic punctuation, no stray Latin quotes, no doubled spaces or marks."""
-    text = text.replace("‏", "").replace("‎", "")
+    text = text.replace("\u200f", "").replace("\u200e", "")
+    # Short vowels make subtitles slow to read; keep only tanween and shadda.
+    text = re.sub("[\u064e\u064f\u0650\u0652\u0670]", "", text)
     text = _WS.sub(" ", text).strip()
     text = text.strip('"').strip("'").strip("«»").strip()
     # The models like to wrap names in brackets: "يا سيد (مورغان)".
@@ -187,13 +189,10 @@ class OpusTranslator:
 GEMINI_MODEL = "gemini-3.5-flash-lite"
 GEMINI_TIMEOUT_S = 1.2
 
-SYSTEM_PROMPT = """You translate English video-game dialogue subtitles into Arabic subtitles.
-Rules:
-- Natural, concise {style}. Keep the speaker's tone (rough, polite, joking, angry).
-- Translate the meaning, not word by word. Slang and contractions are normal speech.
-- Write names of people and places in Arabic letters, using the glossary spelling when one is given.
-- Keep it short enough to read quickly; never add explanations, notes, quotes or the English.
-- Output only the Arabic line."""
+# Kept short on purpose: it is sent with every line, so every word costs tokens.
+SYSTEM_PROMPT = """Translate English video-game dialogue into {style} subtitles.
+Natural and concise, same tone. Names in Arabic letters (use the glossary).
+No diacritics. Output only the Arabic line."""
 
 STYLES = {
     "msa": "simple Modern Standard Arabic",
@@ -220,9 +219,16 @@ def load_env_key(name: str = "GEMINI_API_KEY") -> str | None:
 
 class GeminiTranslator:
     """Gemini through the Google Gen AI SDK (Interactions API). Falls back to a
-    local engine when the call fails or takes longer than the timeout."""
+    local engine when the call fails or takes longer than the timeout.
+
+    `store=False` matters: without it the service saves every interaction and
+    each call took about 2.3 s here instead of about 0.9 s.
+    """
 
     name = "gemini"
+    CONTEXT_LINES = 2
+    QUOTA_COOLDOWN_S = 60.0
+    ERROR_COOLDOWN_S = 20.0
 
     def __init__(self, fallback: Translator | None = None, model: str | None = None, style: str = "msa",
                  glossary: dict[str, str] | None = None, timeout_s: float = GEMINI_TIMEOUT_S) -> None:
@@ -230,49 +236,87 @@ class GeminiTranslator:
         if not key:
             raise TranslateError("no GEMINI_API_KEY in .env")
         from google import genai
+        from google.genai import types
 
-        self._client = genai.Client(api_key=key)
+        # One attempt only: a retry would arrive long after the line left the screen.
+        self._client = genai.Client(
+            api_key=key, http_options=types.HttpOptions(retry_options=types.HttpRetryOptions(attempts=1))
+        )
         self.model = model or paths.load_config().get("gemini_model", GEMINI_MODEL)
         self.fallback = fallback
         self.timeout_s = timeout_s
         self.glossary = glossary or {}
         self._system = SYSTEM_PROMPT.format(style=STYLES.get(style, style))
+        self.calls = 0
         self.fallbacks = 0
+        self.tokens_in = 0
+        self.tokens_out = 0
         self.last_used = "gemini"
         self.last_error: str | None = None
+        self._paused_until = 0.0
+        self._failures = 0
+
+    def warm_up(self) -> None:
+        """Open the connection (the first call took about 3 s here) and load the fallback."""
+        if self.fallback is not None:
+            self.fallback.translate("Hello.")
+        saved = self.timeout_s
+        self.timeout_s = 8.0
+        try:
+            self.translate("Hello.")
+        finally:
+            self.timeout_s = saved
+            self._failures = 0
 
     def _input(self, text: str, context: list[tuple[str, str]] | None) -> str:
         parts = []
         used = {en: ar for en, ar in self.glossary.items() if re.search(rf"\b{re.escape(en)}\b", text, re.IGNORECASE)}
         if used:
-            parts.append("Glossary: " + "; ".join(f"{en} = {ar}" for en, ar in used.items()))
+            parts.append("Glossary: " + "; ".join(f"{en}={ar}" for en, ar in used.items()))
         if context:
-            parts.append("Previous lines (for context only, do not translate again):")
-            parts.extend(f"- {en} => {ar}" for en, ar in context[-4:])
-        parts.append(f"Translate this line:\n{text}")
+            parts.append("Before: " + " / ".join(en for en, _ in context[-self.CONTEXT_LINES :]))
+        parts.append(f"Line: {text}")
         return "\n".join(parts)
 
+    def _use_fallback(self, text: str, context, exc: Exception | None) -> str:
+        if self.fallback is None:
+            raise TranslateError(f"Gemini failed: {self.last_error}") from exc
+        self.fallbacks += 1
+        self.last_used = self.fallback.name
+        return self.fallback.translate(text, context)
+
     def translate(self, text: str, context: list[tuple[str, str]] | None = None) -> str:
+        if time.monotonic() < self._paused_until:
+            return self._use_fallback(text, context, None)
         try:
+            self.calls += 1
             interaction = self._client.interactions.create(
                 model=self.model,
                 system_instruction=self._system,
                 input=self._input(text, context),
-                generation_config={"thinking_level": "minimal"},
+                generation_config={"thinking_level": "minimal", "max_output_tokens": 160, "temperature": 0.2},
+                store=False,
                 timeout=self.timeout_s,
             )
             out = (interaction.output_text or "").strip()
             if not out:
                 raise TranslateError("empty answer")
+            usage = getattr(interaction, "usage", None)
+            self.tokens_in += int(getattr(usage, "total_input_tokens", 0) or 0)
+            self.tokens_out += int(getattr(usage, "total_output_tokens", 0) or 0)
             self.last_used = "gemini"
+            self._failures = 0
             return " ".join(line.strip() for line in out.splitlines() if line.strip())
         except Exception as exc:  # network, quota, timeout, bad key: all handled the same way
             self.last_error = f"{type(exc).__name__}: {str(exc)[:200]}"
-            if self.fallback is None:
-                raise TranslateError(f"Gemini failed: {self.last_error}") from exc
-            self.fallbacks += 1
-            self.last_used = self.fallback.name
-            return self.fallback.translate(text, context)
+            quota = "429" in self.last_error or "RESOURCE_EXHAUSTED" in self.last_error
+            self._failures += 1
+            if quota:
+                # Out of quota: asking again only wastes the timeout on every line.
+                self._paused_until = time.monotonic() + self.QUOTA_COOLDOWN_S
+            elif self._failures >= 3:
+                self._paused_until = time.monotonic() + self.ERROR_COOLDOWN_S
+            return self._use_fallback(text, context, exc)
 
 
 ENGINES = {"nllb-600m": NllbTranslator, "opus-big": OpusTranslator}

@@ -32,6 +32,11 @@ def looks_like_subtitle(text: str) -> bool:
     letters = [c for c in text if c.isalpha()]
     if len(letters) < 2:
         return False
+    if any(c.isdigit() for c in text) and len(letters) < 4:
+        return False  # "PS5", "x2", "L1": interface labels, not speech
+    words = text.split()
+    if text.isupper() and len(words) <= 3 and not text.rstrip().endswith(("!", "?", ".")):
+        return False  # short all-caps labels (names, places, button prompts)
     latin = sum(1 for c in letters if c.isascii())
     return latin / len(letters) >= 0.7
 
@@ -84,8 +89,20 @@ class OcrEngine:
         scores: list[float] = []
         for ln in block.lines:
             pad = max(4, (ln.y1 - ln.y0) // 3)
+            # The line box comes from full-height glyphs; the stroke mask also holds
+            # the small marks around them (a final full stop, an apostrophe), so take
+            # the horizontal extent from the mask instead of padding blindly, which
+            # would pull in neighbouring text such as a speaker name.
+            rows = block.mask[max(0, ln.y0 - block.y0) : ln.y1 - block.y0]
+            cols = np.where(rows.max(axis=0) > 0)[0] if rows.size else np.array([], dtype=int)
+            lx0, lx1 = ln.x0, ln.x1
+            if len(cols):
+                reach = ln.y1 - ln.y0
+                near = cols[(cols + block.x0 >= ln.x0 - reach) & (cols + block.x0 <= ln.x1 + reach)]
+                if len(near):
+                    lx0, lx1 = min(lx0, int(near[0]) + block.x0), max(lx1, int(near[-1]) + block.x0 + 1)
             y0, y1 = max(0, ln.y0 - pad), min(fh, ln.y1 + pad)
-            x0, x1 = max(0, ln.x0 - pad), min(fw, ln.x1 + pad)
+            x0, x1 = max(0, lx0 - pad), min(fw, lx1 + pad)
             crop = frame_bgr[y0:y1, x0:x1]
             scale = TARGET_LINE_H / max(1, crop.shape[0])
             interp = cv2.INTER_CUBIC if scale > 1 else cv2.INTER_AREA
