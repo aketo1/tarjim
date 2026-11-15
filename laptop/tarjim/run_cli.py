@@ -21,17 +21,14 @@ from .vision.tracker import Event
 
 
 def build_translator(engine: str | None, profile: str, cache_path: str | None = None) -> CachedTranslator:
-    from .translate import load_env_key, load_profile, make_engine
+    from .translate import load_profile, make_engine
 
     prof = load_profile(profile)
     glossary = {str(k): str(v) for k, v in (prof.get("glossary") or {}).items()}
     style = str(prof.get("style", "msa"))
-    name = engine or paths.load_config().get("mt_engine") or ("gemini" if load_env_key() else default_engine_name())
-    engine_obj = make_engine(name, glossary=glossary, style=style)
-    if hasattr(engine_obj, "warm_up"):
-        engine_obj.warm_up()
-    else:
-        engine_obj.translate("Hello.")  # warm-up: the first call is several times slower
+    name = engine or paths.load_config().get("mt_engine") or default_engine_name()
+    engine_obj = make_engine(name)
+    engine_obj.translate("Hello.")  # warm-up: the first call is several times slower
     return CachedTranslator(engine_obj, Cache(cache_path), profile=profile, style=style, glossary=glossary)
 
 
@@ -46,14 +43,6 @@ def _print_summary(pipe: Pipeline) -> None:
         f"سطور انعرضت: {pipe.lines_shown} — انرفضت: {pipe.rejected} — "
         f"جاهزة قبل نهاية الانتظار: {pipe.early_ready} — بقيت بعد اختفاء الإنجليزي: {pipe.held}"
     )
-    eng = pipe.translator.engine
-    if getattr(eng, "calls", None) is not None:
-        info(
-            f"Gemini ({eng.model}): {eng.calls} طلب، {eng.fallbacks} رجعت للترجمة المحلية، "
-            f"التوكن: {eng.tokens_in} داخل + {eng.tokens_out} خارج"
-        )
-        if eng.last_error and eng.fallbacks:
-            info(f"  آخر سبب للرجوع: {eng.last_error[:110]}")
     for name, s in pipe.times.summary().items():
         info(f"  {labels.get(name, name)}: وسيط {s['p50']:.0f} ms، p90 {s['p90']:.0f} ms ({s['n']})")
 

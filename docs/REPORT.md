@@ -1,0 +1,351 @@
+# Tarjim (ترجِم): project report
+
+Written 2026-11-15. This file is the handover for anyone, human or AI, who
+will read, improve or build a user interface for this project. It describes
+what exists and works today, how it was built, what was measured, what is
+still missing, and the rules to follow when changing it.
+
+> **بالعربي باختصار:** ترجِم برنامج شخصي يعرض ترجمة عربية مكان الترجمة
+> الإنجليزية وأنت تلعب PS5 على تلفزيون TCL. اللابتوب ياخذ نسخة من صورة
+> الـPS5، يقرأ السطر الإنجليزي، يترجمه محلياً، ويرسل العربي كصورة صغيرة
+> لتطبيق على التلفزيون يرسمها فوق اللعبة. هذا الملف يشرح كل شي لأي برنامج
+> ذكاء اصطناعي تبي تعطيه المشروع.
+
+## 1. What it does
+
+While the user plays a PS5 game on the TV, English subtitles are covered and
+replaced by Arabic ones in the same place and style. The game picture and the
+controller are untouched: the PS5 still feeds the TV directly over HDMI.
+
+Status today: it works live in Red Dead Redemption 2. Measured in a 15-minute
+play session: 100 lines shown, median 150 ms from the English line first
+appearing in the laptop's copy of the picture to the Arabic being drawn on the
+TV (90th percentile 243 ms).
+
+## 2. The setup
+
+| Device | Role | Details on this installation |
+| --- | --- | --- |
+| PS5 | Runs the game | "PS5-637", 192.168.172.109, on Wi-Fi, outputs 3840x2160 60 Hz HDR |
+| TV | Shows the game and the Arabic overlay | TCL "Smart TV Pro" (C635), Google TV, Android 11 (API 30), 192.168.172.251, overlay plane 1920x1080 |
+| Laptop | Does all the work | Windows 11, i5-12450H, Intel UHD graphics, 8 GB RAM. Must be on mains power |
+
+Three data paths:
+
+1. **PS5 to TV, HDMI.** The game. Nothing of ours sits in this path.
+2. **PS5 to laptop, home network.** A video-only copy of the picture through
+   Sony's Remote Play protocol (1080p, 30 fps, H.264, SDR), logged in with a
+   *second* PSN account so the player's own account and controller are not
+   disturbed.
+3. **Laptop to TV, Wi-Fi (TCP port 47800).** Small PNG images plus where to
+   draw them. A thin Android app on the TV draws them over the HDMI input.
+
+The TV cannot read the HDMI picture (screen capture of the HDMI input returns
+nothing on this TV), which is why the laptop needs its own copy.
+
+## 3. How one subtitle line is handled
+
+Every frame of the copy (30 per second) goes through `Pipeline.process`
+(`laptop/tarjim/pipeline.py`):
+
+1. **Detect** (`vision/detect.py`, about 4 ms). Look only at the bottom 30% of
+   the frame, central 84% of the width. Build a mask of thin bright strokes:
+   per-pixel minimum of R, G, B, then a white top-hat filter, then a
+   threshold. Find connected blobs, keep letter-sized ones, group them into
+   rows and rows into a block. Pieces of one row split by a bright background
+   are rejoined. Output: a `Block` (rectangle, stroke mask, text lines).
+2. **Start reading at once** (worker thread). The first time a block is seen,
+   OCR and translation start in the background, before we know the line is
+   stable.
+3. **Track** (`vision/tracker.py`). The block is confirmed when its mask stays
+   the same (IoU >= 0.9, not growing) for the settle time (30 ms for RDR2,
+   60 ms default). By then the Arabic is usually ready, so the wait costs
+   nothing extra.
+4. **OCR** (`vision/ocr.py`, about 16 ms per line). RapidOCR's English
+   recognition model on each text line, cropped using the stroke mask and
+   scaled to 48 px height. Rejects things that are not speech (interface
+   labels such as "PS5", short all-caps labels, non-Latin text, low
+   confidence).
+5. **Translate** (`translate.py`, about 75 to 95 ms). Cache first (SQLite,
+   under 2 ms). Otherwise the local model, sentence by sentence. Then the
+   game's glossary of names and Arabic clean-up (Arabic punctuation, no
+   brackets around names, no short-vowel marks).
+6. **Render** (`vision/render.py`, `vision/arabic.py`, about 8 ms). Two images:
+   - `fill`: the estimated background colour, only on the grown English letter
+     strokes (transparent elsewhere). It hides the English without a box.
+   - `text`: the Arabic, shaped with HarfBuzz and drawn with FreeType, in the
+     colour of the English letters, with a soft drop shadow, centred on the
+     English block, bottom baseline kept.
+7. **Send** (`tvlink.py`). One `show` message with both PNGs; the TV draws them
+   in the same frame and acknowledges with timestamps (about 37 ms).
+8. **While the line is on screen**: the `fill` is re-made from the newest
+   frame about 12 times per second so it follows the moving scene; the `text`
+   is kept alive without resending pixels.
+9. **When the English leaves**: if the Arabic has not had its reading time
+   yet (about 15 characters per second, between 1.6 and 6 seconds), it stays
+   on a dark translucent plate until that time is up, or until the next line
+   replaces it. Otherwise everything is cleared.
+
+Fail-safe: every layer on the TV has a 700 ms time-to-live and the TV clears
+everything if it hears nothing for 1000 ms. If the laptop program stalls,
+crashes or loses Wi-Fi, the Arabic disappears by itself within a second.
+
+## 4. Repository map
+
+```
+tarjim/
+  STATUS.md             milestone status (partly out of date; this report is newer)
+  docs/
+    REPORT.md           this file
+    DECISIONS.md        every non-obvious choice, with the evidence behind it
+    PROTOCOL.md         laptop <-> TV wire protocol v1
+    TESTS-AR.md         the manual tests the user ran (Arabic)
+    LICENSES.md         licence of everything used
+    adb-log.md          every adb command run against the TV
+  laptop/               Python 3.12 package "tarjim" + tests (uv project)
+  tv-app/               Android app (Kotlin, Gradle), package dev.tarjim.tv
+  profiles/             one YAML file per game (glossary, settle time, font size)
+  fonts/                Harmattan, Noto Naskh Arabic, Noto Sans Arabic, Noto Sans (OFL)
+  samples/              the user's screenshots + expected text; tv-photos/ (not in git)
+  models/               translation models, about 1.1 GB (not in git)
+  out/                  previews, session logs (not in git)
+  .tools/               adb, JDK 17, Android SDK, Gradle (not in git)
+```
+
+Private files outside the repo, in `C:\Users\<user>\.tarjim\`:
+`config.json` (TV address, PS5 address, PSN user name, remembered font sizes),
+`ps5-profiles.json` (Remote Play registration keys: treat as a secret),
+`tv-state.json` (backup of the TV settings changed by setup),
+`translations.sqlite` (translation cache).
+
+### Laptop modules (`laptop/tarjim/`)
+
+| File | What it holds |
+| --- | --- |
+| `cli.py` | The `tarjim` command and its sub-commands |
+| `run_cli.py` | `tarjim run` (live) and `tarjim preview` (file + fake TV) |
+| `pipeline.py` | The live loop described in section 3; timings; session log |
+| `vision/detect.py` | Subtitle block detection, `mask_iou` |
+| `vision/tracker.py` | Stable / still there / gone state machine |
+| `vision/ocr.py` | RapidOCR wrapper, line joining, speaker split, speech filter |
+| `vision/arabic.py` | Bidi runs, HarfBuzz shaping, FreeType rasterising, font fallback |
+| `vision/render.py` | `make_fill`, `make_text`, `make_plate`, layout, `composite` |
+| `translate.py` | Engines, sentence splitting, cache, glossary, clean-up, profiles |
+| `sources/base.py` | `FrameSource` interface, `FrameBox` (newest-frame hand-off) |
+| `sources/remoteplay.py` | Receive-only Remote Play session with reconnect |
+| `sources/ps5.py` | Finding the PS5, PSN sign-in redirect, PIN linking |
+| `sources/file.py` | Image, image folder or video as a source (tests, previews) |
+| `protocol.py` | Wire protocol framing and message builders |
+| `tvlink.py` | TCP client to the TV: ping, clock offset, acks, reconnect |
+| `faketv.py` | Python implementation of the TV side, used by tests and preview |
+| `tv.py` | `tv build / setup / test / revert` through adb |
+| `adb.py` | adb wrapper that refuses anything outside an allowlist |
+| `source_cli.py` | `source setup / test` |
+| `bench.py` | `bench latency` |
+| `doctor.py` | `doctor`: checks prerequisites |
+| `paths.py` | Locations, config load/save, process priority boost |
+| `patterns.py` | Test patterns A and B, screencap check |
+| `say.py` | Arabic console messages |
+
+### TV app (`tv-app/app/src/main/java/dev/tarjim/tv/`)
+
+| File | What it holds |
+| --- | --- |
+| `OverlayService.kt` | Foreground service; owns the TCP server and window A |
+| `OverlayA11yService.kt` | Accessibility service that reads nothing; owns window B |
+| `OverlayHub.kt` | Shared layer state, the two transparent full-screen views, TTL and watchdog |
+| `OverlayServer.kt` | TCP server: parses frames, decodes PNGs off the UI thread, sends acks |
+| `Wire.kt` | Frame reader/writer and protocol limits |
+| `MainActivity.kt` | Status screen with Start and Stop buttons |
+
+Window A is `TYPE_APPLICATION_OVERLAY`, window B `TYPE_ACCESSIBILITY_OVERLAY`.
+Both were tested visible over the HDMI input; the pipeline uses A. Both are
+not focusable and not touchable, so the remote keeps working. The app uses
+only the Android framework (no libraries).
+
+## 5. Commands
+
+Run from `laptop/` as `uv run tarjim ...` or `.venv\Scripts\tarjim.exe ...`.
+
+| Command | Purpose |
+| --- | --- |
+| `tarjim doctor` | Check Python, adb, JDK, SDK, the built app, the TV |
+| `tarjim sdk install` | Install Android SDK packages (the user accepts Google's licences) |
+| `tarjim tv build` | Build the TV app |
+| `tarjim tv setup --ip <tv>` | Install and enable the app on the TV (idempotent) |
+| `tarjim tv test --seconds N` | Show test patterns A (magenta, left) and B (cyan, right) |
+| `tarjim tv revert` | Remove the app and undo every TV setting it changed |
+| `tarjim source setup [--redirect-url URL] [--pin N]` | Link the laptop to the PS5, one step per run |
+| `tarjim source test --seconds N` | Measure the picture copy: resolution, fps, gaps |
+| `tarjim preview <file>` | Run the whole pipeline on an image or video against the fake TV; saves PNGs in `out/preview/` |
+| `tarjim run --profile <game>` | The real thing. Options: `--engine`, `--no-fill`, `--seconds`. Keys: `o` toggle, `q` quit |
+| `tarjim bench latency` | Time every stage on this laptop |
+
+Day-to-day use: TV on, PS5 on with the game running on the player's own
+account, laptop on mains, then `tarjim run --profile rdr2`.
+
+## 6. Configuration a user interface should expose
+
+Everything below already exists as a file or a parameter; a UI only needs to
+read and write it and start or stop `tarjim run`.
+
+| Setting | Where | Notes |
+| --- | --- | --- |
+| TV address | `~/.tarjim/config.json` `tv_ip` | Set by `tv setup` |
+| PS5 address, PSN user | `config.json` `ps5_host`, `ps5_user` | Set by `source setup` |
+| Game profile | `profiles/<name>.yaml` | Chosen with `--profile` |
+| Name glossary | profile `glossary:` | English name: Arabic spelling |
+| Arabic font size | profile `font_size:` or remembered in `config.json` `font_sizes` | Measured from the first 5 lines, then fixed; 34 for RDR2 here |
+| Font | profile `font:` | `harmattan` (default), `harmattan-bold`, `noto-naskh`, `noto-sans-arabic` |
+| Settle time | profile `settle_ms:` | Raise for games that type text letter by letter |
+| Translation engine | `--engine` or `config.json` `mt_engine` | `opus-big` (default) or `nllb-600m` |
+| Cover the English or not | `--no-fill` | Arabic only, English stays visible |
+| Overlay window | `config.json` `window` | `A` or `B` |
+| Reading time | `reading_time_ms` in `pipeline.py` | Currently in code: 900 ms + 65 ms per character, 1.6 to 6 s |
+| Detection area and thresholds | `DetectParams` in `vision/detect.py` | Currently in code; should move into the profile |
+| Text style | `Style` in `vision/render.py` | Shadow offset, blur, opacity, colour; currently in code |
+
+Suggested shape for a UI: a small local program (for example a desktop window
+or a local web page served by the laptop) with a Start/Stop button, a game
+picker, a live list of "English -> Arabic" lines (the pipeline already calls
+`on_line(english, arabic)`), the live timings from `Pipeline.times.summary()`,
+an editable glossary table, a font and size picker with the `preview` output
+shown as an image, and the setup steps (`doctor`, `tv setup`, `source setup`)
+as guided buttons. Call the Python functions directly rather than parsing the
+console output: `run_cli.run`, `run_cli.preview`, `tv.setup`, `tv.test`,
+`source_cli.setup`, `doctor.run`.
+
+## 7. What was measured
+
+All on this laptop, on mains power.
+
+| Stage | Time (median) | Budget in the original brief |
+| --- | --- | --- |
+| Detect and track, per frame | 4 ms | 8 ms |
+| OCR of a block | 16 ms live, 77 ms cold bench | 120 ms |
+| Local translation (opus-big) | 96 ms live (p90 155 ms) | 250 ms |
+| Render and encode | 8 ms | 20 ms |
+| Send, TV decode, draw | 37 ms | 60 ms |
+| Fill refresh | 2 ms each, about 12 per second | at least 10 per second |
+| **First sight of the English to Arabic on the TV** | **150 ms (p90 243 ms)** | 500 ms from stable |
+
+Picture copy: 1920x1080 at 30 fps, first frame after 4.4 s, 0 reconnects in
+the 15-minute sessions. The extra delay of Remote Play itself (PS5 picture to
+laptop) has not been measured; it needs a slow-motion film of the TV.
+
+Translation models compared on 22 test lines: opus-big 148 ms, NLLB-600M
+635 ms, and opus read better. Both dropped every sentence after the first
+until lines were split into sentences.
+
+Automated tests: `uv run pytest` in `laptop/`. They cover the protocol
+(fragmented and malformed frames, reconnect, TTL, watchdog, ordering), the adb
+allowlist, detection recall and false positives on synthetic frames, erase
+completeness, OCR error rate and the user's two samples, Arabic golden images,
+layout bounds, the tracker (typewriter text triggers once), translation
+plumbing, and the whole pipeline end to end on the fake TV.
+
+## 8. How it was built, and what was learned on the way
+
+The order was: tools, TV app, picture copy, two user tests, offline core,
+live run, then tuning from the user's feedback. The findings that cost time:
+
+- **TCL blocks background apps.** The TV killed our service after 10 seconds
+  and refused to bind the accessibility service, logging
+  `callee_does't_have_OP_AUTO_START_permission`. Fix: `adb shell appops set
+  dev.tarjim.tv APP_AUTO_START allow` (our own app only), then take our entry
+  out of `enabled_accessibility_services` and put it back so the system
+  retries. `tv setup` does both; `tv revert` undoes them.
+- **Never `am force-stop` the app**: Android then drops its accessibility
+  service from the enabled list. Use `am stopservice`.
+- **The user already had another accessibility service enabled** on the TV.
+  Setup appends to the list and revert removes only our entry.
+- **Remote Play as a silent copy works.** With a second PSN account the
+  player's controller, sound and 4K HDR output were unchanged. The library's
+  controller worker is never started, so no input is ever sent; the session
+  stays alive on protocol heartbeats alone.
+- **The Remote Play library** is the patched `pyremoteplay` vendored inside
+  the PyPI package `ps5-remoteplay-mcp` 0.2.2 (GPL-3.0). Two traps: its
+  `Profiles.save()` ignores the configured path (we write the file ourselves)
+  and it crashes when handed an empty profiles object.
+- **Pillow on Windows has no RAQM**, so Arabic is shaped with `uharfbuzz` and
+  drawn with `freetype-py`, with our own small bidi (right-to-left base,
+  left-to-right runs for Latin words and numbers).
+- **Speed, in order of effect**: the laptop was on battery (translation
+  405 ms; on mains 75 to 96 ms); Windows gives window-less programs
+  "efficiency mode" (fixed with high priority and no power throttling:
+  detection 9.5 ms to 4 ms); reading started only after the line had settled
+  (now it starts at first sight); numpy's channel minimum was 8 times slower
+  than `cv2.min`.
+- **The Arabic vanished too fast.** It appeared late and was cleared the
+  moment the English left. Fixed by the reading-time hold on a dark plate.
+- **Cut-off sentences** ("Mr. Mor" instead of "Mr. Morgan"): letters over a
+  bright part of the scene fail the stroke test and split the line. Fixed by
+  rejoining pieces of the same row.
+- **Font size changed from line to line.** It was measured per line and shrunk
+  for long sentences. Now it is measured over the first 5 lines, fixed, and
+  remembered per game; long sentences wrap instead.
+- **Gemini was tried and removed.** `gemini-3.5-flash-lite` translated clearly
+  better, but took 0.85 s per line in a quiet benchmark and 1.2 s live, with
+  half the lines timing out, and the free tier refused requests after about
+  28 in two minutes. The local model is 10 times faster. The code and the
+  dependency were deleted; the measurements are in `DECISIONS.md`.
+
+## 9. Known limits
+
+- **HDR.** The TV shows HDR and the copy is SDR, so the `fill` colour may not
+  match the picture exactly. Not reported as a problem by the user so far.
+- **Translation quality** is that of a small local model: fine for plain
+  sentences, weak on slang, jokes and context. Names depend on the glossary.
+- **Speaker names** drawn beside the line (for example in RDR2 cutscenes) stay
+  in English.
+- **Only light text** is detected (`bright-thin` model). Dark or strongly
+  coloured subtitles are not found.
+- **One game profile** has been tuned and played: RDR2. The Uncharted sample
+  was only tested as a still image.
+- **The PS5 shows a "Remote Play connected" notice** when the copy connects.
+- **Remote Play limits**: one session per console; some games block scenes
+  from Remote Play (the copy then shows a placeholder).
+- **8 GB RAM** is tight: Windows killed idle background commands twice during
+  development. Close heavy programs while playing.
+- **`STATUS.md` and parts of `DECISIONS.md` are older than this report.**
+  Where they disagree, this report and the code are right.
+
+## 10. Not built yet (from the original plan)
+
+| Item | Notes |
+| --- | --- |
+| User interface | Section 6 lists what it needs |
+| `README-AR.md` | Arabic how-to for the user |
+| `calibrate geometry / colour` | Not needed so far: position was right without it |
+| `profile new` | Profiles are written by hand for now |
+| `record / replay` | Would allow tuning on real footage without the console |
+| `bench mt` blind A/B sheet | Only one engine family is left |
+| `frost` and `auto` modes | Only `replace`, the hold plate, and `--no-fill` exist |
+| `uvc` capture-card source | Would cut the copy delay and remove the second account |
+| `color` and `detector` text models | For games with non-white subtitles |
+| Translate the whole screen on demand | A "translate what is on screen now" key for letters, notes and menus; a permanent full-screen mode is not recommended (interface text everywhere, slower, more errors) |
+| Better translation without delay | Idea: show the local translation at once and let a stronger model improve the cached entry in the background for the next time the line appears |
+
+## 11. Rules for whoever changes this
+
+- **Safety on the TV.** Only our app may be installed, started, stopped or
+  have its appops changed. No root, no disabling other apps, no other
+  settings. Every adb command goes through `adb.py` (allowlist) and is logged.
+  `tarjim tv revert` must always undo everything.
+- **Safety on the PlayStation.** Never ask for or store the PSN password.
+  Never send controller input. Never change anything on the account.
+- **Fail-safe first.** Nothing may leave stale Arabic on screen. Keep the
+  layer TTL, the TV watchdog and the clear-on-exit.
+- **Nothing in the HDMI path** unless the user decides otherwise.
+- **Measure before and after.** Use `tarjim bench latency`, the session logs
+  in `out/sessions/*.jsonl` (one JSON line per subtitle with every stage time)
+  and the summary printed when `tarjim run` stops.
+- **Run the tests** (`uv run pytest`) before committing. New behaviour gets a
+  test; the synthetic frame generator is `tests/synth.py`.
+- **Test dialogue is written for this project.** Do not copy lines from real
+  games into tests or docs.
+- **Talk to the user in simple Arabic**; keep code, comments and commits in
+  English. The user is not a programmer: one concrete action at a time.
+- **Licences.** This is a personal, non-distributed project. It depends on
+  GPL-3.0 code (`ps5-remoteplay-mcp`) and on NLLB weights that are
+  non-commercial; see `LICENSES.md` before sharing anything.

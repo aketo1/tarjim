@@ -207,53 +207,6 @@ def test_reading_time_scales_with_length():
     assert reading_time_ms("س" * 300) == 6000.0
 
 
-def test_gemini_engine_falls_back_and_backs_off_without_network(monkeypatch):
-    """No real request is made: the client is replaced by one that fails."""
-    from tarjim import translate as T
-
-    monkeypatch.setattr(T, "load_env_key", lambda name="GEMINI_API_KEY": "test-key")
-
-    class Local:
-        name = "local"
-
-        def __init__(self):
-            self.calls = 0
-
-        def translate(self, text, context=None):
-            self.calls += 1
-            return "محلي"
-
-    class Boom:
-        def __init__(self, message):
-            self.message = message
-            self.calls = 0
-
-        def create(self, **kwargs):
-            self.calls += 1
-            assert kwargs["store"] is False and kwargs["timeout"] == 1.2
-            assert kwargs["generation_config"]["thinking_level"] == "minimal"
-            raise RuntimeError(self.message)
-
-    local = Local()
-    g = T.GeminiTranslator(fallback=local, glossary={"Morgan": "مورغان"})
-    boom = Boom("429 RESOURCE_EXHAUSTED")
-    g._client = type("C", (), {"interactions": boom})()
-    assert g.translate("Hello, Mr. Morgan.") == "محلي" and g.last_used == "local"
-    assert g.translate("Again.") == "محلي"
-    assert boom.calls == 1  # after a quota error Gemini is not asked again for a while
-    assert local.calls == 2 and g.fallbacks == 2
-
-    text = g._input("Hello, Mr. Morgan.", [("a", "x"), ("b", "y"), ("c", "z")])
-    assert "Morgan=مورغان" in text and "Before: b / c" in text and text.endswith("Line: Hello, Mr. Morgan.")
-
-    # A fallback answer is cached under the local engine's name, so Gemini is tried again later.
-    cache = Cache(":memory:")
-    tr = CachedTranslator(g, cache)
-    tr.translate("Keep it coming.")
-    assert cache.get("default", "Keep it coming.", "gemini", "msa") is None
-    assert cache.get("default", "Keep it coming.", "local", "msa") == "محلي"
-
-
 def test_reading_starts_at_first_sight_not_after_settling(ocr):
     """The worker starts on the first frame that shows the line; when the
     tracker confirms it a few frames later the Arabic is already there."""

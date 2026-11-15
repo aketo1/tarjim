@@ -299,7 +299,7 @@ class Pipeline:
             "t_frame": job.t_capture * 1000.0, "t_first": job.t_first, "t_stable": job.t_stable, "t_sent": t_sent,
             "ocr_ms": round(job.ocr_ms, 1), "mt_ms": round(job.mt_ms, 1), "render_ms": round(job.render_ms, 1),
             "en": job.english, "ar": job.arabic, "speaker": job.speaker, "ocr_score": round(job.score, 3),
-            "engine": getattr(self.translator.engine, "last_used", self.translator.engine.name),
+            "engine": self.translator.engine.name,
             "cache_hit": job.hit, "mode": "replace" if still_there else "plate",
         }
         if self.on_line is not None:
