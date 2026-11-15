@@ -55,6 +55,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--no-selfcheck", action="store_true", help="بدون تصوير الشاشة")
     p = tv.add_parser("revert", help="يرجّع التلفزيون مثل ما كان")
     p.add_argument("--ip")
+
+    src = sub.add_parser("source", help="صورة الـPS5").add_subparsers(dest="src_cmd", required=True)
+    p = src.add_parser("setup", help="يربط اللابتوب بالـPS5 (حساب ثاني + رقم الربط)")
+    p.add_argument("--host", help="عنوان IP للـPS5")
+    p.add_argument("--redirect-url", help="عنوان صفحة redirect بعد تسجيل الدخول عند Sony")
+    p.add_argument("--pin", help="رقم الربط من الـPS5 (8 خانات)")
+    p = src.add_parser("test", help="يقيس الدقة وعدد الصور والانقطاعات")
+    p.add_argument("--backend", default="rp-pyremoteplay", choices=["rp-pyremoteplay", "file"])
+    p.add_argument("--seconds", type=float, default=30)
+    p.add_argument("--path", help="صورة أو مجلد صور أو فيديو (للمصدر file)")
+    p.add_argument("--host")
     return parser
 
 
@@ -79,6 +90,13 @@ def main(argv: list[str] | None = None) -> int:
             return tv.run_cli(tv.test, args.ip, args.seconds, not args.no_selfcheck)
         if args.tv_cmd == "revert":
             return tv.run_cli(tv.revert, args.ip)
+    if args.cmd == "source":
+        from . import source_cli
+
+        if args.src_cmd == "setup":
+            return source_cli.setup(args.host, args.redirect_url, args.pin)
+        if args.src_cmd == "test":
+            return source_cli.test(args.backend, args.seconds, args.path, args.host)
     info("أمر غير معروف.")
     return 2
 

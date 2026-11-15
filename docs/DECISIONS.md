@@ -46,3 +46,34 @@ Non-obvious choices and the evidence behind them. Newest last.
   laptop time with the ping/pong offset.
 - **`OverlayService` is exported without a permission** (needed for adb
   start). Any app on the TV could start it; accepted for a personal sideload.
+
+## M2 (2026-11-15)
+
+- **Backend chosen to try first: `rp-pyremoteplay`**, through the PyPI
+  package `ps5-remoteplay-mcp==0.2.2` (GPL-3.0; sdist SHA-256
+  `c00b3b59...253160` checked against PyPI), importing only its vendored,
+  patched `pyremoteplay` 0.7.6. Its NOTICE.md lists the fixes the brief
+  mentions (pyee, PyAV flag names, client version 9, thread-safe sends, numpy
+  FEC). Installed as a dependency rather than copied, so no GPL source sits in
+  this repo. Its MCP server, daemon and gamepad code are never imported.
+- **No controller input, by construction.** Read in the vendored
+  `controller.py`: feedback packets are sent only by `Controller.start()`'s
+  worker (and only when the stick state changes) or by explicit
+  `button`/`stick` calls. `RemotePlaySource` never calls `start()` and
+  detaches the controller object right after `create_session`. Session
+  keep-alive is the separate heartbeat in `session.py`. Whether the PS5 keeps
+  a session with zero feedback packets alive is NOT yet verified (needs the
+  console; part of `source test` / T2).
+- **Profiles are written by our own code** to `~/.tarjim/ps5-profiles.json`:
+  the library's `Profiles.save()` without a path writes to its own default
+  folder (`util.write_profiles`), ignoring `set_default_path`.
+- **Library logging capped at WARNING**: its DEBUG output prints handshake
+  keys.
+- **Stream request: 1080p, 30 fps, H.264, SDR, video only** (audio packets
+  are dropped before decoding). 30 fps is enough to read subtitles and halves
+  the decode load on a laptop with no discrete GPU.
+- **Newest-frame hand-off (`FrameBox`)**: the consumer always gets the latest
+  frame and skipped ones are counted, so a slow pipeline stage never builds a
+  backlog (which would add delay to the Arabic).
+- **Console found by discovery**: PS5 "PS5-637" at 192.168.172.109, system
+  version field `14220000`, in rest mode at the time (2026-11-15).
