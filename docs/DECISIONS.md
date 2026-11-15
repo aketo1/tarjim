@@ -138,3 +138,24 @@ Non-obvious choices and the evidence behind them. Newest last.
 - **OCR, translation and rendering run inline** in the frame loop for now
   (about 0.3 s per new line during which tracking pauses). Simple and
   deterministic; moving them to a worker is an M5 option.
+
+## Live speed work (2026-11-15)
+
+- **Gemini is not the live default.** Tuned (`store=False`, thinking minimal,
+  one attempt) it measured p50 848 ms per line in a quiet benchmark, 76 input
+  + 16 output tokens. Live during play it was p50 1213 ms and 13 of 24 lines
+  hit the 1.2 s timeout and were then translated locally on top. The free
+  tier also returned 429 after about 28 requests in two minutes. The engine
+  stays available (`--engine gemini`).
+- **The laptop was on battery** during the slow runs (local MT 405 ms p50).
+  On mains, with the process set to high priority and Windows power
+  throttling switched off for it, MT under the real stream load is 85 ms p50
+  on the worker thread and detection 3 ms.
+- **Reading starts at first sight** (worker thread) instead of after the
+  settle time. 15-minute live run in Red Dead Redemption 2 on mains, local
+  engine: 56 lines shown, all acked as drawn by the TV; first sight to Arabic
+  on the TV p50 176 ms, p90 262 ms (was about 700 ms: 150 ms settle + 546 ms).
+  Stream 30 fps, 0 reconnects. 45 candidate blocks were rejected as
+  non-subtitles.
+- **OpenCV thread count does not matter** for this load (1, 2 or 12 threads:
+  MT 85-90 ms, detect 3-4 ms), so it is left at the default.
