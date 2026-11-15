@@ -24,7 +24,7 @@ class Event(Enum):
 
 @dataclass(frozen=True)
 class TrackParams:
-    settle_ms: float = 150.0
+    settle_ms: float = 100.0  # reading starts at first sight, so this only delays confirmation
     stable_iou: float = 0.90
     keep_iou: float = 0.60
     gone_iou: float = 0.30
@@ -49,6 +49,10 @@ class SubtitleTracker:
         """The consumer decided the last NEW block is not a subtitle (bad OCR)."""
         self._rejected = self.shown
         self.shown = None
+
+    def is_rejected(self, block: Block) -> bool:
+        """True while `block` is the text the consumer already rejected."""
+        return self._rejected is not None and mask_iou(self._rejected, block) >= self.p.keep_iou
 
     def reset(self) -> None:
         self.shown = None

@@ -122,7 +122,10 @@ def test_end_to_end_overlays_appear_and_clear(ocr):
     class DictEngine:
         name = "dict"
 
+        calls = 0
+
         def translate(self, text, context=None):
+            DictEngine.calls += 1
             return {line_a.text: "السطر الأول.", line_b.text: "السطر الثاني."}[text]
 
     with FakeTv() as tv, TvLink(tv.host, tv.port) as link:
@@ -142,6 +145,7 @@ def test_end_to_end_overlays_appear_and_clear(ocr):
         feed(line_a.frame, 10)
         assert _wait(lambda: tv.layer_ids() == ["fill", "text"])
         assert seen.count(Event.NEW) == 1
+        assert pipe.translator.engine.calls == 1  # the early start and the confirmation share one job
         shown = np.asarray(tv.composite().convert("RGB"))
         x0, y0, x1, y1 = line_a.bbox
         assert shown[y0:y1, x0:x1].max() > 150  # Arabic pixels were drawn where the English is
@@ -248,3 +252,58 @@ def test_gemini_engine_falls_back_and_backs_off_without_network(monkeypatch):
     tr.translate("Keep it coming.")
     assert cache.get("default", "Keep it coming.", "gemini", "msa") is None
     assert cache.get("default", "Keep it coming.", "local", "msa") == "محلي"
+
+
+def test_reading_starts_at_first_sight_not_after_settling(ocr):
+    """The worker starts on the first frame that shows the line; when the
+    tracker confirms it a few frames later the Arabic is already there."""
+    s = synth.make_samples(1, 1, seed=31)
+    line, empty = s[0], s[1]
+    started = []
+
+    class SlowEngine:
+        name = "slow"
+
+        def translate(self, text, context=None):
+            started.append(time.monotonic())
+            return "سطر."
+
+    with FakeTv() as tv, TvLink(tv.host, tv.port) as link:
+        link.connect()
+        pipe = Pipeline(link, CachedTranslator(SlowEngine(), Cache(":memory:")), ocr)
+        pipe.process(empty.frame, 10.0)
+        t_first = time.monotonic()
+        assert pipe.process(line.frame, 10.033) is Event.NONE  # seen, not yet confirmed
+        pipe.wait_idle()
+        assert started and started[0] - t_first < 0.6  # translation already ran
+        assert tv.layer_ids() == []  # but nothing is shown before the line is confirmed
+        for i in range(2, 8):
+            pipe.process(line.frame, 10.0 + i * 0.033)
+        assert _wait(lambda: tv.layer_ids() == ["fill", "text"])
+        assert pipe.early_ready == 1 and len(started) == 1
+        pipe.close()
+
+
+def test_line_that_left_during_translation_is_still_shown_on_a_plate(ocr):
+    s = synth.make_samples(1, 1, seed=33)
+    line, empty = s[0], s[1]
+    gate = __import__("threading").Event()
+
+    class GatedEngine:
+        name = "gated"
+
+        def translate(self, text, context=None):
+            gate.wait(3.0)
+            return "سطر طويل يحتاج وقتاً للقراءة."
+
+    with FakeTv() as tv, TvLink(tv.host, tv.port) as link:
+        link.connect()
+        pipe = Pipeline(link, CachedTranslator(GatedEngine(), Cache(":memory:")), ocr)
+        for i in range(8):
+            pipe.process(line.frame, 20.0 + i * 0.033)  # confirmed, translation still running
+        for i in range(8, 12):
+            pipe.process(empty.frame, 20.0 + i * 0.033)  # the English is gone
+        assert tv.layer_ids() == []
+        gate.set()
+        assert _wait(lambda: tv.layer_ids() == ["plate", "text"])  # no fill: nothing to cover any more
+        pipe.close()

@@ -49,6 +49,45 @@ def android_sdk() -> Path | None:
     return None
 
 
+def boost_process() -> bool:
+    """Ask Windows to run this process at full speed.
+
+    Console programs without a visible window get "efficiency mode" on
+    Windows 11 (slower cores, lower clock). Measured here under the real video
+    load: detection 9.5 ms -> 4.9 ms and steadier translation times.
+    """
+    if sys.platform != "win32":
+        return False
+    import ctypes
+
+    try:
+        import psutil
+
+        psutil.Process().nice(psutil.HIGH_PRIORITY_CLASS)
+
+        class PowerThrottling(ctypes.Structure):
+            _fields_ = [("Version", ctypes.c_ulong), ("ControlMask", ctypes.c_ulong), ("StateMask", ctypes.c_ulong)]
+
+        # ControlMask = EXECUTION_SPEED with StateMask = 0 switches throttling off.
+        state = PowerThrottling(1, 1, 0)
+        k32 = ctypes.windll.kernel32
+        k32.GetCurrentProcess.restype = ctypes.c_void_p
+        k32.SetProcessInformation.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_ulong]
+        return bool(k32.SetProcessInformation(k32.GetCurrentProcess(), 4, ctypes.byref(state), ctypes.sizeof(state)))
+    except (OSError, ImportError, AttributeError):
+        return False
+
+
+def on_battery() -> bool:
+    try:
+        import psutil
+
+        battery = psutil.sensors_battery()
+        return battery is not None and not battery.power_plugged
+    except (ImportError, OSError):
+        return False
+
+
 def ensure_home() -> Path:
     HOME_DIR.mkdir(parents=True, exist_ok=True)
     if sys.platform != "win32":

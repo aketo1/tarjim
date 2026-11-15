@@ -1,9 +1,17 @@
-"""The live loop: frame -> detect -> stable? -> OCR -> translate -> render -> TV."""
+"""The live loop: frame -> detect -> OCR -> translate -> render -> TV.
+
+Reading and translating start the moment a line is first seen, on a worker
+thread, while the frame loop keeps watching it. By the time the line has been
+stable for the settle time the Arabic is usually ready, so the settle wait
+costs nothing extra.
+"""
 
 from __future__ import annotations
 
 import json
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -15,13 +23,14 @@ from . import protocol as P
 from .translate import CachedTranslator, TranslateError
 from .tvlink import TvLink, TvLinkError, now_ms
 from .vision import render
-from .vision.detect import Block, DetectParams, detect
+from .vision.detect import Block, DetectParams, detect, mask_iou
 from .vision.ocr import OcrEngine
 from .vision.tracker import Event, SubtitleTracker, TrackParams
 
 LAYER_TTL_MS = 700
 FILL_REFRESH_MS = 85  # about 12 fill refreshes per second
 HOLD_KEEP_MS = 200
+SAME_BLOCK_IOU = 0.80  # an early job belongs to the line that later became stable
 
 
 def reading_time_ms(arabic: str) -> float:
@@ -38,6 +47,7 @@ class StageTimes:
     render: list[float] = field(default_factory=list)
     tv: list[float] = field(default_factory=list)  # send -> drawn, from the TV's ack
     total: list[float] = field(default_factory=list)  # stable -> drawn on the TV
+    first: list[float] = field(default_factory=list)  # first seen in the copy -> drawn on the TV
     refresh: list[float] = field(default_factory=list)
 
     def summary(self) -> dict[str, dict[str, float]]:
@@ -47,6 +57,31 @@ class StageTimes:
                 a = np.array(values)
                 out[name] = {"n": len(values), "p50": float(np.percentile(a, 50)), "p90": float(np.percentile(a, 90))}
         return out
+
+
+@dataclass
+class _Job:
+    """One line being read and translated on the worker thread."""
+
+    block: Block
+    frame: np.ndarray
+    t_first: float  # laptop ms when the line was first seen
+    t_capture: float
+    want_show: bool = False  # the tracker confirmed the line is stable
+    t_stable: float = 0.0
+    done: bool = False
+    ok: bool = False
+    cancelled: bool = False
+    shown: bool = False
+    english: str = ""
+    arabic: str = ""
+    speaker: str | None = None
+    score: float = 0.0
+    hit: bool = False
+    ocr_ms: float = 0.0
+    mt_ms: float = 0.0
+    render_ms: float = 0.0
+    text_layer: render.RgbaLayer | None = None
 
 
 class Pipeline:
@@ -75,6 +110,13 @@ class Pipeline:
         self.enabled = True
         self.lines_shown = 0
         self.rejected = 0
+        self.held = 0
+        self.early_ready = 0  # lines whose Arabic was ready before the settle time ended
+        self.on_line = None  # optional callback(english, arabic) when a line goes up
+        self._lock = threading.RLock()
+        self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="tarjim-work")
+        self._job: _Job | None = None
+        self._latest: np.ndarray | None = None
         self._text_up = False
         self._last_fill = 0.0
         self._shown_at = 0.0  # when the current Arabic line went up (laptop ms)
@@ -83,7 +125,6 @@ class Pipeline:
         self._text_layer: render.RgbaLayer | None = None
         self._frame_shape = (1080, 1920)
         self._last_keep = 0.0
-        self.held = 0
         self._log = log_path.open("a", encoding="utf-8") if log_path else None
         self._pending: dict[int, dict] = {}
 
@@ -115,67 +156,135 @@ class Pipeline:
         t0 = time.perf_counter()
         block = detect(frame, self.detect_params)
         self.times.detect.append((time.perf_counter() - t0) * 1000.0)
-        event = self.tracker.update(block, t_capture * 1000.0)
-        try:
-            if event is Event.NEW:
-                self._on_new(frame, self.tracker.shown, t_capture)
-            elif event is Event.REFRESH:
-                self._on_refresh(frame)
-            elif event is Event.GONE:
-                self._on_gone()
-            if self._holding:
-                self._hold_tick()
-        except TvLinkError:
-            self._text_up = False  # the TV clears by itself when the link drops
-            self._holding = False
-        self._collect_acks()
+        with self._lock:
+            self._latest = frame
+            self._frame_shape = frame.shape
+            event = self.tracker.update(block, t_capture * 1000.0)
+            try:
+                if event is Event.NEW:
+                    self._on_new(frame, self.tracker.shown, t_capture)
+                elif event is Event.REFRESH:
+                    self._on_refresh(frame)
+                elif event is Event.GONE:
+                    self._on_gone()
+                elif block is not None and self.tracker.shown is None:
+                    self._maybe_start_early(frame, block, t_capture)
+                if self._holding:
+                    self._hold_tick()
+            except TvLinkError:
+                self._text_up = False  # the TV clears by itself when the link drops
+                self._holding = False
+            self._collect_acks()
         return event
 
-    def _on_new(self, frame: np.ndarray, block: Block, t_capture: float) -> None:
-        t_stable = now_ms()
-        t = time.perf_counter()
-        read = self.ocr.read(frame, block)
-        ocr_ms = (time.perf_counter() - t) * 1000.0
-        self.times.ocr.append(ocr_ms)
-        if not read.ok:
-            self.rejected += 1
-            self.tracker.reject()
+    # -- the worker -------------------------------------------------------------
+
+    def _start_job(self, frame: np.ndarray, block: Block, t_capture: float, want_show: bool) -> None:
+        if self._job is not None and not self._job.done:
+            self._job.cancelled = True  # it finishes on its own; its result is ignored
+        job = _Job(block, frame, now_ms(), t_capture, want_show=want_show, t_stable=now_ms() if want_show else 0.0)
+        self._job = job
+        self._pool.submit(self._work, job)
+
+    def _maybe_start_early(self, frame: np.ndarray, block: Block, t_capture: float) -> None:
+        """A line was just seen but is not confirmed stable yet: start reading it now."""
+        if not self.enabled or self.tracker.is_rejected(block):
             return
+        job = self._job
+        if job is not None and not job.cancelled and mask_iou(job.block, block) >= SAME_BLOCK_IOU:
+            return  # already working on this line
+        if job is not None and not job.done:
+            return  # busy with another text (typewriter text grows each frame): wait for it
+        self._start_job(frame, block, t_capture, want_show=False)
+
+    def _work(self, job: _Job) -> None:
         try:
-            arabic, hit, mt_ms = self.translator.translate(read.text)
+            t = time.perf_counter()
+            read = self.ocr.read(job.frame, job.block)
+            job.ocr_ms = (time.perf_counter() - t) * 1000.0
+            job.english, job.speaker, job.score = read.text, read.speaker, read.score
+            if read.ok and not job.cancelled:
+                job.arabic, job.hit, job.mt_ms = self.translator.translate(read.text)
+                t = time.perf_counter()
+                job.text_layer = render.make_text(job.frame, job.block, job.arabic, self.style)
+                job.render_ms = (time.perf_counter() - t) * 1000.0
+                job.ok = True
         except TranslateError:
+            job.ok = False
+        except Exception:  # a worker crash must not kill the frame loop; the line is skipped
+            job.ok = False
+        with self._lock:
+            job.done = True
+            self.times.ocr.append(job.ocr_ms)
+            if job.ok:
+                (self.times.mt_cached if job.hit else self.times.mt).append(job.mt_ms)
+            if job.want_show and not job.cancelled:
+                try:
+                    self._finish(job)
+                except TvLinkError:
+                    self._text_up = False
+
+    def _on_new(self, frame: np.ndarray, block: Block, t_capture: float) -> None:
+        job = self._job
+        if job is not None and not job.cancelled and mask_iou(job.block, block) >= SAME_BLOCK_IOU:
+            job.want_show = True
+            job.t_stable = now_ms()
+            if job.done:
+                self.early_ready += 1
+                self._finish(job)
+            return
+        self._start_job(frame, block, t_capture, want_show=True)
+
+    def _finish(self, job: _Job) -> None:
+        """Called with the lock held, once the job is done and the line is confirmed."""
+        if job.shown:
+            return
+        job.shown = True
+        if not job.ok:
             self.rejected += 1
-            self.tracker.reject()
+            if self.tracker.shown is not None and mask_iou(self.tracker.shown, job.block) >= SAME_BLOCK_IOU:
+                self.tracker.reject()
             return
-        (self.times.mt_cached if hit else self.times.mt).append(mt_ms)
-        if not self.enabled:
+        if not self.enabled or job.text_layer is None:
             return
+        still_there = self.tracker.shown is not None and mask_iou(self.tracker.shown, job.block) >= SAME_BLOCK_IOU
+        frame = self._latest if self._latest is not None else job.frame
         t = time.perf_counter()
         layers = []
-        if self.show_fill:
-            layers.append(self._to_overlay(render.make_fill(frame, block), frame.shape))
-        text_layer = render.make_text(frame, block, arabic, self.style)
-        layers.append(self._to_overlay(text_layer, frame.shape))
-        render_ms = (time.perf_counter() - t) * 1000.0
-        self.times.render.append(render_ms)
+        if still_there and self.show_fill:
+            # The fill comes from the newest frame, so it matches the picture as closely as possible.
+            layers.append(self._to_overlay(render.make_fill(frame, self.tracker.shown), frame.shape))
+        if not still_there:
+            # The English left while we were translating: show the Arabic on a plate so it can still be read.
+            layers.append(self._to_overlay(render.make_plate(job.text_layer, frame.shape), frame.shape))
+        layers.append(self._to_overlay(job.text_layer, frame.shape))
+        job.render_ms += (time.perf_counter() - t) * 1000.0
+        self.times.render.append(job.render_ms)
+        if self._holding or not still_there:
+            self.link.clear(["fill"] if not still_there else ["plate"])
         t_sent = now_ms()
-        if self._holding:  # a new line replaces the one being held: drop its plate first
-            self.link.clear(["plate"])
-            self._holding = False
         seq = self.link.show(self.window, layers)
         self._text_up = True
+        self._holding = not still_there
+        if self._holding:
+            self.held += 1
+            self._last_keep = t_sent
         self._last_fill = t_sent
         self._shown_at = t_sent
-        self._read_ms = reading_time_ms(arabic)
-        self._text_layer = text_layer
-        self._frame_shape = frame.shape
+        self._read_ms = reading_time_ms(job.arabic)
+        self._text_layer = job.text_layer
         self.lines_shown += 1
         self._pending[seq] = {
-            "t_frame": t_capture * 1000.0, "t_stable": t_stable, "t_sent": t_sent,
-            "ocr_ms": round(ocr_ms, 1), "mt_ms": round(mt_ms, 1), "render_ms": round(render_ms, 1),
-            "en": read.text, "ar": arabic, "speaker": read.speaker, "ocr_score": round(read.score, 3),
-            "engine": self.translator.engine.name, "cache_hit": hit, "mode": "replace",
+            "t_frame": job.t_capture * 1000.0, "t_first": job.t_first, "t_stable": job.t_stable, "t_sent": t_sent,
+            "ocr_ms": round(job.ocr_ms, 1), "mt_ms": round(job.mt_ms, 1), "render_ms": round(job.render_ms, 1),
+            "en": job.english, "ar": job.arabic, "speaker": job.speaker, "ocr_score": round(job.score, 3),
+            "engine": getattr(self.translator.engine, "last_used", self.translator.engine.name),
+            "cache_hit": job.hit, "mode": "replace" if still_there else "plate",
         }
+        if self.on_line is not None:
+            self.on_line(job.english, job.arabic)
+
+    # -- while a line is up -------------------------------------------------------
 
     def _on_refresh(self, frame: np.ndarray) -> None:
         if not self._text_up or not self.enabled or self._holding:
@@ -187,7 +296,7 @@ class Pipeline:
         if self.show_fill:
             fill = self._to_overlay(render.make_fill(frame, self.tracker.shown), frame.shape)
             self.link.show(self.window, [fill])
-        self.link.keep(["text"] if self.show_fill else ["text"])
+        self.link.keep(["text"])
         self._last_fill = now
         self.times.refresh.append((time.perf_counter() - t) * 1000.0)
 
@@ -224,13 +333,27 @@ class Pipeline:
         self._holding = False
 
     def set_enabled(self, on: bool) -> None:
-        self.enabled = on
-        if not on:
-            try:
-                self._clear()
-            except TvLinkError:
-                pass
-            self.tracker.reset()
+        with self._lock:
+            self.enabled = on
+            if not on:
+                try:
+                    self._clear()
+                except TvLinkError:
+                    pass
+                if self._job is not None:
+                    self._job.cancelled = True
+                self.tracker.reset()
+
+    def wait_idle(self, timeout: float = 5.0) -> None:
+        """Block until the worker has finished its current line (for previews and tests)."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            with self._lock:
+                if self._job is None or self._job.done:
+                    return
+            time.sleep(0.005)
+
+    # -- log ----------------------------------------------------------------------
 
     def _collect_acks(self) -> None:
         for seq in list(self._pending):
@@ -246,8 +369,10 @@ class Pipeline:
                     rec["t_tv_drawn"] = drawn
                     rec["tv_ms"] = round(drawn - rec["t_sent"], 1)
                     rec["total_ms"] = round(drawn - rec["t_stable"], 1)
+                    rec["first_ms"] = round(drawn - rec["t_first"], 1)
                     self.times.tv.append(rec["tv_ms"])
                     self.times.total.append(rec["total_ms"])
+                    self.times.first.append(rec["first_ms"])
             self._write_log(rec)
 
     def _write_log(self, rec: dict) -> None:
@@ -256,19 +381,23 @@ class Pipeline:
             self._log.flush()
 
     def close(self) -> None:
-        try:
-            self._clear()
-        except TvLinkError:
-            pass
-        deadline = time.monotonic() + 0.5
-        while self._pending and time.monotonic() < deadline:
-            self._collect_acks()
-            time.sleep(0.02)
-        for rec in self._pending.values():
-            self._write_log(rec)
-        self._pending.clear()
-        if self._log:
-            self._log.close()
+        self.wait_idle(2.0)
+        self._pool.shutdown(wait=False, cancel_futures=True)
+        with self._lock:
+            try:
+                self._clear()
+            except TvLinkError:
+                pass
+            deadline = time.monotonic() + 0.5
+            while self._pending and time.monotonic() < deadline:
+                self._collect_acks()
+                time.sleep(0.02)
+            for rec in self._pending.values():
+                self._write_log(rec)
+            self._pending.clear()
+            if self._log:
+                self._log.close()
+                self._log = None
 
 
 def new_log_path() -> Path:

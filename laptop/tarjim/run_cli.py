@@ -39,9 +39,13 @@ def _print_summary(pipe: Pipeline) -> None:
     labels = {
         "detect": "الكشف والتتبّع (لكل صورة)", "ocr": "قراءة النص", "mt": "الترجمة", "mt_cached": "الترجمة (من الذاكرة)",
         "render": "الرسم والتجهيز", "tv": "الإرسال والرسم على التلفزيون", "total": "من ثبات السطر إلى ظهوره",
+        "first": "من أول ظهور للسطر إلى العربي",
         "refresh": "تحديث الرقعة",
     }
-    info(f"سطور انعرضت: {pipe.lines_shown} — سطور انرفضت: {pipe.rejected}")
+    info(
+        f"سطور انعرضت: {pipe.lines_shown} — انرفضت: {pipe.rejected} — "
+        f"جاهزة قبل نهاية الانتظار: {pipe.early_ready} — بقيت بعد اختفاء الإنجليزي: {pipe.held}"
+    )
     eng = pipe.translator.engine
     if getattr(eng, "calls", None) is not None:
         info(
@@ -78,7 +82,8 @@ def preview(path: str, engine: str | None, fps: float) -> int:
             frames = ((frame0, time.monotonic(), i) for i in range(1, 12) if not time.sleep(0.04))
         for frame, t_capture, seq in frames:
             event = pipe.process(frame, t_capture)
-            if event is Event.NEW and pipe.lines_shown > saved:
+            pipe.wait_idle()
+            if pipe.lines_shown > saved:
                 link.wait_ack(link._seq, timeout=1.0)
                 shot = tv.composite(Image.fromarray(np.ascontiguousarray(frame[:, :, ::-1])))
                 target = out / f"{Path(path).stem}-{pipe.lines_shown:03d}.png"
@@ -107,6 +112,9 @@ def run(profile: str, engine: str | None, no_fill: bool, seconds: float = 0.0) -
     from .adb import Adb, AdbError
 
     cfg = paths.load_config()
+    paths.boost_process()
+    if paths.on_battery():
+        warn("اللابتوب على البطارية: شبّك الشاحن عشان الترجمة تكون أسرع.")
     ip = cfg.get("tv_ip")
     if not ip:
         fail("التلفزيون مو مجهّز. شغّل: tarjim tv setup --ip <عنوان التلفزيون>")
@@ -130,15 +138,13 @@ def run(profile: str, engine: str | None, no_fill: bool, seconds: float = 0.0) -
     try:
         link.connect()
         pipe = Pipeline(link, translator, window=window, log_path=new_log_path(), show_fill=not no_fill)
+        pipe.on_line = lambda en, ar: info(f"{en}  ←  {ar}")
         ok("ترجِم شغّال. المفاتيح: o تشغيل/إيقاف الترجمة، q خروج.")
         last_info = started = time.monotonic()
         for frame, t_capture, _seq in source.frames():
             if seconds and time.monotonic() - started >= seconds:
                 break
-            event = pipe.process(frame, t_capture)
-            if event is Event.NEW and pipe._pending:
-                rec = list(pipe._pending.values())[-1]
-                info(f"{rec['en']}  ←  {rec['ar']}")
+            pipe.process(frame, t_capture)
             key = _key_pressed()
             if key == "q":
                 break
