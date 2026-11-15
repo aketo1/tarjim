@@ -32,6 +32,9 @@ def load_profiles():
     paths.ensure_home()
     if not PROFILE_FILE.exists():
         paths.write_private(PROFILE_FILE, "{}")
+    # The library falls back to its default path whenever it is handed an
+    # empty (falsy) Profiles object, so point that default at our file too.
+    Profiles.set_default_path(str(PROFILE_FILE))
     return Profiles.load(str(PROFILE_FILE))
 
 
@@ -78,7 +81,10 @@ def device_for(host: str):
 
 
 def linked_users(device) -> list[str]:
-    return device.get_users(profiles=load_profiles())
+    profiles = load_profiles()
+    if not profiles:  # an empty Profiles crashes the library's argument handling
+        return []
+    return device.get_users(profiles=profiles)
 
 
 def login_url() -> str:
