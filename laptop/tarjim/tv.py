@@ -104,6 +104,13 @@ def _a11y_list(value: str) -> list[str]:
     return [v for v in value.split(":") if v]
 
 
+def _a11y_bound(adb: Adb) -> bool:
+    for line in adb.run("shell", "dumpsys", "accessibility").splitlines():
+        if "Bound services" in line:
+            return "Tarjim overlay" in line
+    return False
+
+
 def setup(ip: str | None) -> None:
     cfg = paths.load_config()
     ip = _tv_ip(cfg, ip)
@@ -129,6 +136,14 @@ def setup(ip: str | None) -> None:
     if "allow" not in appop:
         warn(f"صلاحية النافذة A ما تأكدت ({appop}). نكمل بالنافذة B.")
 
+    # TCL blocks background starts and accessibility binding for apps without
+    # its APP_AUTO_START appop; without it the service is killed after ~10 s.
+    if "APP_AUTO_START" in adb.run("shell", "appops", "get", PACKAGE):
+        step("أسمح للتطبيق بالتشغيل التلقائي (خاص بتلفزيونات TCL)...")
+        adb.run("shell", "appops", "set", PACKAGE, "APP_AUTO_START", "allow")
+        if "allow" not in adb.run("shell", "appops", "get", PACKAGE, "APP_AUTO_START"):
+            warn("إذن التشغيل التلقائي ما تأكد؛ ممكن التلفزيون يقفل التطبيق.")
+
     step("أفعّل خدمة النافذة الثانية (B)...")
     old_list = adb.run("shell", "settings", "get", "secure", "enabled_accessibility_services")
     old_enabled = adb.run("shell", "settings", "get", "secure", "accessibility_enabled")
@@ -144,6 +159,23 @@ def setup(ip: str | None) -> None:
     readback = adb.run("shell", "settings", "get", "secure", "enabled_accessibility_services")
     if A11Y_SERVICE not in _a11y_list(readback):
         warn("خدمة النافذة B ما تفعّلت. نكمل بالنافذة A.")
+    elif not _a11y_bound(adb):
+        # The system does not retry a bind it refused earlier (TCL auto-start
+        # block); taking only our own entry out and putting it back makes it retry.
+        others = [s for s in _a11y_list(readback) if s != A11Y_SERVICE]
+        if others:
+            adb.run("shell", "settings", "put", "secure", "enabled_accessibility_services", f"'{':'.join(others)}'")
+        else:
+            adb.run("shell", "settings", "delete", "secure", "enabled_accessibility_services")
+        time.sleep(1.5)
+        adb.run(
+            "shell", "settings", "put", "secure", "enabled_accessibility_services",
+            f"'{':'.join(others + [A11Y_SERVICE])}'",
+        )
+        adb.run("shell", "settings", "put", "secure", "accessibility_enabled", "1")
+        time.sleep(3.0)
+        if not _a11y_bound(adb):
+            warn("خدمة النافذة B مفعّلة لكن النظام ما ربطها. نكمل بالنافذة A.")
 
     start_service(adb)
     step("أجرّب الاتصال بالتطبيق...")
@@ -280,6 +312,7 @@ def revert(ip: str | None) -> None:
     step("أرجّع الصلاحية وأحذف التطبيق...")
     if PACKAGE in adb.run("shell", "pm", "path", PACKAGE, check=False):
         adb.run("shell", "appops", "set", PACKAGE, "SYSTEM_ALERT_WINDOW", "default", check=False)
+        adb.run("shell", "appops", "set", PACKAGE, "APP_AUTO_START", "default", check=False)
         adb.run("uninstall", PACKAGE, check=False)
 
     after = adb.run("shell", "settings", "get", "secure", "enabled_accessibility_services")
