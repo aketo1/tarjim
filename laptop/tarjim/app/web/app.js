@@ -201,8 +201,7 @@ function save(patch, quiet) {
     try {
       const fresh = await api("/api/profile", { name: S.profile.name, ...patch });
       S.profile.font_size = fresh.font_size;
-      if (!quiet) toast("تم الحفظ ✓");
-      if (S.live.state === "running") toast("تم الحفظ ✓ — يتطبّق لما تعيد تشغيل الترجمة");
+      if (!quiet) toast(S.live.state === "running" ? "تم ✓ تطبّق على التلفزيون" : "تم الحفظ ✓");
     } catch (e) { toast(e.message); }
   }, 350);
   refreshPreview();
@@ -212,9 +211,11 @@ function refreshPreview() {
   previewTimer = setTimeout(() => {
     const p = S.profile;
     if (!p) return;
-    const q = new URLSearchParams({ font: p.font, text: $("#preview-text").value, fill: p.fill ? "1" : "0", t: Date.now() });
-    const size = p.font_auto ? "" : p.font_size;
-    if (size) q.set("size", size);
+    const o = {
+      font: p.font, font_size: p.font_auto ? null : p.font_size, background: p.background,
+      plate_opacity: p.plate_opacity, text_color: p.text_color, effect: p.effect, y_offset: p.y_offset,
+    };
+    const q = new URLSearchParams({ name: p.name, text: $("#preview-text").value, o: JSON.stringify(o), t: Date.now() });
     const img = new Image();
     $("#preview-load").classList.add("on");
     img.onload = () => { $("#preview").src = img.src; $("#preview-load").classList.remove("on"); };
@@ -257,8 +258,8 @@ async function loadProfile() {
   size.oninput = () => { S.profile.font_auto = false; S.profile.font_size = Number(size.value); sizeLabel(); refreshPreview(); };
   size.onchange = () => save({ font_size: Number(size.value) });
 
-  $("#fill").checked = p.fill;
-  $("#fill").onchange = e => save({ fill: e.target.checked });
+  renderLook();
+  renderRegion();
   $("#typewriter").checked = p.settle_ms >= 200;
   $("#typewriter").onchange = e => save({ settle_ms: e.target.checked ? 280 : 40 });
   const read = $("#read");
@@ -272,6 +273,153 @@ async function loadProfile() {
   refreshPreview();
 }
 $("#preview-text").addEventListener("input", refreshPreview);
+
+/* ---- look: presets, background, colour, effect, position ---- */
+
+const COLORS = [
+  { v: "auto", name: "تلقائي (لون ترجمة اللعبة)" },
+  { v: "#ffffff", name: "أبيض" }, { v: "#ffe14d", name: "أصفر" }, { v: "#7cf3ff", name: "سماوي" },
+  { v: "#c9ffb0", name: "أخضر فاتح" }, { v: "#ffb3d1", name: "وردي" }, { v: "#ffb36b", name: "برتقالي" },
+];
+const PRESETS = [
+  { name: "كلاسيك", hint: "مثل ترجمة اللعبة", set: { background: "cover", effect: "shadow", text_color: "auto", plate_opacity: 0.62 },
+    mini: "color:#f2f7f1;text-shadow:2px 2px 4px #000" },
+  { name: "سينما", hint: "خلفية داكنة واضحة", set: { background: "plate", effect: "none", text_color: "#ffffff", plate_opacity: 0.75 },
+    mini: "color:#fff;background:rgba(0,0,0,.72)" },
+  { name: "أصفر واضح", hint: "ينقرأ على أي مشهد", set: { background: "cover", effect: "outline", text_color: "#ffe14d", plate_opacity: 0.62 },
+    mini: "color:#ffe14d;-webkit-text-stroke:3px #000;paint-order:stroke fill" },
+  { name: "خفيف", hint: "العربي فوق الإنجليزي", set: { background: "none", effect: "outline", text_color: "#ffffff", plate_opacity: 0.62 },
+    mini: "color:#fff;-webkit-text-stroke:3px #000;paint-order:stroke fill" },
+];
+const samePreset = (p, set) => Object.entries(set).every(([k, v]) => k === "plate_opacity" || p[k] === v);
+
+function renderLook() {
+  const p = S.profile;
+  $("#presets").replaceChildren(...PRESETS.map(pr => {
+    const b = el("button", `preset ${samePreset(p, pr.set) ? "on" : ""}`);
+    const mini = el("div", "mini");
+    const word = el("span", "", "مرحباً");
+    word.style.cssText = pr.mini;
+    mini.append(word);
+    b.append(mini, el("b", "", pr.name), el("small", "", pr.hint));
+    b.addEventListener("click", () => { save({ ...pr.set }); renderLook(); });
+    return b;
+  }));
+
+  $$("#bg button").forEach(b => {
+    b.classList.toggle("on", b.dataset.v === p.background);
+    b.onclick = () => { save({ background: b.dataset.v }); renderLook(); };
+  });
+  $("#plate-row").classList.toggle("off", p.background !== "plate");
+  const plate = $("#plate");
+  plate.value = p.plate_opacity;
+  plate.oninput = () => { S.profile.plate_opacity = Number(plate.value); refreshPreview(); };
+  plate.onchange = () => save({ plate_opacity: Number(plate.value) });
+
+  const known = COLORS.some(c => c.v === p.text_color);
+  const sw = COLORS.map(c => {
+    const b = el("button", `sw ${c.v === "auto" ? "auto" : ""} ${p.text_color === c.v ? "on" : ""}`);
+    if (c.v !== "auto") b.style.background = c.v;
+    b.title = c.name;
+    b.addEventListener("click", () => { save({ text_color: c.v }); renderLook(); });
+    return b;
+  });
+  const pick = el("label", `sw pick ${known ? "" : "on"}`);
+  pick.title = "لون ثاني";
+  const input = el("input");
+  input.type = "color";
+  input.value = known || p.text_color === "auto" ? "#ffffff" : p.text_color;
+  input.addEventListener("input", () => { S.profile.text_color = input.value; refreshPreview(); });
+  input.addEventListener("change", () => { save({ text_color: input.value }); renderLook(); });
+  pick.append(input);
+  $("#colors").replaceChildren(...sw, pick);
+  $("#color-val").textContent = p.text_color === "auto" ? "تلقائي من اللعبة" : (COLORS.find(c => c.v === p.text_color)?.name || p.text_color);
+
+  $$("#effect button").forEach(b => {
+    b.classList.toggle("on", b.dataset.v === p.effect);
+    b.onclick = () => { save({ effect: b.dataset.v }); renderLook(); };
+  });
+
+  const pos = $("#pos");
+  pos.value = p.y_offset;  // the slider runs right-to-left, so its right end (smallest value) is "higher"
+  const posLabel = () => {
+    const v = Number(pos.value);
+    $("#pos-val").textContent = v === 0 ? "مكان ترجمة اللعبة" : v < 0 ? `أعلى بـ${-v}` : `أسفل بـ${v}`;
+  };
+  posLabel();
+  pos.oninput = () => { S.profile.y_offset = Number(pos.value); posLabel(); refreshPreview(); };
+  pos.onchange = () => save({ y_offset: Number(pos.value) });
+}
+
+$("#try-tv").addEventListener("click", async e => {
+  const b = e.currentTarget;
+  b.disabled = true;
+  try {
+    await api("/api/tv/try", { name: S.profile.name, text: $("#preview-text").value });
+    toast("شوف التلفزيون: السطر التجريبي يطلع 8 ثواني");
+  } catch (err) { toast(err.message); }
+  setTimeout(() => { b.disabled = false; }, 9000);
+});
+
+/* ---- region: where on the screen subtitles are read ---- */
+
+function renderRegion() {
+  const stage = $("#region-stage"), box = $("#region-box");
+  let r = { ...S.profile.region };
+  const place = () => {
+    box.style.left = `${r.left * 100}%`;
+    box.style.top = `${r.top * 100}%`;
+    box.style.width = `${(r.right - r.left) * 100}%`;
+    box.style.height = `${(r.bottom - r.top) * 100}%`;
+  };
+  place();
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const MIN_W = 0.12, MIN_H = 0.08;
+
+  box.onpointerdown = ev => {
+    ev.preventDefault();
+    const handle = ev.target.dataset?.h || "move";
+    const rect = stage.getBoundingClientRect();
+    const start = { x: ev.clientX, y: ev.clientY, ...r };
+    box.classList.add("drag");
+    box.setPointerCapture(ev.pointerId);
+    box.onpointermove = mv => {
+      const dx = (mv.clientX - start.x) / rect.width, dy = (mv.clientY - start.y) / rect.height;
+      if (handle === "move") {
+        const w = start.right - start.left, h = start.bottom - start.top;
+        r.left = clamp(start.left + dx, 0, 1 - w); r.right = r.left + w;
+        r.top = clamp(start.top + dy, 0, 1 - h); r.bottom = r.top + h;
+      } else {
+        if (handle.includes("w")) r.left = clamp(start.left + dx, 0, start.right - MIN_W);
+        if (handle.includes("e")) r.right = clamp(start.right + dx, start.left + MIN_W, 1);
+        if (handle.includes("n")) r.top = clamp(start.top + dy, 0, start.bottom - MIN_H);
+        if (handle.includes("s")) r.bottom = clamp(start.bottom + dy, start.top + MIN_H, 1);
+      }
+      place();
+    };
+    box.onpointerup = () => {
+      box.classList.remove("drag");
+      box.onpointermove = box.onpointerup = null;
+      const round = v => Math.round(v * 1000) / 1000;
+      r = { left: round(r.left), top: round(r.top), right: round(r.right), bottom: round(r.bottom) };
+      save({ region: r });
+    };
+  };
+  $("#region-reset").onclick = () => {
+    r = { left: 0.08, top: 0.7, right: 0.92, bottom: 1 };
+    place();
+    save({ region: null });
+    S.profile.region = r;
+  };
+  const shot = () => {
+    const img = new Image();
+    img.onload = () => { $("#region-img").src = img.src; $("#region-hint").hidden = true; };
+    img.onerror = () => { $("#region-img").removeAttribute("src"); $("#region-hint").hidden = false; };
+    img.src = `/api/frame?t=${Date.now()}`;
+  };
+  $("#region-shot").onclick = shot;
+  shot();
+}
 
 function renderNames() {
   const box = $("#names");

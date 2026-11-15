@@ -101,6 +101,7 @@ def checks() -> dict:
 
 
 def profile_view(name: str) -> dict:
+    from .. import settings
     from ..translate import load_profile
 
     prof = load_profile(name)
@@ -112,7 +113,13 @@ def profile_view(name: str) -> dict:
         "font": prof.get("font", "harmattan"),
         "font_size": prof.get("font_size") or cfg.get("font_sizes", {}).get(name),
         "font_auto": not prof.get("font_size"),
-        "fill": bool(prof.get("fill", True)),
+        "background": settings.background(prof),
+        "plate_opacity": settings.plate_opacity(prof),
+        "text_color": prof.get("text_color") if settings.parse_color(prof.get("text_color")) else "auto",
+        "effect": prof.get("effect") if prof.get("effect") in settings.EFFECTS else "shadow",
+        "y_offset": int(prof.get("y_offset", 0) or 0),
+        "region": settings.region(prof),
+        "region_default": settings.region(prof) == settings.DEFAULT_REGION,
         "read_scale": float(prof.get("read_scale", 1.0)),
         "settle_ms": float(prof.get("settle_ms", 60)),
         "style": prof.get("style", "msa"),
@@ -147,39 +154,55 @@ def profile_save(body: dict) -> dict:
                 paths.save_config(cfg)
         else:
             prof["font_size"] = max(18, min(90, int(body["font_size"])))
-    if "fill" in body:
-        prof["fill"] = bool(body["fill"])
+    from .. import settings
+
+    if body.get("background") in settings.BACKGROUNDS:
+        prof["background"] = body["background"]
+        prof.pop("fill", None)
+    if "plate_opacity" in body:
+        prof["plate_opacity"] = max(0.2, min(0.95, float(body["plate_opacity"])))
+    if "text_color" in body:
+        if settings.parse_color(body["text_color"]):
+            prof["text_color"] = str(body["text_color"]).lower()
+        else:
+            prof.pop("text_color", None)  # automatic: the colour of the game's own subtitles
+    if body.get("effect") in settings.EFFECTS:
+        prof["effect"] = body["effect"]
+    if "y_offset" in body:
+        prof["y_offset"] = max(-300, min(120, int(body["y_offset"])))
+    if "region" in body:
+        if body["region"] is None:
+            prof.pop("region", None)  # back to the default area
+        else:
+            prof["region"] = settings.region({"region": body["region"]})
     if "read_scale" in body:
         prof["read_scale"] = max(0.5, min(2.5, float(body["read_scale"])))
     if "settle_ms" in body:
         prof["settle_ms"] = max(0.0, min(600.0, float(body["settle_ms"])))
     save_profile(name, prof)
+    live.apply_profile(name)  # a running session picks the new look up at once
     return profile_view(name)
 
 
 _preview_cache: dict = {}
+SAMPLE_AR = "يجب أن نغادر قبل وصول العاصفة."
 
 
-def preview_png(font: str, size: int | None, text: str, fill: bool) -> bytes:
-    """How the Arabic will look: a neutral scene with an English line, run through the real renderer."""
-    import cv2
+def _preview_scene():
+    """A neutral scene with one English subtitle line, and the block our detector finds in it."""
     import numpy as np
     from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-    from ..vision import render
-    from ..vision.arabic import FONT_DIR, FONT_FILES
+    from ..vision.arabic import FONT_DIR
     from ..vision.detect import detect
 
-    if font not in FONT_FILES:
-        font = "harmattan"
     if "scene" not in _preview_cache:
         w, h = 1920, 1080
         yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
         r = 18 + 26 * (xx / w) + 30 * np.exp(-(((xx - 1350) / 420) ** 2 + ((yy - 520) / 300) ** 2))
         g = 26 + 34 * (yy / h) + 22 * np.exp(-(((xx - 500) / 500) ** 2 + ((yy - 800) / 260) ** 2))
         b = 46 + 44 * (1 - yy / h)
-        scene = np.clip(np.dstack([r, g, b]), 0, 255).astype(np.uint8)
-        img = Image.fromarray(scene)
+        img = Image.fromarray(np.clip(np.dstack([r, g, b]), 0, 255).astype(np.uint8))
         latin = ImageFont.truetype(str(FONT_DIR / "NotoSans-VF.ttf"), 40)
         line = "We should leave before the storm gets here."
         tw = ImageDraw.Draw(img).textlength(line, font=latin)
@@ -189,19 +212,85 @@ def preview_png(font: str, size: int | None, text: str, fill: bool) -> bytes:
         img = Image.composite(Image.new("RGB", img.size, (0, 0, 0)), img, shadow.filter(ImageFilter.GaussianBlur(2.2)))
         ImageDraw.Draw(img).text((x, y), line, font=latin, fill=(242, 247, 241))
         frame = np.ascontiguousarray(np.asarray(img)[:, :, ::-1])
-        _preview_cache["scene"] = (frame, detect(frame))
-    frame, block = _preview_cache["scene"]
-    if block is None:
-        raise RuntimeError("preview scene has no detectable line")
-    style = render.Style(font=font, fixed_size=int(size) if size else None)
-    layers = [render.make_fill(frame, block)] if fill else []
-    layers.append(render.make_text(frame, block, text or "يجب أن نغادر قبل وصول العاصفة.", style))
+        block = detect(frame)
+        if block is None:
+            raise RuntimeError("preview scene has no detectable line")
+        _preview_cache["scene"] = (frame, block)
+    return _preview_cache["scene"]
+
+
+def _look_layers(profile: dict, text: str, on_tv: bool = False):
+    """The layers a line gets with this profile's look. `on_tv`: skip the scene-coloured fill,
+    which only makes sense over the scene it was computed from."""
+    from .. import settings
+    from ..vision import render
+
+    frame, block = _preview_scene()
+    style = settings.make_style(profile, None)
+    mode = settings.background(profile)
+    text_layer = render.make_text(frame, block, text or SAMPLE_AR, style)
+    layers = []
+    if mode in ("cover", "plate") and not on_tv:
+        layers.append(render.make_fill(frame, block))
+    if mode == "plate":
+        cover = None if on_tv else (block.x0, block.y0, block.x1, block.y1)
+        layers.append(render.make_plate(text_layer, frame.shape, settings.plate_opacity(profile), cover=cover))
+    layers.append(text_layer)
+    return frame, layers
+
+
+def preview_png(profile: dict, text: str) -> bytes:
+    """How the Arabic will look, drawn by the real renderer over a neutral scene."""
+    import cv2
+
+    from ..vision import render
+
+    frame, layers = _look_layers(profile, text)
     out = render.composite(frame, layers)
-    crop = out[800:1040, 460:1460]
-    ok, buf = cv2.imencode(".png", crop)
+    ok, buf = cv2.imencode(".png", out[760:1050, 420:1500])
     if not ok:
         raise RuntimeError("preview encoding failed")
     return buf.tobytes()
+
+
+def do_tv_try(name: str, text: str):
+    """Show one sample line on the real TV for a few seconds with the profile's look."""
+    import cv2
+
+    from .. import protocol as P
+    from .. import say, tv
+    from ..adb import Adb
+    from ..translate import load_profile
+    from ..tvlink import TvLink
+
+    cfg = paths.load_config()
+    ip = cfg.get("tv_ip")
+    if not ip:
+        raise RuntimeError("التلفزيون مو مجهّز للحين. افتح «الدليل» وكمّل خطوة التلفزيون.")
+    adb = Adb(ip if ":" in ip else f"{ip}:5555")
+    tv.connect(adb, wait_s=15)
+    tv.start_service(adb)
+    caps = tv._wait_for_app(ip)
+    _frame, layers = _look_layers(load_profile(name), text, on_tv=True)
+    out = []
+    for layer in layers:
+        bgra = layer.bgra[: P.MAX_LAYER_H, : P.MAX_LAYER_W]
+        ok, buf = cv2.imencode(".png", bgra, [cv2.IMWRITE_PNG_COMPRESSION, 1])
+        if not ok:
+            raise RuntimeError("PNG encoding failed")
+        out.append(P.Layer(id=layer.id, png=buf.tobytes(), x=int(layer.x), y=int(layer.y),
+                           w=bgra.shape[1], h=bgra.shape[0], z=layer.z, ttl_ms=900))
+    window = cfg.get("window") or ("A" if "A" in caps["windows"] else caps["windows"][0])
+    with TvLink(ip) as link:
+        link.connect()
+        link.show(window, out)
+        say.ok("السطر التجريبي على التلفزيون الحين (8 ثواني).")
+        end = time.monotonic() + 8.0
+        while time.monotonic() < end:
+            link.keep([layer.id for layer in out])
+            time.sleep(0.3)
+        link.clear(None)
+    return {"ok": True}
 
 
 # -- setup actions ----------------------------------------------------------------
@@ -334,9 +423,22 @@ class Handler(BaseHTTPRequestHandler):
             if url.path == "/api/profile":
                 return self._json(profile_view(q.get("name", "default")))
             if url.path == "/api/preview":
-                size = int(q["size"]) if q.get("size", "").isdigit() else None
-                png = preview_png(q.get("font", "harmattan"), size, q.get("text", ""), q.get("fill", "1") == "1")
-                return self._send(200, png, "image/png")
+                from ..translate import load_profile
+
+                profile = dict(load_profile(q.get("name", "default")))
+                overrides = json.loads(q.get("o") or "{}")
+                if isinstance(overrides, dict):  # what the user is trying right now, not saved yet
+                    profile.update(overrides)
+                    if overrides.get("font_size") in (None, "", 0):
+                        profile.pop("font_size", None)
+                    if overrides.get("text_color") == "auto":
+                        profile.pop("text_color", None)
+                return self._send(200, preview_png(profile, q.get("text", "")), "image/png")
+            if url.path == "/api/frame":
+                jpg = live.frame_jpeg()
+                if jpg is None:
+                    return self._send(404, b"", "text/plain")
+                return self._send(200, jpg, "image/jpeg")
             if url.path == "/api/ps5/login-url":
                 from ..sources import ps5
 
@@ -427,6 +529,11 @@ class Handler(BaseHTTPRequestHandler):
                 if live.state != "idle":
                     return self._json({"error": "وقّف الترجمة أول ثم جرّب المربعات."}, 400)
                 return self._json({"started": tasks.run("tv-test", do_tv_test)})
+            if path == "/api/tv/try":
+                if live.state != "idle":
+                    return self._json({"error": "الترجمة شغّالة: التعديل يتطبّق عليها مباشرة، شوف التلفزيون."}, 400)
+                name, text = str(body.get("name") or "default"), str(body.get("text") or "")[:120]
+                return self._json({"started": tasks.run("tv-try", lambda: do_tv_try(name, text))})
             if path == "/api/ps5/discover":
                 return self._json(ps5_discover())
             if path == "/api/ps5/open-login":

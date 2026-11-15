@@ -28,14 +28,14 @@ def sandbox(tmp_path, monkeypatch):
 
 def test_profile_roundtrip_and_limits(sandbox):
     server.profile_save({
-        "name": "default", "title": "My game", "font": "noto-naskh", "font_size": 500, "fill": False,
+        "name": "default", "title": "My game", "font": "noto-naskh", "font_size": 500, "background": "none",
         "read_scale": 9, "settle_ms": 280,
         "glossary": [{"en": "Morgan", "ar": "مورغان"}, {"en": " ", "ar": "x"}, {"en": "Dutch", "ar": ""}],
     })
     view = server.profile_view("default")
     assert view["title"] == "My game" and view["font"] == "noto-naskh"
     assert view["font_size"] == 90 and view["font_auto"] is False  # clamped
-    assert view["read_scale"] == 2.5 and view["fill"] is False and view["settle_ms"] == 280
+    assert view["read_scale"] == 2.5 and view["background"] == "none" and view["settle_ms"] == 280
     assert view["glossary"] == [{"en": "Morgan", "ar": "مورغان"}]  # incomplete rows are dropped
 
     server.profile_save({"name": "default", "font": "not-a-font", "font_size": None})
@@ -52,17 +52,36 @@ def test_profile_names_cannot_escape_the_folder(sandbox):
             save_profile(bad, {})
 
 
-def test_preview_renders_every_font(sandbox, monkeypatch):
+def test_preview_renders_every_font_and_look(sandbox, monkeypatch):
     repo, real_repo = sandbox
     monkeypatch.setattr(paths, "REPO", real_repo)  # the renderer needs the real fonts
     server._preview_cache.clear()
     seen = set()
-    for font in ("harmattan", "harmattan-bold", "noto-naskh", "noto-sans-arabic"):
-        png = server.preview_png(font, 44, "تجربة الخط 123", True)
+    looks = [{"font": f} for f in ("harmattan", "harmattan-bold", "noto-naskh", "noto-sans-arabic")]
+    looks += [
+        {"background": "plate"}, {"background": "plate", "plate_opacity": 0.9}, {"background": "none"},
+        {"effect": "outline"}, {"effect": "none"}, {"text_color": "#ffe14d"}, {"y_offset": -60}, {"font_size": 60},
+    ]
+    for look in looks:
+        png = server.preview_png(look, "تجربة الخط 123")
         assert png[:8] == b"\x89PNG\r\n\x1a\n" and len(png) > 5000
         seen.add(png)
-    assert len(seen) == 4  # each font really draws differently
-    assert server.preview_png("harmattan", None, "", False)[:4] == b"\x89PNG"
+    assert len(seen) == len(looks)  # every option really changes the picture
+
+
+def test_look_settings_are_validated(sandbox):
+    from tarjim import settings
+
+    server.profile_save({"name": "default", "background": "plate", "plate_opacity": 5, "text_color": "#FFE14D",
+                         "effect": "outline", "y_offset": -9999})
+    v = server.profile_view("default")
+    assert (v["background"], v["plate_opacity"], v["text_color"], v["effect"], v["y_offset"]) == (
+        "plate", 0.95, "#ffe14d", "outline", -300)
+    server.profile_save({"name": "default", "background": "sideways", "text_color": "auto", "effect": "sparkles"})
+    v = server.profile_view("default")
+    assert (v["background"], v["text_color"], v["effect"]) == ("plate", "auto", "outline")  # bad values ignored
+    assert settings.parse_color("#ff0000") == (0, 0, 255) and settings.parse_color("red") is None
+    assert settings.background({"fill": False}) == "none" and settings.background({}) == "cover"  # old profiles
 
 
 def test_errors_become_plain_arabic():

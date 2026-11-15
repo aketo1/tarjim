@@ -396,3 +396,31 @@ Profile keys the app reads and writes: `title`, `glossary`, `font`,
 
 Not in the app yet: `tv revert`, a font preview on a real game frame, editing
 the detection area, and showing the session history from `out/sessions/`.
+
+## 13. Look and region settings (added 2026-11-16)
+
+All per game, stored in `profiles/<game>.yaml`, edited in the app's Settings
+screen, turned into renderer and detector settings by `laptop/tarjim/settings.py`
+(the one place the command line, the live session and the preview all use).
+
+| Profile key | Values | Effect |
+| --- | --- | --- |
+| `background` | `cover` (default), `plate`, `none` | `cover`: erase the English strokes with scene colour. `plate`: erase them and put a dark box behind the Arabic. `none`: Arabic only, English stays |
+| `plate_opacity` | 0.2 to 0.95 | Darkness of the plate |
+| `text_color` | `#rrggbb`, or absent for automatic | Automatic takes the colour of the game's own subtitles |
+| `effect` | `shadow` (default), `outline`, `none` | Soft drop shadow, dark edge all round, or nothing |
+| `y_offset` | -300 to 120 px at 1080p | Move the Arabic up (negative) or down |
+| `font`, `font_size` | see section 6 | |
+| `region` | `{left, top, right, bottom}` as fractions 0..1 | The only part of the screen where subtitles are looked for. Default: bottom 30%, central 84% |
+
+- Saving a profile while its session is running applies the look, the region,
+  the reading time and the glossary at once (`LiveSession.apply_profile`).
+- `POST /api/tv/try {name, text}` shows one sample line on the real TV for 8
+  seconds with the saved look (only while no session is running, because the
+  TV accepts one client).
+- `GET /api/frame` returns the newest PS5 picture as a small JPEG while a
+  session runs; the region editor draws its box over it.
+- `GET /api/preview?name=&o=<json>&text=` renders the look over a neutral
+  scene; `o` holds unsaved overrides so the preview follows the controls.
+- In plate mode the stroke fill is still drawn under the plate: a translucent
+  plate alone left the English readable through it.

@@ -133,10 +133,13 @@ def run(profile: str, engine: str | None, no_fill: bool, seconds: float = 0.0) -
         prof = load_profile(profile)
         sizes = cfg.get("font_sizes", {})
         size = prof.get("font_size") or sizes.get(profile)
-        style = _render.Style(font=str(prof.get("font", "harmattan")), fixed_size=int(size) if size else None)
+        from . import settings
+
+        style = settings.make_style(prof, int(size) if size else None)
         track = TrackParams(settle_ms=float(prof.get("settle_ms", 60)))
-        pipe = Pipeline(link, translator, window=window, log_path=new_log_path(), show_fill=not no_fill,
-                        style=style, track_params=track)
+        pipe = Pipeline(link, translator, window=window, log_path=new_log_path(), style=style,
+                        track_params=track, detect_params=settings.detect_params(prof), background="none" if no_fill else settings.background(prof),
+                        plate_opacity=settings.plate_opacity(prof), read_scale=float(prof.get("read_scale", 1.0)))
 
         def remember_size(value: int) -> None:
             fresh = paths.load_config()

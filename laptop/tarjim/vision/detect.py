@@ -17,6 +17,10 @@ import numpy as np
 class DetectParams:
     roi_top: float = 0.70  # ROI = bottom 30% of the frame ...
     roi_side: float = 0.08  # ... and the central 84% of its width
+    # A user-drawn region overrides the defaults above (fractions of the frame, 0..1).
+    roi_bottom: float = 1.0
+    roi_left: float | None = None
+    roi_right: float | None = None
     tophat_kernel: int = 15
     tophat_min: int = 45
     bright_min: int = 150
@@ -99,9 +103,11 @@ def detect(frame_bgr: np.ndarray, params: DetectParams | None = None) -> Block |
     fh, fw = frame_bgr.shape[:2]
     s = fh / 1080.0
     ry0 = int(fh * p.roi_top)
-    rx0 = int(fw * p.roi_side)
-    rx1 = fw - rx0
-    roi = np.ascontiguousarray(frame_bgr[ry0:fh, rx0:rx1])
+    ry1 = max(ry0 + 8, min(fh, int(round(fh * p.roi_bottom))))
+    rx0 = int(fw * (p.roi_side if p.roi_left is None else p.roi_left))
+    rx1 = fw - int(fw * p.roi_side) if p.roi_right is None else int(round(fw * p.roi_right))
+    rx1 = max(rx0 + 8, min(fw, rx1))
+    roi = np.ascontiguousarray(frame_bgr[ry0:ry1, rx0:rx1])
     cand = candidate_mask(roi, p, s)
     n, labels, stats, _ = cv2.connectedComponentsWithStats(cand, connectivity=8)
     if n <= 1:

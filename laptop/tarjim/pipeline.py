@@ -101,6 +101,8 @@ class Pipeline:
         log_path: Path | None = None,
         show_fill: bool = True,
         read_scale: float = 1.0,
+        background: str | None = None,
+        plate_opacity: float = 0.62,
     ) -> None:
         self.link = link
         self.translator = translator
@@ -110,7 +112,11 @@ class Pipeline:
         self.detect_params = detect_params or DetectParams()
         self.tracker = SubtitleTracker(track_params)
         self.times = StageTimes()
-        self.show_fill = show_fill
+        # "cover": hide the English strokes with scene colour (the original look);
+        # "plate": a dark box behind the Arabic, which also hides the English;
+        # "none": Arabic only, the English stays visible underneath.
+        self.background = background or ("cover" if show_fill else "none")
+        self.plate_opacity = plate_opacity
         self.read_scale = read_scale  # above 1: Arabic stays longer; below 1: shorter
         self.enabled = True
         self.lines_shown = 0
@@ -274,17 +280,25 @@ class Pipeline:
         frame = self._latest if self._latest is not None else job.frame
         t = time.perf_counter()
         layers = []
-        if still_there and self.show_fill:
+        mode = self.background
+        b = self.tracker.shown
+        covers = mode in ("cover", "plate")
+        if still_there and covers:
             # The fill comes from the newest frame, so it matches the picture as closely as possible.
-            layers.append(self._to_overlay(render.make_fill(frame, self.tracker.shown), frame.shape))
-        if not still_there:
-            # The English left while we were translating: show the Arabic on a plate so it can still be read.
-            layers.append(self._to_overlay(render.make_plate(job.text_layer, frame.shape), frame.shape))
+            # Plate mode needs it too: a translucent plate alone leaves the English readable through it.
+            layers.append(self._to_overlay(render.make_fill(frame, b), frame.shape))
+        if mode == "plate" or (not still_there and mode == "cover"):
+            # A plate hides the English (plate mode) or keeps a line readable whose English already left.
+            cover = (b.x0, b.y0, b.x1, b.y1) if still_there else None
+            plate = render.make_plate(job.text_layer, frame.shape, self.plate_opacity, cover=cover)
+            layers.append(self._to_overlay(plate, frame.shape))
+        has_plate = any(layer.id == "plate" for layer in layers)
         layers.append(self._to_overlay(job.text_layer, frame.shape))
         job.render_ms += (time.perf_counter() - t) * 1000.0
         self.times.render.append(job.render_ms)
-        if self._holding or not still_there:
-            self.link.clear(["fill"] if not still_there else ["plate"])
+        stale = [name for name, kept in (("fill", still_there and covers), ("plate", has_plate)) if not kept]
+        if stale and self._text_up:
+            self.link.clear(stale)
         t_sent = now_ms()
         seq = self.link.show(self.window, layers)
         self._text_up = True
@@ -302,7 +316,7 @@ class Pipeline:
             "ocr_ms": round(job.ocr_ms, 1), "mt_ms": round(job.mt_ms, 1), "render_ms": round(job.render_ms, 1),
             "en": job.english, "ar": job.arabic, "speaker": job.speaker, "ocr_score": round(job.score, 3),
             "engine": self.translator.engine.name,
-            "cache_hit": job.hit, "mode": "replace" if still_there else "plate",
+            "cache_hit": job.hit, "mode": mode if still_there else f"{mode}-late",
         }
         if self.on_line is not None:
             self.on_line(job.english, job.arabic)
@@ -316,10 +330,10 @@ class Pipeline:
         if now - self._last_fill < FILL_REFRESH_MS:
             return
         t = time.perf_counter()
-        if self.show_fill:
+        if self.background in ("cover", "plate"):
             fill = self._to_overlay(render.make_fill(frame, self.tracker.shown), frame.shape)
             self.link.show(self.window, [fill])
-        self.link.keep(["text"])
+        self.link.keep(["text", "plate"])
         self._last_fill = now
         self.times.refresh.append((time.perf_counter() - t) * 1000.0)
 
@@ -331,12 +345,14 @@ class Pipeline:
         if remaining <= 150 or self._text_layer is None or not self.enabled:
             self._clear()
             return
-        # No English underneath any more: swap the stroke fill for a dark plate,
-        # which also hides the next English line until its own Arabic is ready.
-        plate = self._to_overlay(render.make_plate(self._text_layer, self._frame_shape), self._frame_shape)
-        self.link.show(self.window, [plate])
-        self.link.clear(["fill"])
-        self.link.keep(["text"])
+        if self.background == "cover":
+            # No English underneath any more: swap the stroke fill for a dark plate,
+            # which also hides the next English line until its own Arabic is ready.
+            plate = render.make_plate(self._text_layer, self._frame_shape, self.plate_opacity)
+            self.link.show(self.window, [self._to_overlay(plate, self._frame_shape)])
+        if self.background in ("cover", "plate"):
+            self.link.clear(["fill"])  # nothing left to cover
+        self.link.keep(["text", "plate"])
         self._holding = True
         self._last_keep = now_ms()
         self.held += 1

@@ -87,6 +87,7 @@ class LiveSession:
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
         self._source = None
+        self._pipe = None
         self._ocr = None
         self._engines: dict[str, object] = {}
         self._lock = threading.Lock()
@@ -124,6 +125,42 @@ class LiveSession:
         if source is not None:
             threading.Thread(target=source.close, daemon=True).start()  # unblocks the frame loop
 
+    def frame_jpeg(self, width: int = 960) -> bytes | None:
+        """The newest picture from the PS5, small, for the region editor. None when not running."""
+        import cv2
+
+        pipe = self._pipe
+        frame = getattr(pipe, "_latest", None) if pipe is not None else None
+        if frame is None:
+            return None
+        h = int(round(frame.shape[0] * width / frame.shape[1]))
+        small = cv2.resize(frame, (width, h), interpolation=cv2.INTER_AREA)
+        ok, buf = cv2.imencode(".jpg", small, [cv2.IMWRITE_JPEG_QUALITY, 78])
+        return buf.tobytes() if ok else None
+
+    def apply_profile(self, name: str) -> bool:
+        """Apply saved look settings to the running session at once (no restart)."""
+        import dataclasses
+
+        from .. import settings
+        from ..translate import load_profile
+
+        pipe = self._pipe
+        if pipe is None or self.state != "running" or name != self.profile:
+            return False
+        prof = load_profile(name)
+        style = settings.make_style(prof, paths.load_config().get("font_sizes", {}).get(name))
+        with pipe._lock:
+            if style.fixed_size is None and pipe.style.fixed_size:
+                style = dataclasses.replace(style, fixed_size=pipe.style.fixed_size)  # keep the measured size
+            pipe.style = style
+            pipe.background = settings.background(prof)
+            pipe.plate_opacity = settings.plate_opacity(prof)
+            pipe.read_scale = float(prof.get("read_scale", 1.0))
+            pipe.detect_params = settings.detect_params(prof)
+            pipe.translator.glossary = {str(k): str(v) for k, v in (prof.get("glossary") or {}).items()}
+        return True
+
     # -- the session thread ---------------------------------------------------
 
     def _run(self, profile: str) -> None:
@@ -133,7 +170,6 @@ class LiveSession:
         from ..sources import open_source
         from ..translate import Cache, CachedTranslator, default_engine_name, load_profile, make_engine
         from ..tvlink import TvLink
-        from ..vision import render
         from ..vision.ocr import OcrEngine
         from ..vision.tracker import TrackParams
 
@@ -174,13 +210,16 @@ class LiveSession:
             link = TvLink(ip)
             link.connect()
             window = cfg.get("window") or ("A" if "A" in caps["windows"] else caps["windows"][0])
-            size = prof.get("font_size") or cfg.get("font_sizes", {}).get(profile)
-            style = render.Style(font=str(prof.get("font", "harmattan")), fixed_size=int(size) if size else None)
+            from .. import settings
+
+            style = settings.make_style(prof, cfg.get("font_sizes", {}).get(profile))
             pipe = Pipeline(
                 link, translator, self._ocr, window=window, log_path=new_log_path(), style=style,
                 track_params=TrackParams(settle_ms=float(prof.get("settle_ms", 60))),
-                show_fill=bool(prof.get("fill", True)), read_scale=float(prof.get("read_scale", 1.0)),
+                background=settings.background(prof), plate_opacity=settings.plate_opacity(prof),
+                read_scale=float(prof.get("read_scale", 1.0)), detect_params=settings.detect_params(prof),
             )
+            self._pipe = pipe
 
             def on_line(en: str, ar: str) -> None:
                 item = {"en": en, "ar": ar, "t": time.time()}
@@ -232,6 +271,7 @@ class LiveSession:
                     except Exception:
                         pass  # shutting down: the TV clears itself within a second anyway
             self._source = None
+            self._pipe = None
             self._set("idle", "", error)
 
 

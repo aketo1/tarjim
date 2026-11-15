@@ -135,7 +135,7 @@
         <input class="text" id="preview-text" value="يجب أن نغادر قبل وصول العاصفة." aria-label="نص المعاينة">
       </div>
 
-      <div class="card">
+      <div class="card fontcard">
         <div class="card-head"><h3>الخط</h3></div>
         <div class="fonts" id="fonts"></div>
         <div class="field">
@@ -145,16 +145,71 @@
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-head"><h3>طريقة العرض</h3></div>
-        <label class="switch big"><input type="checkbox" id="fill"><i></i>
-          <span><b>غطِّ الإنجليزي</b><small>يخفي السطر الإنجليزي ويحط العربي مكانه. لو طفيته يطلع العربي فوق الإنجليزي.</small></span></label>
+      <div class="card look">
+        <div class="card-head"><h3>شكل النص</h3><button class="btn soft" id="try-tv">جرّب على التلفزيون</button></div>
+        <div class="presets" id="presets"></div>
+
+        <div class="field">
+          <div class="field-head"><b>الخلفية</b></div>
+          <div class="seg" id="bg">
+            <button data-v="cover"><i class="th th-cover"></i><span>تغطية ذكية</span></button>
+            <button data-v="plate"><i class="th th-plate"></i><span>خلفية داكنة</span></button>
+            <button data-v="none"><i class="th th-none"></i><span>بدون</span></button>
+          </div>
+          <div id="plate-row" class="sub-row">
+            <span class="muted">شفافية الخلفية</span>
+            <input type="range" id="plate" min="0.3" max="0.95" step="0.05">
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-head"><b>لون النص</b><span id="color-val" class="muted"></span></div>
+          <div class="swatches" id="colors"></div>
+        </div>
+
+        <div class="field">
+          <div class="field-head"><b>تأثير الحروف</b></div>
+          <div class="seg small" id="effect">
+            <button data-v="shadow"><span>ظل ناعم</span></button>
+            <button data-v="outline"><span>حد أسود</span></button>
+            <button data-v="none"><span>بدون</span></button>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-head"><b>موضع الترجمة</b><span id="pos-val" class="muted"></span></div>
+          <input type="range" id="pos" min="-200" max="60" step="5">
+          <div class="range-ends"><span>أعلى</span><span>أسفل</span></div>
+        </div>
+      </div>
+
+      <div class="card timing">
+        <div class="card-head"><h3>التوقيت</h3></div>
         <label class="switch big"><input type="checkbox" id="typewriter"><i></i>
           <span><b>اللعبة تكتب النص حرف حرف</b><small>فعّلها لو الترجمة تطلع قبل ما يكتمل السطر.</small></span></label>
         <div class="field">
           <div class="field-head"><b>مدة بقاء العربي</b><span id="read-val" class="muted"></span></div>
           <input type="range" id="read" min="0.6" max="2" step="0.1">
           <div class="range-ends"><span>أقصر</span><span>أطول</span></div>
+        </div>
+      </div>
+
+      <div class="card region">
+        <div class="card-head">
+          <h3>مكان الترجمة على الشاشة</h3>
+          <div class="row">
+            <button class="ghost" id="region-shot">حدّث الصورة</button>
+            <button class="btn soft" id="region-reset">المكان الافتراضي</button>
+          </div>
+        </div>
+        <p class="muted">اسحب المربع وكبّره من زواياه فوق المكان اللي تطلع فيه ترجمة اللعبة. البرنامج ما يقرأ إلا اللي داخله، فما يلقط القوايم ولا العدّادات.</p>
+        <div class="region-stage" id="region-stage" dir="ltr">
+          <img id="region-img" alt="">
+          <div class="region-hint" id="region-hint">شغّل الترجمة من الرئيسية وتطلع صورة اللعبة هنا</div>
+          <div class="region-box" id="region-box">
+            <span class="tag">هنا تنقرأ الترجمة</span>
+            <i class="h nw" data-h="nw"></i><i class="h ne" data-h="ne"></i><i class="h sw" data-h="sw"></i><i class="h se" data-h="se"></i>
+          </div>
         </div>
       </div>
 

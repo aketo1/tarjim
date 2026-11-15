@@ -290,3 +290,33 @@ def test_font_size_is_locked_after_the_first_lines(ocr):
         lay = R.layout_text(long_text, block, pipe.style)
         assert lay.size == pipe.style.fixed_size and len(lay.lines) >= 2
         pipe.close()
+
+
+@pytest.mark.parametrize("mode,shown,held", [
+    ("plate", ["fill", "plate", "text"], ["plate", "text"]),  # the English is erased under the plate
+    ("none", ["text"], ["text"]),
+])
+def test_background_modes(ocr, mode, shown, held):
+    s = synth.make_samples(1, 1, seed=41)
+    line, empty = s[0], s[1]
+
+    class Engine:
+        name = "e"
+
+        def translate(self, text, context=None):
+            return "سطر عربي طويل يحتاج وقتاً للقراءة."
+
+    with FakeTv() as tv, TvLink(tv.host, tv.port) as link:
+        link.connect()
+        pipe = Pipeline(link, CachedTranslator(Engine(), Cache(":memory:")), ocr, background=mode)
+        for i in range(12):
+            pipe.process(line.frame, 30.0 + i * 0.033)
+        assert _wait(lambda: tv.layer_ids() == shown)
+        if mode == "plate":
+            plate = tv.layers()["plate"]
+            x0, y0, x1, y1 = line.bbox
+            assert plate.x <= x0 and plate.y <= y0 and plate.x + plate.w >= x1 and plate.y + plate.h >= y1
+        for i in range(12, 16):
+            pipe.process(empty.frame, 30.0 + i * 0.033)  # English leaves: the Arabic is held as it is
+        assert _wait(lambda: tv.layer_ids() == held)  # the fill goes with the English; the look stays
+        pipe.close()

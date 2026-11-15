@@ -228,3 +228,29 @@ def test_line_split_by_a_bright_patch_is_detected_whole():
     b = detect(frame)
     assert b is not None and len(b.lines) == 1
     assert abs(b.lines[0].x0 - x0) <= 12 and abs(b.lines[0].x1 - x1) <= 20  # the final full stop is not a glyph
+
+
+def test_user_region_limits_where_text_is_found():
+    """Text outside the region the user drew (a menu, for example) is ignored."""
+    from tarjim import settings
+
+    rng = np.random.default_rng(3)
+    bg = synth.background(rng, "dark")
+    frame, bbox = synth.draw_subtitle(bg, ["Keep your voice down and stay close."], "shadow", 40, 1000)
+    assert detect(frame) is not None
+    left_third = settings.detect_params({"region": {"left": 0.0, "top": 0.7, "right": 0.33, "bottom": 1.0}})
+    assert detect(frame, left_third) is None  # the line is in the middle of the screen
+    top_half = settings.detect_params({"region": {"left": 0.05, "top": 0.05, "right": 0.95, "bottom": 0.5}})
+    assert detect(frame, top_half) is None
+    whole = settings.detect_params({"region": {"left": 0.0, "top": 0.5, "right": 1.0, "bottom": 1.0}})
+    b = detect(frame, whole)
+    assert b is not None and abs(b.lines[0].x0 - bbox[0]) <= 12  # coordinates stay in frame pixels
+    # Subtitles at the top of the screen can be found once the region says so.
+    top_frame, top_box = synth.draw_subtitle(synth.background(rng, "dark"), ["Nobody comes back from the northern road."], "shadow", 40, 160)
+    assert detect(top_frame) is None
+    found = detect(top_frame, top_half)
+    assert found is not None and abs(found.lines[0].y0 - top_box[1]) <= 14
+    # Nonsense input falls back to the default area instead of breaking detection.
+    assert settings.region({"region": {"left": "x"}}) == settings.DEFAULT_REGION
+    r = settings.region({"region": {"left": 0.5, "top": 0.5, "right": 0.5, "bottom": 0.5}})
+    assert r["right"] - r["left"] >= 0.099 and r["bottom"] - r["top"] >= 0.079

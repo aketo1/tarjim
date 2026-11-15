@@ -29,6 +29,9 @@ class Style:
     # shrunk per line; a line that does not fit wraps onto another line instead.
     fixed_size: int | None = None
     min_wrap_width: int = 1000  # px at 1080p: Arabic may run wider than a short English line
+    effect: str = "shadow"  # "shadow" (soft drop shadow), "outline" (dark edge all round) or "none"
+    outline_px: int = 3
+    y_offset: int = 0  # move the Arabic up (negative) or down (positive), in pixels at 1080p
 
 
 @dataclass
@@ -227,7 +230,7 @@ def layout_text(text: str, block: Block, style: Style) -> TextLayout:
             while width > max_w and n < len(words) and n < 4:
                 n += 1
                 lines, width = fit(n, size)
-    bottom = baselines[-1]
+    bottom = baselines[-1] + int(style.y_offset)
     out_baselines = [bottom - pitch * (len(lines) - 1 - i) for i in range(len(lines))]
     return TextLayout(lines, size, out_baselines, center_x, width)
 
@@ -244,7 +247,7 @@ def make_text(frame_bgr: np.ndarray, block: Block, text: str, style: Style = Sty
         left = int(round(layout.center_x - shaped.width / 2.0)) - ox
         parts.append((left, baseline - oy, alpha))
     dx, dy = style.shadow_offset
-    margin = int(np.ceil(3 * style.shadow_sigma)) + max(abs(dx), abs(dy))
+    margin = int(np.ceil(3 * style.shadow_sigma)) + max(abs(dx), abs(dy)) + int(style.outline_px) + 2
     x0 = max(0, min(p[0] for p in parts) - margin)
     y0 = max(0, min(p[1] for p in parts) - margin)
     x1 = min(fw, max(p[0] + p[2].shape[1] for p in parts) + margin)
@@ -258,9 +261,16 @@ def make_text(frame_bgr: np.ndarray, block: Block, text: str, style: Style = Sty
         src = alpha[gy0 - top : gy1 - top, gx0 - left : gx1 - left]
         dst = glyphs[gy0 - y0 : gy1 - y0, gx0 - x0 : gx1 - x0]
         np.maximum(dst, src, out=dst)
-    shadow = np.zeros_like(glyphs)
-    shadow[max(0, dy) :, max(0, dx) :] = glyphs[: glyphs.shape[0] - max(0, dy), : glyphs.shape[1] - max(0, dx)]
-    shadow = cv2.GaussianBlur(shadow, (0, 0), style.shadow_sigma).astype(np.float32) * style.shadow_opacity
+    if style.effect == "outline":
+        k = 2 * max(1, int(style.outline_px)) + 1
+        edge = cv2.dilate(glyphs, _ellipse(k))
+        shadow = cv2.GaussianBlur(edge, (0, 0), 0.7).astype(np.float32)
+    elif style.effect == "none":
+        shadow = np.zeros(glyphs.shape, np.float32)
+    else:
+        shadow = np.zeros_like(glyphs)
+        shadow[max(0, dy) :, max(0, dx) :] = glyphs[: glyphs.shape[0] - max(0, dy), : glyphs.shape[1] - max(0, dx)]
+        shadow = cv2.GaussianBlur(shadow, (0, 0), style.shadow_sigma).astype(np.float32) * style.shadow_opacity
     ga = glyphs.astype(np.float32) / 255.0
     sa = shadow / 255.0
     out_a = ga + sa * (1.0 - ga)  # glyphs over shadow (shadow is black)
@@ -273,14 +283,19 @@ def make_text(frame_bgr: np.ndarray, block: Block, text: str, style: Style = Sty
     return RgbaLayer(layer_id, x0, y0, bgra, z=2)
 
 
-def make_plate(text: RgbaLayer, frame_shape, opacity: float = 0.62, layer_id: str = "plate") -> RgbaLayer:
+def make_plate(text: RgbaLayer, frame_shape, opacity: float = 0.62, layer_id: str = "plate",
+               cover: tuple[int, int, int, int] | None = None) -> RgbaLayer:
     """`dim` plate: a feathered dark rounded box behind the Arabic. It does not
     depend on the picture, so it can never show stale pixels; it also hides
     whatever English appears underneath while the Arabic is held on screen."""
     fh, fw = frame_shape[:2]
     pad_x, pad_y, feather = 22, 8, 7
-    x0, y0 = max(0, text.x - pad_x), max(0, text.y - pad_y)
-    x1, y1 = min(fw, text.x + text.w + pad_x), min(fh, text.y + text.h + pad_y)
+    x0, y0 = text.x - pad_x, text.y - pad_y
+    x1, y1 = text.x + text.w + pad_x, text.y + text.h + pad_y
+    if cover is not None:  # also hide this rectangle (the English line still on screen)
+        x0, y0 = min(x0, cover[0] - 6), min(y0, cover[1] - 2)
+        x1, y1 = max(x1, cover[2] + 6), max(y1, cover[3] + 2)
+    x0, y0, x1, y1 = max(0, x0), max(0, y0), min(fw, x1), min(fh, y1)
     w, h = x1 - x0, y1 - y0
     alpha = np.zeros((h, w), np.float32)
     m = feather * 2
