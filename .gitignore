@@ -1,0 +1,16 @@
+.tools/
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+dist/
+tv-app/.gradle/
+tv-app/build/
+tv-app/app/build/
+tv-app/local.properties
+samples/tv-photos/
+samples/recordings/
+out/
+*.log
