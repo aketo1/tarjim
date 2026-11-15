@@ -1,0 +1,106 @@
+"""OCR of a detected subtitle block, one text line at a time (RapidOCR, recognition only)."""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+
+import cv2
+import numpy as np
+
+from .detect import Block
+
+TARGET_LINE_H = 48  # px; gives an x-height of at least 24 px for subtitle faces
+MIN_SCORE = 0.60
+# One or two capitalised words, then a colon: "MARIA: ...", "Old Tom: ...".
+_SPEAKER = re.compile(r"^([A-Z][A-Za-z.'\-]{1,15}(?: [A-Z][A-Za-z.'\-]{1,15})?):\s+(.*)$")
+
+
+@dataclass
+class OcrResult:
+    text: str  # all lines joined into one sentence
+    lines: list[str]
+    score: float  # lowest line confidence
+    speaker: str | None = None
+
+    @property
+    def ok(self) -> bool:
+        return self.score >= MIN_SCORE and looks_like_subtitle(self.text)
+
+
+def looks_like_subtitle(text: str) -> bool:
+    letters = [c for c in text if c.isalpha()]
+    if len(letters) < 2:
+        return False
+    latin = sum(1 for c in letters if c.isascii())
+    return latin / len(letters) >= 0.7
+
+
+def join_lines(lines: list[str]) -> str:
+    out = ""
+    for line in (l.strip() for l in lines):
+        if not line:
+            continue
+        if out.endswith("-") and len(out) > 1 and out[-2].isalpha():
+            out = out[:-1] + line  # a word hyphenated across the line break
+        else:
+            out = f"{out} {line}" if out else line
+    return re.sub(r"\s+", " ", out).strip()
+
+
+def split_speaker(text: str) -> tuple[str | None, str]:
+    m = _SPEAKER.match(text)
+    return (m.group(1), m.group(2)) if m else (None, text)
+
+
+class OcrEngine:
+    def __init__(self) -> None:
+        from rapidocr import RapidOCR
+        from rapidocr.utils.typings import LangRec
+
+        self._engine = RapidOCR(
+            params={
+                "Rec.lang_type": LangRec.EN,
+                "Global.use_det": False,
+                "Global.use_cls": False,
+                "Global.log_level": "error",
+            }
+        )
+
+        # Warm-up: the first inference loads the model and is several times slower.
+        self._engine(np.full((TARGET_LINE_H, 320, 3), 255, np.uint8), use_det=False, use_cls=False, use_rec=True)
+
+    def _read_line(self, img: np.ndarray) -> tuple[str, float]:
+        res = self._engine(img, use_det=False, use_cls=False, use_rec=True)
+        txts = getattr(res, "txts", None) or ()
+        scores = getattr(res, "scores", None) or ()
+        if not txts:
+            return "", 0.0
+        return str(txts[0]).strip(), float(scores[0])
+
+    def read(self, frame_bgr: np.ndarray, block: Block) -> OcrResult:
+        fh, fw = frame_bgr.shape[:2]
+        lines: list[str] = []
+        scores: list[float] = []
+        for ln in block.lines:
+            pad = max(4, (ln.y1 - ln.y0) // 3)
+            y0, y1 = max(0, ln.y0 - pad), min(fh, ln.y1 + pad)
+            x0, x1 = max(0, ln.x0 - pad), min(fw, ln.x1 + pad)
+            crop = frame_bgr[y0:y1, x0:x1]
+            scale = TARGET_LINE_H / max(1, crop.shape[0])
+            interp = cv2.INTER_CUBIC if scale > 1 else cv2.INTER_AREA
+            colour = cv2.resize(crop, None, fx=scale, fy=scale, interpolation=interp)
+            text, score = self._read_line(colour)
+            if score < 0.85:
+                # Second opinion: a clean black-on-white render of the stroke mask.
+                m = block.mask[y0 - block.y0 : y1 - block.y0, x0 - block.x0 : x1 - block.x0]
+                if m.size and m.shape[0] > 0 and m.shape[1] > 0:
+                    clean = cv2.resize(255 - m, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+                    t2, s2 = self._read_line(cv2.cvtColor(clean, cv2.COLOR_GRAY2BGR))
+                    if s2 > score:
+                        text, score = t2, s2
+            lines.append(text)
+            scores.append(score)
+        joined = join_lines(lines)
+        speaker, body = split_speaker(joined)
+        return OcrResult(body, lines, min(scores) if scores else 0.0, speaker)

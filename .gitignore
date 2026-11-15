@@ -14,3 +14,4 @@ samples/tv-photos/
 samples/recordings/
 out/
 *.log
+models/

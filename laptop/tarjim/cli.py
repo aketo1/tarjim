@@ -66,6 +66,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--seconds", type=float, default=30)
     p.add_argument("--path", help="صورة أو مجلد صور أو فيديو (للمصدر file)")
     p.add_argument("--host")
+
+    p = sub.add_parser("preview", help="يجرّب كل شي على ملف بدون تلفزيون ويحفظ النتيجة")
+    p.add_argument("path", help="صورة أو مجلد صور أو فيديو")
+    p.add_argument("--engine", help="محرك الترجمة: nllb-600m أو opus-big")
+    p.add_argument("--fps", type=float, default=30)
+    bench = sub.add_parser("bench", help="قياسات").add_subparsers(dest="bench_cmd", required=True)
+    p = bench.add_parser("latency", help="يقيس سرعة كل مرحلة على هذا اللابتوب")
+    p.add_argument("--engine")
+    p = sub.add_parser("run", help="يشغّل الترجمة الحية على التلفزيون")
+    p.add_argument("--profile", default="default")
+    p.add_argument("--engine")
+    p.add_argument("--no-fill", action="store_true", help="بدون تغطية الإنجليزي (العربي فقط)")
+    p.add_argument("--seconds", type=float, default=0, help="يوقف لحاله بعد هذي المدة (0 = بدون حد)")
     return parser
 
 
@@ -97,6 +110,18 @@ def main(argv: list[str] | None = None) -> int:
             return source_cli.setup(args.host, args.redirect_url, args.pin)
         if args.src_cmd == "test":
             return source_cli.test(args.backend, args.seconds, args.path, args.host)
+    if args.cmd == "preview":
+        from . import run_cli
+
+        return run_cli.preview(args.path, args.engine, args.fps)
+    if args.cmd == "bench":
+        from . import bench
+
+        return bench.latency(args.engine)
+    if args.cmd == "run":
+        from . import run_cli
+
+        return run_cli.run(args.profile, args.engine, args.no_fill, args.seconds)
     info("أمر غير معروف.")
     return 2
 

@@ -192,6 +192,11 @@ def shape_line(text: str, size: int, font: str = "harmattan") -> ShapedLine:
     return ShapedLine(glyphs, pen, missing)
 
 
+@lru_cache(maxsize=4096)
+def line_width(text: str, size: int, font: str = "harmattan") -> float:
+    return shape_line(text, size, font).width
+
+
 def rasterize(line: ShapedLine, size: int, pad: int = 4) -> tuple[np.ndarray, int, int]:
     """Return (alpha uint8, x of the line's left edge, y of the baseline) inside the image."""
     boxes = []

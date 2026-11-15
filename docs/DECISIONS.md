@@ -77,3 +77,64 @@ Non-obvious choices and the evidence behind them. Newest last.
   backlog (which would add delay to the Arabic).
 - **Console found by discovery**: PS5 "PS5-637" at 192.168.172.109, system
   version field `14220000`, in rest mode at the time (2026-11-15).
+
+## Gate 1 and TV findings (2026-11-15)
+
+- **TCL blocks third-party background starts.** logcat showed
+  `TclAppBoot ... isAllow='false' reason='callee_does't_have_OP_AUTO_START_permission'`
+  for our accessibility bind and `block startForeground for dev.tarjim.tv`,
+  after which the system killed the process (`startForegroundService() did
+  not then call startForeground()`). `appops get dev.tarjim.tv` listed the
+  TCL appop `APP_AUTO_START: ignore`. Setup now sets it to `allow` for our
+  package only (our app's appops are inside the safety rules) and revert
+  sets it back to `default`.
+- **Accessibility bind is not retried by the system** after that refusal;
+  setup takes only our own entry out of `enabled_accessibility_services` and
+  puts it back, leaving the user's other entry
+  (`com.mmda.najd/...RemoteAccess`) untouched.
+- **Default window: A** (`TYPE_APPLICATION_OVERLAY`). T1: both A and B are
+  visible over HDMI; A needs no accessibility service.
+- **T2 outcome**: user played Red Dead Redemption 2 on their own account while
+  the copy ran on the account `Red_deed2018`: controller, sound and picture
+  unaffected; video output stayed 3840x2160 60 Hz YUV422 HDR, HDCP 2.3 before
+  and during (photos in `samples/tv-photos/`). The only pop-up is the PS5's
+  "Remote Play connected" notice. The 15-minute measured run was stopped
+  early at the user's request, so the 30-minute fps/reconnect criterion is
+  still unmeasured; the 20-second run gave 30.1 fps at 1080p, 0 reconnects.
+- **The TV shows HDR, the copy is SDR.** Fill colours come from the SDR copy
+  and will not match the HDR picture exactly; expected to show in T4.
+
+## M3 (2026-11-15)
+
+- **Arabic shaping: HarfBuzz (`uharfbuzz` 0.57) + FreeType**, with our own
+  small bidi (RTL base, LTR runs for Latin and numbers) because Pillow here
+  has no RAQM. Golden images inspected by eye: joined letters, lam-alef,
+  tanween, digits, mixed Latin, end punctuation.
+- **Renderer matches the brief's reference** on the Uncharted sample:
+  ascender 26 px, baselines 918/971, Harmattan at 47 px.
+- **OCR: RapidOCR 3.10 (PP-OCR English recognition, onnxruntime), recognition
+  only** on our own line crops scaled to 48 px height. Both user samples read
+  exactly; synthetic CER <= 2% (test). 77 ms p50 per block. Windows.Media.Ocr
+  and Tesseract were not evaluated: RapidOCR already meets accuracy and the
+  120 ms budget.
+- **Default local translator: `opus-big`** (Helsinki-NLP/opus-mt-tc-big-en-ar,
+  CC-BY-4.0). Measured on this laptop over 22 test lines: p50 148 ms, p90
+  278 ms, versus NLLB-200-distilled-600M int8 at p50 635 ms, p90 916 ms
+  (misses the 250 ms budget). Opus output also read better on the test lines
+  ("retreat" -> الخلوة vs الانسحاب; "raft" -> طوف vs القارب).
+- **Models are third-party CTranslate2 conversions downloaded ready-made**
+  (`ai-path/opus-mt-tc-big-en-ar-ct2`, `JustFrederik/nllb-200-distilled-600M-ct2-int8`,
+  tokenizers from the official Helsinki-NLP repo) instead of running
+  `ct2-transformers-converter` locally: converting needs PyTorch and several
+  GB of RAM on an 8 GB machine. A CT2 `model.bin` is data, not code; the risk
+  is translation quality only.
+- **Both models dropped every sentence after the first** ("Did you hear
+  that? Something moved." -> only the question). Lines are now split into
+  sentences, translated as a batch and rejoined; dropped end punctuation is
+  restored from the English.
+- **Speed work**: `cv2.min` instead of numpy's channel min (23 ms -> 2.7 ms)
+  and a square top-hat kernel (6 ms -> 0.9 ms) brought detection from 41 ms to
+  about 12 ms; background estimation runs at half resolution (32 ms -> 14 ms).
+- **OCR, translation and rendering run inline** in the frame loop for now
+  (about 0.3 s per new line during which tracking pauses). Simple and
+  deterministic; moving them to a worker is an M5 option.

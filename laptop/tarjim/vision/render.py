@@ -69,23 +69,34 @@ def grow_mask(mask: np.ndarray, s: float = 1.0) -> np.ndarray:
 def estimate_background(bgr: np.ndarray, hole: np.ndarray) -> np.ndarray:
     """Fill `hole` (uint8 mask) by normalised convolution: blur(img*valid)/blur(valid).
 
-    Uses the smallest sigma that has enough valid support at each pixel.
+    Uses the smallest sigma that has enough valid support at each pixel. The
+    blurs run at half resolution (area-averaged, which keeps the normalised
+    convolution exact); the estimate is smooth, so nothing visible is lost and
+    it is several times faster.
     """
+    h, w = hole.shape
     valid = (hole == 0).astype(np.float32)
     img = bgr.astype(np.float32) * valid[:, :, None]
-    out = bgr.astype(np.float32).copy()
-    todo = hole > 0
-    for sigma in (2.5, 5.0, 10.0, 20.0):
+    small = (max(1, w // 2), max(1, h // 2))
+    img_s = cv2.resize(img, small, interpolation=cv2.INTER_AREA)
+    valid_s = cv2.resize(valid, small, interpolation=cv2.INTER_AREA)
+    est = np.zeros_like(img_s)
+    todo = valid_s < 0.999
+    for sigma in (1.25, 2.5, 5.0, 10.0):
         if not todo.any():
             break
-        num = cv2.GaussianBlur(img, (0, 0), sigma)
-        den = cv2.GaussianBlur(valid, (0, 0), sigma)
+        num = cv2.GaussianBlur(img_s, (0, 0), sigma)
+        den = cv2.GaussianBlur(valid_s, (0, 0), sigma)
         good = todo & (den > 0.08)
-        out[good] = num[good] / den[good][:, None]
+        est[good] = num[good] / den[good][:, None]
         todo &= ~good
     if todo.any():  # a hole wider than every kernel: fall back to the mean of valid pixels
-        out[todo] = img.sum(axis=(0, 1)) / max(1.0, float(valid.sum()))
-    return np.clip(out, 0, 255).astype(np.uint8)
+        est[todo] = img_s.sum(axis=(0, 1)) / max(1e-3, float(valid_s.sum()))
+    up = cv2.resize(est, (w, h), interpolation=cv2.INTER_LINEAR)
+    out = bgr.copy()
+    sel = hole > 0
+    out[sel] = np.clip(up[sel], 0, 255).astype(np.uint8)
+    return out
 
 
 def make_fill(frame_bgr: np.ndarray, block: Block, layer_id: str = "fill") -> RgbaLayer:
@@ -187,8 +198,8 @@ def layout_text(text: str, block: Block, style: Style) -> TextLayout:
     pitch = baselines[1] - baselines[0] if len(baselines) > 1 else int(round(asc * 2.0))
 
     def fit(n_lines: int, sz: int) -> tuple[list[str], float]:
-        lines = _wrap(words, n_lines, lambda t: arabic.shape_line(t, sz, style.font).width)
-        return lines, max(arabic.shape_line(l, sz, style.font).width for l in lines)
+        lines = _wrap(words, n_lines, lambda t: arabic.line_width(t, sz, style.font))
+        return lines, max(arabic.line_width(l, sz, style.font) for l in lines)
 
     n = len(block.lines)
     lines, width = fit(n, size)
