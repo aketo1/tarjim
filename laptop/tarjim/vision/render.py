@@ -25,6 +25,10 @@ class Style:
     shadow_opacity: float = 0.9
     color: tuple[int, int, int] | None = None  # BGR; None = sample from the English strokes
     max_shrink: float = 0.88
+    # One size for the whole session: when set, the size is never measured or
+    # shrunk per line; a line that does not fit wraps onto another line instead.
+    fixed_size: int | None = None
+    min_wrap_width: int = 1000  # px at 1080p: Arabic may run wider than a short English line
 
 
 @dataclass
@@ -146,6 +150,12 @@ def latin_metrics(block: Block) -> tuple[float, list[int]]:
     return float(np.median(heights)), baselines
 
 
+def measured_size(block: Block, style: Style) -> int:
+    """Font size that makes the alef as tall as this block's Latin ascenders."""
+    asc, _ = latin_metrics(block)
+    return arabic.size_for_alef(style.font, (asc + 1) * style.size_factor)
+
+
 def _wrap(words: list[str], n_lines: int, measure) -> list[str]:
     """Split words into n_lines lines with the smallest possible widest line."""
     if n_lines <= 1 or len(words) <= 1:
@@ -191,7 +201,7 @@ class TextLayout:
 
 def layout_text(text: str, block: Block, style: Style) -> TextLayout:
     asc, baselines = latin_metrics(block)
-    size = arabic.size_for_alef(style.font, (asc + 1) * style.size_factor)
+    size = style.fixed_size or measured_size(block, style)
     words = text.split()
     center_x = float(np.mean([(l.x0 + l.x1) / 2 for l in block.lines]))
     max_w = float(max(l.x1 - l.x0 for l in block.lines))
@@ -203,7 +213,12 @@ def layout_text(text: str, block: Block, style: Style) -> TextLayout:
 
     n = len(block.lines)
     lines, width = fit(n, size)
-    if width > max_w:
+    if style.fixed_size:
+        max_w = max(max_w, float(style.min_wrap_width))
+        while width > max_w and n < len(words) and n < 4:
+            n += 1
+            lines, width = fit(n, size)
+    elif width > max_w:
         shrunk = max(int(np.ceil(size * style.max_shrink)), int(np.floor(size * max_w / width)))
         lines2, width2 = fit(n, shrunk)
         if width2 <= max_w:

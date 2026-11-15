@@ -307,3 +307,33 @@ def test_line_that_left_during_translation_is_still_shown_on_a_plate(ocr):
         gate.set()
         assert _wait(lambda: tv.layer_ids() == ["plate", "text"])  # no fill: nothing to cover any more
         pipe.close()
+
+
+def test_font_size_is_locked_after_the_first_lines(ocr):
+    """Lines of slightly different measured height must all be drawn at one size."""
+    from tarjim.vision import render as R
+
+    class Engine:
+        name = "e"
+
+        def translate(self, text, context=None):
+            return "هذا سطر عربي للتجربة."
+
+    locked = []
+    with FakeTv() as tv, TvLink(tv.host, tv.port) as link:
+        link.connect()
+        pipe = Pipeline(link, CachedTranslator(Engine(), Cache(":memory:")), ocr)
+        pipe.on_size_locked = locked.append
+        rng = np.random.default_rng(5)
+        used = []
+        for i, size in enumerate([40, 42, 38, 41, 40, 44, 36, 40]):  # the game font "wobbles" by a few px
+            frame, _ = synth.draw_subtitle(synth.background(rng, "dark"), [synth.LINES[i]], "shadow", size, 1000)
+            block = detect(frame)
+            used.append(pipe._style_for(block).fixed_size)
+        assert len(locked) == 1 and pipe.style.fixed_size == locked[0]
+        assert len(set(used[4:])) == 1  # from the fifth line on the size never changes
+        assert max(used) - min(used) <= 3  # and the first lines already use a running median
+        long_text = "هذه جملة طويلة جداً كتبناها لنتأكد أن السطر ينقسم ولا يصغر الخط مهما طال الكلام في هذا المشهد الطويل."
+        lay = R.layout_text(long_text, block, pipe.style)
+        assert lay.size == pipe.style.fixed_size and len(lay.lines) >= 2
+        pipe.close()

@@ -137,7 +137,24 @@ def run(profile: str, engine: str | None, no_fill: bool, seconds: float = 0.0) -
     pipe = None
     try:
         link.connect()
-        pipe = Pipeline(link, translator, window=window, log_path=new_log_path(), show_fill=not no_fill)
+        from .translate import load_profile
+        from .vision import render as _render
+        from .vision.tracker import TrackParams
+
+        prof = load_profile(profile)
+        sizes = cfg.get("font_sizes", {})
+        size = prof.get("font_size") or sizes.get(profile)
+        style = _render.Style(font=str(prof.get("font", "harmattan")), fixed_size=int(size) if size else None)
+        track = TrackParams(settle_ms=float(prof.get("settle_ms", 60)))
+        pipe = Pipeline(link, translator, window=window, log_path=new_log_path(), show_fill=not no_fill,
+                        style=style, track_params=track)
+
+        def remember_size(value: int) -> None:
+            fresh = paths.load_config()
+            fresh.setdefault("font_sizes", {})[profile] = int(value)
+            paths.save_config(fresh)
+
+        pipe.on_size_locked = remember_size
         pipe.on_line = lambda en, ar: info(f"{en}  ←  {ar}")
         ok("ترجِم شغّال. المفاتيح: o تشغيل/إيقاف الترجمة، q خروج.")
         last_info = started = time.monotonic()

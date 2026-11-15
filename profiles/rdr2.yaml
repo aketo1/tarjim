@@ -1,5 +1,6 @@
 # Red Dead Redemption 2: how names are written in Arabic.
 style: msa
+settle_ms: 30      # no typewriter text in this game: confirm a line after one more frame
 glossary:
   Arthur: آرثر
   Morgan: مورغان

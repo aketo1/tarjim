@@ -8,7 +8,9 @@ costs nothing extra.
 
 from __future__ import annotations
 
+import dataclasses
 import json
+import statistics
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -31,6 +33,7 @@ LAYER_TTL_MS = 700
 FILL_REFRESH_MS = 85  # about 12 fill refreshes per second
 HOLD_KEEP_MS = 200
 SAME_BLOCK_IOU = 0.80  # an early job belongs to the line that later became stable
+SIZE_LOCK_AFTER = 5  # lines measured before the Arabic font size is fixed for good
 
 
 def reading_time_ms(arabic: str) -> float:
@@ -113,6 +116,8 @@ class Pipeline:
         self.held = 0
         self.early_ready = 0  # lines whose Arabic was ready before the settle time ended
         self.on_line = None  # optional callback(english, arabic) when a line goes up
+        self.on_size_locked = None  # optional callback(size) once the font size is fixed
+        self._sizes: list[int] = []
         self._lock = threading.RLock()
         self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="tarjim-work")
         self._job: _Job | None = None
@@ -206,7 +211,7 @@ class Pipeline:
             if read.ok and not job.cancelled:
                 job.arabic, job.hit, job.mt_ms = self.translator.translate(read.text)
                 t = time.perf_counter()
-                job.text_layer = render.make_text(job.frame, job.block, job.arabic, self.style)
+                job.text_layer = render.make_text(job.frame, job.block, job.arabic, self._style_for(job.block))
                 job.render_ms = (time.perf_counter() - t) * 1000.0
                 job.ok = True
         except TranslateError:
@@ -223,6 +228,22 @@ class Pipeline:
                     self._finish(job)
                 except TvLinkError:
                     self._text_up = False
+
+    def _style_for(self, block: Block) -> render.Style:
+        """One font size for every line. The game's subtitle size does not change,
+        but measuring it line by line wobbles by a few pixels, which looked like
+        the Arabic growing and shrinking. Measure the first lines, take their
+        median, then keep it."""
+        if self.style.fixed_size:
+            return self.style
+        self._sizes.append(render.measured_size(block, self.style))
+        size = int(statistics.median(self._sizes))
+        if len(self._sizes) >= SIZE_LOCK_AFTER:
+            self.style = dataclasses.replace(self.style, fixed_size=size)
+            if self.on_size_locked is not None:
+                self.on_size_locked(size)
+            return self.style
+        return dataclasses.replace(self.style, fixed_size=size)
 
     def _on_new(self, frame: np.ndarray, block: Block, t_capture: float) -> None:
         job = self._job
