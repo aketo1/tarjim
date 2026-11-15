@@ -14,6 +14,19 @@ Last update: 2026-11-15
 
 Automated tests: 67 passed (`uv run pytest`, in `laptop/`).
 
+## Gate 1 results so far
+
+- **T1 passed (user, 2026-11-15)**: patterns A and B both visible over the
+  PS5 HDMI input, on the PS5 home screen and inside Red Dead Redemption 2;
+  TV remote works while they are shown; no change in controller feel
+  reported. TV acked the draws in 43 ms (A) and 77 ms (B). TV app builds with
+  AGP 9.5.1 / Gradle 9.9.1 and runs on the TV (TCL Smart TV Pro, API 30)
+  after granting our app TCL's `APP_AUTO_START` appop. `screencap` returns
+  0 bytes while HDMI is shown, as expected. Not yet answered: Game Mode
+  still on; no phone photo yet.
+- **M2 first session (2026-11-15)**: laptop linked to PS5-637 with the copy account; `source test --seconds 20` gave 1920x1080, 603 frames = 30.1 fps, first frame after 4.4 s, gap median 31 ms / p90 47 ms / max 219 ms, 0 reconnects, with zero controller feedback sent. Saved frame inspected: PS5 home screen with the "Remote Play connected" notice.
+- **T2**: not run yet (15 minutes while the user plays on their own account).
+
 ## Open issues
 
 1. **Android SDK licences not accepted.** `platforms;android-36` and
