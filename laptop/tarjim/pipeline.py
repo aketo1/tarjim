@@ -21,6 +21,12 @@ from .vision.tracker import Event, SubtitleTracker, TrackParams
 
 LAYER_TTL_MS = 700
 FILL_REFRESH_MS = 85  # about 12 fill refreshes per second
+HOLD_KEEP_MS = 200
+
+
+def reading_time_ms(arabic: str) -> float:
+    """How long a line must stay up to be read: about 15 characters per second, 1.6 to 6 s."""
+    return float(min(6000.0, max(1600.0, 900.0 + 65.0 * len(arabic))))
 
 
 @dataclass
@@ -71,6 +77,13 @@ class Pipeline:
         self.rejected = 0
         self._text_up = False
         self._last_fill = 0.0
+        self._shown_at = 0.0  # when the current Arabic line went up (laptop ms)
+        self._read_ms = 0.0
+        self._holding = False  # English gone, Arabic kept up so it can be read
+        self._text_layer: render.RgbaLayer | None = None
+        self._frame_shape = (1080, 1920)
+        self._last_keep = 0.0
+        self.held = 0
         self._log = log_path.open("a", encoding="utf-8") if log_path else None
         self._pending: dict[int, dict] = {}
 
@@ -109,9 +122,12 @@ class Pipeline:
             elif event is Event.REFRESH:
                 self._on_refresh(frame)
             elif event is Event.GONE:
-                self._clear()
+                self._on_gone()
+            if self._holding:
+                self._hold_tick()
         except TvLinkError:
             self._text_up = False  # the TV clears by itself when the link drops
+            self._holding = False
         self._collect_acks()
         return event
 
@@ -138,13 +154,21 @@ class Pipeline:
         layers = []
         if self.show_fill:
             layers.append(self._to_overlay(render.make_fill(frame, block), frame.shape))
-        layers.append(self._to_overlay(render.make_text(frame, block, arabic, self.style), frame.shape))
+        text_layer = render.make_text(frame, block, arabic, self.style)
+        layers.append(self._to_overlay(text_layer, frame.shape))
         render_ms = (time.perf_counter() - t) * 1000.0
         self.times.render.append(render_ms)
         t_sent = now_ms()
+        if self._holding:  # a new line replaces the one being held: drop its plate first
+            self.link.clear(["plate"])
+            self._holding = False
         seq = self.link.show(self.window, layers)
         self._text_up = True
         self._last_fill = t_sent
+        self._shown_at = t_sent
+        self._read_ms = reading_time_ms(arabic)
+        self._text_layer = text_layer
+        self._frame_shape = frame.shape
         self.lines_shown += 1
         self._pending[seq] = {
             "t_frame": t_capture * 1000.0, "t_stable": t_stable, "t_sent": t_sent,
@@ -154,7 +178,7 @@ class Pipeline:
         }
 
     def _on_refresh(self, frame: np.ndarray) -> None:
-        if not self._text_up or not self.enabled:
+        if not self._text_up or not self.enabled or self._holding:
             return
         now = now_ms()
         if now - self._last_fill < FILL_REFRESH_MS:
@@ -167,10 +191,37 @@ class Pipeline:
         self._last_fill = now
         self.times.refresh.append((time.perf_counter() - t) * 1000.0)
 
+    def _on_gone(self) -> None:
+        """The English left. Keep the Arabic until it has had its reading time."""
+        if not self._text_up or self._holding:
+            return
+        remaining = self._shown_at + self._read_ms - now_ms()
+        if remaining <= 150 or self._text_layer is None or not self.enabled:
+            self._clear()
+            return
+        # No English underneath any more: swap the stroke fill for a dark plate,
+        # which also hides the next English line until its own Arabic is ready.
+        plate = self._to_overlay(render.make_plate(self._text_layer, self._frame_shape), self._frame_shape)
+        self.link.show(self.window, [plate])
+        self.link.clear(["fill"])
+        self.link.keep(["text"])
+        self._holding = True
+        self._last_keep = now_ms()
+        self.held += 1
+
+    def _hold_tick(self) -> None:
+        now = now_ms()
+        if now >= self._shown_at + self._read_ms:
+            self._clear()
+        elif now - self._last_keep >= HOLD_KEEP_MS:
+            self.link.keep(["text", "plate"])
+            self._last_keep = now
+
     def _clear(self) -> None:
         if self._text_up:
             self.link.clear(None)
         self._text_up = False
+        self._holding = False
 
     def set_enabled(self, on: bool) -> None:
         self.enabled = on

@@ -139,9 +139,28 @@ def detect(frame_bgr: np.ndarray, params: DetectParams | None = None) -> Block |
             continue
         med_h = float(np.median([g[3] for g in members]))
         members = [g for g in members if 0.3 * med_h <= g[3] <= 1.7 * med_h]
-        best = max(_chains(members, max_gap=2.2 * med_h), key=len, default=[])
+        chains = _chains(members, max_gap=2.2 * med_h)
+        best = max(chains, key=len, default=[])
         if len(best) < p.min_glyphs_per_line:
             continue
+        # Letters over a bright patch of the scene fail the top-hat test and
+        # split one sentence into pieces. Rejoin neighbouring pieces of the same
+        # row (the gap is a few lost letters, not a different text).
+        idx = chains.index(best)
+        joined = list(best)
+        left = min(g[0] for g in joined)
+        for c in reversed(chains[:idx]):
+            if len(c) < 2 or left - max(g[0] + g[2] for g in c) > 7.0 * med_h:
+                break
+            joined = c + joined
+            left = min(g[0] for g in c)
+        right = max(g[0] + g[2] for g in joined)
+        for c in chains[idx + 1 :]:
+            if len(c) < 2 or min(g[0] for g in c) - right > 7.0 * med_h:
+                break
+            joined = joined + c
+            right = max(g[0] + g[2] for g in c)
+        best = joined
         x0 = min(g[0] for g in best)
         x1 = max(g[0] + g[2] for g in best)
         if x1 - x0 < p.min_line_width * s:

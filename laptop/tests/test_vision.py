@@ -212,3 +212,19 @@ def test_layout_stays_inside_block_with_integer_rects():
         assert layer.x >= 0 and layer.y >= 0 and layer.x + layer.w <= 1920 and layer.y + layer.h <= 1080
     lay = render.layout_text(texts[1], b, render.Style())
     assert len(lay.lines) == 2 and lay.size == 47  # the value validated on this sample in the brief
+
+
+def test_line_split_by_a_bright_patch_is_detected_whole():
+    """White letters over a bright part of the scene vanish from the stroke
+    mask; the pieces on both sides must still come back as one line."""
+    rng = np.random.default_rng(9)
+    bg = synth.background(rng, "dark")
+    line = "Still need more supplies, my friend. You should try your luck again."
+    plain, bbox = synth.draw_subtitle(bg.copy(), [line], "shadow", 40, 1000)
+    x0, y0, x1, y1 = bbox
+    mid = (x0 + x1) // 2
+    bg[y0 - 30 : y1 + 30, mid - 45 : mid + 45] = 235  # e.g. snow or a lamp behind four letters
+    frame, _ = synth.draw_subtitle(bg, [line], "shadow", 40, 1000)
+    b = detect(frame)
+    assert b is not None and len(b.lines) == 1
+    assert abs(b.lines[0].x0 - x0) <= 12 and abs(b.lines[0].x1 - x1) <= 20  # the final full stop is not a glyph

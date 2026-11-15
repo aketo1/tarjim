@@ -42,6 +42,8 @@ def normalize_arabic(text: str) -> str:
     text = text.replace("‏", "").replace("‎", "")
     text = _WS.sub(" ", text).strip()
     text = text.strip('"').strip("'").strip("«»").strip()
+    # The models like to wrap names in brackets: "يا سيد (مورغان)".
+    text = re.sub(r"\(([^()\s]+(?:\s[^()\s]+)?)\)", lambda m: m.group(1), text)
     text = re.sub(r"(?<=[؀-ۿ])\s*,", "،", text)
     text = re.sub(r"(?<=[؀-ۿ])\s*\?", "؟", text)
     text = re.sub(r"(?<=[؀-ۿ])\s*;", "؛", text)
@@ -128,7 +130,9 @@ def join_sentences(sources: list[str], translations: list[str]) -> str:
 def _threads() -> int:
     import os
 
-    return max(2, min(6, (os.cpu_count() or 4) // 2))
+    # Few threads on purpose: during play the video decoder and the frame loop
+    # need the other cores, and oversubscription made translation 4x slower.
+    return max(2, min(4, (os.cpu_count() or 4) // 3))
 
 
 class NllbTranslator:
@@ -150,7 +154,7 @@ class NllbTranslator:
         parts = split_sentences(text)
         src = [["eng_Latn"] + self._sp.encode(p, out_type=str) + ["</s>"] for p in parts]
         res = self._tr.translate_batch(
-            src, target_prefix=[["arb_Arab"]] * len(src), beam_size=4, max_decoding_length=128,
+            src, target_prefix=[["arb_Arab"]] * len(src), beam_size=2, max_decoding_length=128,
             repetition_penalty=1.1,
         )
         # hypotheses[0][0] is the language token
@@ -176,7 +180,7 @@ class OpusTranslator:
     def translate(self, text: str, context: list[tuple[str, str]] | None = None) -> str:
         parts = split_sentences(text)
         src = [[">>ara<<"] + self._src.encode(p, out_type=str) + ["</s>"] for p in parts]
-        res = self._tr.translate_batch(src, beam_size=4, max_decoding_length=128, repetition_penalty=1.1)
+        res = self._tr.translate_batch(src, beam_size=2, max_decoding_length=128, repetition_penalty=1.1)
         return join_sentences(parts, [self._tgt.decode(r.hypotheses[0]) for r in res])
 
 

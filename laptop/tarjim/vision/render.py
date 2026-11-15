@@ -258,6 +258,28 @@ def make_text(frame_bgr: np.ndarray, block: Block, text: str, style: Style = Sty
     return RgbaLayer(layer_id, x0, y0, bgra, z=2)
 
 
+def make_plate(text: RgbaLayer, frame_shape, opacity: float = 0.62, layer_id: str = "plate") -> RgbaLayer:
+    """`dim` plate: a feathered dark rounded box behind the Arabic. It does not
+    depend on the picture, so it can never show stale pixels; it also hides
+    whatever English appears underneath while the Arabic is held on screen."""
+    fh, fw = frame_shape[:2]
+    pad_x, pad_y, feather = 22, 8, 7
+    x0, y0 = max(0, text.x - pad_x), max(0, text.y - pad_y)
+    x1, y1 = min(fw, text.x + text.w + pad_x), min(fh, text.y + text.h + pad_y)
+    w, h = x1 - x0, y1 - y0
+    alpha = np.zeros((h, w), np.float32)
+    m = feather * 2
+    if w > 2 * m and h > 2 * m:
+        cv2.rectangle(alpha, (m, m), (w - m - 1, h - m - 1), 1.0, -1)
+    else:
+        alpha[:] = 1.0
+    alpha = cv2.GaussianBlur(alpha, (0, 0), feather)
+    alpha = np.clip(alpha / max(1e-6, float(alpha.max())), 0.0, 1.0) * opacity
+    bgra = np.zeros((h, w, 4), np.uint8)
+    bgra[:, :, 3] = (alpha * 255).astype(np.uint8)
+    return RgbaLayer(layer_id, x0, y0, bgra, z=1)
+
+
 def composite(frame_bgr: np.ndarray, layers: list[RgbaLayer]) -> np.ndarray:
     """Draw layers over a frame the way the TV does (for previews and tests)."""
     out = frame_bgr.astype(np.float32).copy()

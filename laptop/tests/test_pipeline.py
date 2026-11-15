@@ -143,15 +143,26 @@ def test_end_to_end_overlays_appear_and_clear(ocr):
         assert shown[y0:y1, x0:x1].max() > 150  # Arabic pixels were drawn where the English is
         assert shown[: y0 - 80].max() == 0 and shown[:, : x0 - 150].max() == 0  # and nowhere far from it
 
-        feed(empty.frame, 4)  # the line leaves: clear within two frames
-        assert _wait(lambda: tv.layer_ids() == [])
+        # The line leaves before it could be read: the Arabic stays on a dark
+        # plate (no stroke fill: there is no English under it any more) ...
+        feed(empty.frame, 4)
+        assert _wait(lambda: tv.layer_ids() == ["plate", "text"])
+        assert pipe.held == 1
+        # ... and is cleared once its reading time is over.
+        deadline = time.monotonic() + 4.0
+        while tv.layer_ids() and time.monotonic() < deadline:
+            feed(empty.frame, 1)
+            time.sleep(0.03)
+        assert tv.layer_ids() == []
         feed(line_b.frame, 10)
         assert _wait(lambda: tv.layer_ids() == ["fill", "text"])
         assert pipe.lines_shown == 2
 
-        feed(line_b.frame, 1)  # a repeated line comes from the cache
+        # A new line arriving while the previous one is held replaces it at once.
         feed(empty.frame, 4)
-        feed(line_a.frame, 10)
+        assert _wait(lambda: "plate" in tv.layer_ids())
+        feed(line_a.frame, 10)  # a repeated line: comes from the cache
+        assert _wait(lambda: tv.layer_ids() == ["fill", "text"])
         assert pipe.times.mt_cached and max(pipe.times.mt_cached) < 2.0
         pipe.close()
         assert _wait(lambda: tv.layer_ids() == [])
@@ -178,3 +189,11 @@ def test_stalled_pipeline_never_leaves_stale_arabic(ocr):
         assert _wait(lambda: tv.layer_ids() == [], timeout=1.2)
         assert time.monotonic() - t0 <= 1.0
         link.close()
+
+
+def test_reading_time_scales_with_length():
+    from tarjim.pipeline import reading_time_ms
+
+    assert reading_time_ms("نعم.") == 1600.0
+    assert 3000 < reading_time_ms("س" * 50) < 5000
+    assert reading_time_ms("س" * 300) == 6000.0
