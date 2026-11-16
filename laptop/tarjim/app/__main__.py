@@ -13,8 +13,17 @@ def _selftest(path: str) -> int:
         import webview
 
         import tarjim
+        from tarjim import paths
 
-        facts.update(ok=True, tarjim=tarjim.__file__, webview=webview.__file__)
+        heavy = []
+        for name in ("cv2", "numpy", "ctranslate2", "sentencepiece", "onnxruntime", "rapidocr", "uharfbuzz",
+                     "freetype", "yaml", "segno", "psutil", "PIL", "ps5_remoteplay_mcp.vendor.pyremoteplay"):
+            __import__(name)
+            heavy.append(name)
+        model = paths.REPO / "models" / "opus-mt-tc-big-en-ar-ct2" / "model.bin"
+        facts.update(ok=True, tarjim=tarjim.__file__, webview=webview.__file__, repo=str(paths.REPO),
+                     imported=heavy, model=model.exists(), adb=str(paths.adb_path()), tv_apk=paths.APK.exists(),
+                     phone_apk=paths.PHONE_APK.exists(), fonts=(paths.REPO / "fonts" / "Harmattan-Regular.ttf").exists())
     except Exception as exc:  # reported to the caller through the file
         facts.update(ok=False, error=repr(exc))
     with open(path, "w", encoding="utf-8") as fh:

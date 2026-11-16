@@ -523,3 +523,32 @@ Measured on the 395 distinct lines in `out/sessions/`:
   firewall prompt and a phone actually reaching the laptop, the new TV status
   screen as it looks on the TV (it was not opened, so as not to interrupt the
   TV), and a live play session with the name handling (the PS5 was off).
+
+## 15. Installer, README and GitHub (added 2026-11-16)
+
+- **Installer.** `dist/Tarjim-Setup-0.2.0.exe` (656 MB), built by
+  `laptop/launcher/build_setup.py`. It is `launcher/Setup.cs` (a hand-drawn
+  WinForms program in the app's look, compiled with the Windows C# compiler)
+  with a zip archive appended; a 16-byte trailer (`TARJIMZ1` + length) marks it.
+  The archive mirrors the repo layout, so the code runs unchanged: `Tarjim.exe`,
+  `python/` (the relocatable CPython the venv was made from), `laptop/tarjim/`,
+  `laptop/.venv/Lib/site-packages/`, the opus model, fonts, profiles, adb and
+  both APKs. The installer writes `laptop/.venv/pyvenv.cfg` with the new
+  location, creates the shortcuts, and registers an uninstaller under HKCU
+  (the same program without its payload acts as `Uninstall.exe`).
+  Per-user install to `%LOCALAPPDATA%\Programs\Tarjim`, no administrator rights.
+  An update keeps the user's `profiles/` and `out/`. `/S` and `/D=<folder>` exist
+  for unattended use.
+- **Verified:** silent and graphical installs into a scratch folder; the
+  installed `Tarjim.exe --selftest` imported every heavy library from the
+  installed copy, found the model, adb and both APKs (install took 48 s);
+  silent uninstall removed the folder, the registry key and the shortcuts.
+  **Not verified:** installing on a second computer, and the SmartScreen
+  warning an unsigned installer gets after a download.
+- **README.** `README.md` (Arabic first, a short developer part in English)
+  with pictures in `docs/media/`, all generated: `launcher/make_media.py` runs
+  the real detector and renderer on a drawn dusk scene for `swap.gif`,
+  `before.png` and `after.png`; `launcher/shots.py` takes the app screenshots
+  with headless Chrome; the installer pictures are captures of the real window.
+- **GitHub.** The project lives in a private repository; the installer is a
+  release asset there (it is too large for git and `dist/` is ignored).
