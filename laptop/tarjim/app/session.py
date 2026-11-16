@@ -54,6 +54,10 @@ def friendly_error(exc: Exception) -> str:
     """Turn a technical failure into one plain Arabic sentence with the next step."""
     text = str(exc)
     low = text.lower()
+    if "not linked to a microsoft account" in low:
+        return "اللابتوب مو مربوط بحساب الإكس بوكس. افتح «الدليل» وكمّل خطوة الجهاز."
+    if "xbox" in low and ("cannot reach" in low or "answered" in low):
+        return "ما قدرت أوصل لخدمة الإكس بوكس. تأكد من الإنترنت وإن الإكس بوكس شغّال ومفعّل فيه «الميزات عن بُعد»."
     if "5555" in text or "التلفزيون رفض" in text or "ما قدرت أتصل بالتلفزيون" in text:
         return "ما قدرت أوصل للتلفزيون. تأكد إنه شغّال وعلى نفس الشبكة، ثم جرّب مرة ثانية."
     if "ما قدرت أكلّم التطبيق" in text:
@@ -88,6 +92,7 @@ class LiveSession:
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
         self._source = None
+        self.xbox = None  # the Xbox frame source while an Xbox session runs
         self._pipe = None
         self._ocr = None
         self._engines: dict[str, object] = {}
@@ -238,7 +243,19 @@ class LiveSession:
                 return
 
             self._set("starting", "ps5")
-            source = open_source("rp-pyremoteplay")
+            kind = cfg.get("console", "ps5")
+            if kind == "xbox":
+                # The picture comes through the program's own window (WebRTC); see sources/xbox.py.
+                from ..sources.xbox import XboxSource
+
+                chosen = (cfg.get("xbox") or {}).get("id")
+                if not chosen:
+                    raise RuntimeError("ما اخترت إكس بوكس للحين. افتح «الدليل» وكمّل خطوة الجهاز.")
+                source = XboxSource()
+                self.xbox = source
+                self.hub.publish("xbox", {"action": "start", "id": chosen})
+            else:
+                source = open_source("rp-pyremoteplay")
             self._source = source
             link = TvLink(ip)
             link.connect()
@@ -303,6 +320,9 @@ class LiveSession:
                         closer()
                     except Exception:
                         pass  # shutting down: the TV clears itself within a second anyway
+            if self.xbox is not None:
+                self.xbox = None
+                self.hub.publish("xbox", {"action": "stop"})
             self._source = None
             self._pipe = None
             self._set("idle", "", error)

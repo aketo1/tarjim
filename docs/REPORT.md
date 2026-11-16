@@ -565,18 +565,43 @@ Measured on the 395 distinct lines in `out/sessions/`:
   translator (ML Kit) is weaker than this program's model.
   The phone *remote* in `phone-app/` here is a different thing: it only
   controls this program.
-- **Xbox was asked for and is not built**, in this program or on the phone.
-  Nothing in the code is Xbox-aware: `sources/` has the PS5 Remote Play
-  source and the file source only. An Xbox source would be a new
-  `FrameSource` behind the existing interface, and the rest of the pipeline
-  would not change. Two ways to get the picture:
-  1. Microsoft's home streaming ("Xbox Remote Play"): a Microsoft account
-     sign-in and a WebRTC video receiver. A different protocol from Sony's;
-     none of the PS5 code carries over. Needs an Xbox to develop against.
-  2. An HDMI capture card with passthrough (the `uvc` source in the original
-     brief): works for any console, needs the hardware, and only helps the
-     laptop.
-  Neither was started, and no Xbox was available to test with.
+- **Xbox: built, not tested.** Chosen in the Guide's "الجهاز" step (PlayStation 5
+  or Xbox), with the linking steps explained there. Code: `sources/xbox.py`
+  (`XboxAuth`, `XboxSource`), routes `/api/xbox*`, `/api/console` and the
+  `/v5`, `/v6` proxy in `app/server.py`, `app/web/xbox.js`, tests in
+  `tests/test_xbox.py`. Config: `console` ("ps5" or "xbox") and `xbox` (the
+  chosen console) in `config.json`; tokens in `~/.tarjim/xbox-tokens.json`.
+  The window is started with WebView2 switches that keep video and timers
+  running when it is covered or minimised.
+
+  Xbox home streaming ("Remote Play") is WebRTC, a different protocol from
+  Sony's. Both programs show their interface in a browser view (Edge WebView2 on
+  the laptop, Android WebView on the phone), and a browser speaks WebRTC
+  natively. So the page itself receives the stream, with the open-source
+  `xbox-xcloud-player` library (MIT, bundled as `xCloudPlayer.min.js`; glue in
+  `xbox.js`), draws frames to a canvas and posts them as JPEG to the local
+  server, which feeds the normal reading and translating code. The library's API
+  calls (`/v5/...`, `/v6/...`) go to the local server, which forwards them to
+  Xbox with the token added.
+  
+  Sign-in is Microsoft's device-code flow, ported from `xal-node` 1.1.5
+  (`dist/msal.js`): the user types a short code at microsoft.com/link; then
+  Xbox Live user token, XSTS token for `http://gssv.xboxlive.com/`, and the
+  home-streaming token (`xhome.gssv-play-prod.xboxlive.com/v2/login/user`) with
+  its region host. Only the refresh token is stored, as a secret.
+  
+  No controller input is sent: the input channel is opened because the console
+  requires it and nothing is ever put into it; the stream's media elements are
+  muted.
+  
+  **What was verified:** Microsoft answers the device-code request made by this
+  code with a valid code. The token chain, the frame hand-off and the error
+  texts are covered by tests with stand-in servers.
+  **What was not:** everything after the sign-in. No Microsoft account was
+  signed in and no Xbox was available: listing consoles, starting a session,
+  the WebRTC connection, picture quality through JPEG, whether the player's own
+  controller and TV picture stay untouched, and behaviour when the window is
+  minimised have never been observed. Treat it as written, not as working.
 - **Things seen while reviewing that are still open** in this program:
   - The guide's TV step still assumes adb debugging is already switched on;
     a TV that refuses the connection gets one sentence, not a walkthrough.

@@ -178,6 +178,15 @@ def run(url: str, icon: Path, may_close) -> bool:
         import webview
     except Exception:
         return False
+    # The Xbox picture is received by this window. A minimised or covered browser normally
+    # pauses video and timers; these switches keep it running.
+    import os
+
+    os.environ.setdefault(
+        "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+        "--disable-backgrounding-occluded-windows --disable-renderer-backgrounding "
+        "--disable-background-timer-throttling --autoplay-policy=no-user-gesture-required",
+    )
     try:
         geometry = _saved_geometry()
         _window = webview.create_window(

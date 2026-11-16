@@ -40,7 +40,27 @@ _remote_lock = threading.Lock()
 
 # What a paired phone may not do: these need the laptop itself (a browser, the TV setup, the app's life).
 LOCAL_ONLY = ("/api/quit", "/api/focus", "/api/ps5/", "/api/tv/setup", "/api/tv/revert", "/api/tv/test",
-              "/api/phone", "/api/guide-seen")
+              "/api/phone", "/api/guide-seen", "/api/xbox", "/api/console", "/v5/", "/v6/")
+
+_xbox_auth = None
+
+
+def xbox_auth():
+    """The Xbox sign-in state (made on first use: most users never touch it)."""
+    global _xbox_auth
+    if _xbox_auth is None:
+        from ..sources.xbox import XboxAuth
+
+        _xbox_auth = XboxAuth()
+    return _xbox_auth
+
+
+def xbox_view() -> dict:
+    auth = xbox_auth()
+    cfg = paths.load_config()
+    return {"kind": cfg.get("console", "ps5"), "linked": auth.linked, "state": auth.link_state, "error": auth.link_error,
+            "code": auth.user_code if auth.link_state == "waiting" else "", "url": auth.verification_uri,
+            "console": cfg.get("xbox") or None}
 # What anyone on the home network may fetch without pairing: the page itself and the phone app.
 PUBLIC_REMOTE = ("/api/hello", "/api/pair")
 
@@ -93,6 +113,8 @@ def checks() -> dict:
 
     tv_reach, tv_app, ps5 = result(f_tv, False), result(f_app, False), result(f_ps5, None)
     pool.shutdown(wait=False)
+    if cfg.get("console") == "xbox":
+        return _xbox_checks(cfg, tv_ip, tv_reach, tv_app, models)
     items = [
         {"id": "power", "ok": not paths.on_battery(), "title": "اللابتوب على الشاحن",
          "hint": "شبّك الشاحن: على البطارية الترجمة أبطأ أربع مرات تقريباً."},
@@ -109,6 +131,27 @@ def checks() -> dict:
         "tv_ip": tv_ip, "tv_app": tv_app, "tv_model": (cfg.get("tv") or {}).get("model"),
         "ps5_host": ps5_host, "ps5_name": (ps5 or {}).get("name") or (cfg.get("ps5") or {}).get("name"),
         "ps5_user": cfg.get("ps5_user"), "setup_done": bool(tv_ip and cfg.get("ps5_user")),
+    }
+
+
+def _xbox_checks(cfg: dict, tv_ip, tv_reach: bool, tv_app: bool, models: bool) -> dict:
+    """The home screen's health check when the console is an Xbox (no network probe: Xbox answers only when signed in)."""
+    linked = xbox_auth().linked
+    chosen = cfg.get("xbox") or {}
+    items = [
+        {"id": "power", "ok": not paths.on_battery(), "title": "اللابتوب على الشاحن",
+         "hint": "شبّك الشاحن: على البطارية الترجمة أبطأ أربع مرات تقريباً."},
+        {"id": "models", "ok": models, "title": "ملفات الترجمة موجودة", "hint": "مجلد models ناقص."},
+        {"id": "tv", "ok": tv_reach, "title": "التلفزيون على الشبكة",
+         "hint": "شغّل التلفزيون وتأكد إنه على نفس الشبكة." if tv_ip else "التلفزيون ما تجهّز للحين. افتح الدليل."},
+        {"id": "ps5", "ok": bool(chosen.get("id")), "title": "الإكس بوكس مختار", "hint": "اختر الإكس بوكس من الدليل ‹ الجهاز."},
+        {"id": "link", "ok": linked, "title": "اللابتوب مربوط بحساب الإكس بوكس", "hint": "اربط حساب مايكروسوفت من الدليل ‹ الجهاز."},
+    ]
+    return {
+        "items": items, "ready": all(i["ok"] for i in items if i["id"] != "power"), "kind": "xbox",
+        "tv_ip": tv_ip, "tv_app": tv_app, "tv_model": (cfg.get("tv") or {}).get("model"),
+        "ps5_host": None, "ps5_name": chosen.get("name"), "ps5_user": "xbox" if linked and chosen.get("id") else None,
+        "setup_done": bool(tv_ip and linked and chosen.get("id")),
     }
 
 
@@ -464,6 +507,13 @@ class Handler(BaseHTTPRequestHandler):
                 if not paths.PHONE_APK.exists():
                     return self._send(404, b"not built", "text/plain")
                 return self._send(200, paths.PHONE_APK.read_bytes(), "application/vnd.android.package-archive")
+            if url.path == "/api/xbox":
+                return self._json(xbox_view())
+            if url.path == "/api/xbox/consoles":
+                return self._json({"consoles": xbox_auth().consoles()})
+            if url.path.startswith(("/v5/", "/v6/")):  # the window's Xbox streaming calls
+                status, body = xbox_auth().proxy("GET", self.path, None, self.headers.get("X-MS-Device-Info"))
+                return self._send(status, body, "application/json; charset=utf-8")
             if url.path == "/api/phone":
                 return self._json(access.view())
             if url.path == "/api/phone/qr.svg":
@@ -478,7 +528,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({
                     "live": live.snapshot(), "task": tasks.snapshot(), "profiles": list_profiles(),
                     "last_profile": cfg.get("last_profile"), "guide_seen": bool(cfg.get("guide_seen")),
-                    "setup_done": bool(cfg.get("tv_ip") and cfg.get("ps5_user")), "remote": self.remote,
+                    "setup_done": bool(cfg.get("tv_ip") and (cfg.get("ps5_user") if cfg.get("console") != "xbox"
+                                                              else (cfg.get("xbox") or {}).get("id"))),
+                    "remote": self.remote, "console": cfg.get("console", "ps5"),
                     "now": time.time(),
                 })
             if url.path == "/api/check":
@@ -555,7 +607,47 @@ class Handler(BaseHTTPRequestHandler):
         if not self._allowed(path):
             return self._send(403, b"forbidden", "text/plain")
         try:
+            if path == "/api/xbox/frame":  # a picture of the Xbox stream from the window: raw JPEG, not JSON
+                length = int(self.headers.get("Content-Length") or 0)
+                data = self.rfile.read(length) if 0 < length < 3_000_000 else b""
+                source = live.xbox
+                return self._json({"ok": bool(source is not None and data and source.push_jpeg(data))})
+            if path.startswith(("/v5/", "/v6/")):
+                length = int(self.headers.get("Content-Length") or 0)
+                raw = self.rfile.read(length) if 0 < length < 400_000 else b""
+                status, answer = xbox_auth().proxy("POST", self.path, raw, self.headers.get("X-MS-Device-Info"))
+                return self._send(status, answer, "application/json; charset=utf-8")
             body = self._body()
+            if path == "/api/console":
+                kind = "xbox" if body.get("kind") == "xbox" else "ps5"
+                cfg = paths.load_config()
+                cfg["console"] = kind
+                paths.save_config(cfg)
+                return self._json(xbox_view())
+            if path == "/api/xbox/link":
+                return self._json(xbox_auth().start_link())
+            if path == "/api/xbox/open":
+                _open_url(xbox_auth().verification_uri or "https://www.microsoft.com/link")
+                return self._json({"ok": True})
+            if path == "/api/xbox/select":
+                cfg = paths.load_config()
+                cfg["xbox"] = {"id": str(body.get("id", ""))[:80], "name": str(body.get("name", "Xbox"))[:60]}
+                cfg["console"] = "xbox"
+                paths.save_config(cfg)
+                return self._json(xbox_view())
+            if path == "/api/xbox/forget":
+                xbox_auth().forget()
+                cfg = paths.load_config()
+                cfg.pop("xbox", None)
+                paths.save_config(cfg)
+                return self._json(xbox_view())
+            if path == "/api/xbox/state":
+                source = live.xbox
+                if source is not None:
+                    source.state = str(body.get("state", ""))[:20]
+                    if body.get("error"):
+                        source.last_error = str(body["error"])[:200]
+                return self._json({"ok": True})
             if path == "/api/pair":
                 try:
                     token = access.pair(str(body.get("pin", "")), str(body.get("name", "")))
