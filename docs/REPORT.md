@@ -550,5 +550,40 @@ Measured on the 395 distinct lines in `out/sessions/`:
   the real detector and renderer on a drawn dusk scene for `swap.gif`,
   `before.png` and `after.png`; `launcher/shots.py` takes the app screenshots
   with headless Chrome; the installer pictures are captures of the real window.
-- **GitHub.** The project lives in a private repository; the installer is a
-  release asset there (it is too large for git and `dist/` is ignored).
+- **GitHub.** The project lives in the private repository `aketo1/tarjim`;
+  release `v0.2.0` carries `Tarjim-Setup-0.2.0.exe` and the phone remote APK
+  (the installer is too large for git and `dist/` is ignored).
+
+## 16. The phone version, Xbox, and what is still open (added 2026-11-16)
+
+- **A standalone phone version exists** in its own private repository,
+  `aketo1/tarjim-phone` (report: its `docs/REPORT.md`). It does the laptop's
+  whole job on an Android phone and draws on the TV through the same overlay
+  app and protocol described here. It reuses this program's interface files
+  (`app/web/`) with a phone mode, and the idea of `NameGuard`. It worked live
+  on a Galaxy S20 FE: about 105 ms per line with the phone's screen on. Its
+  translator (ML Kit) is weaker than this program's model.
+  The phone *remote* in `phone-app/` here is a different thing: it only
+  controls this program.
+- **Xbox was asked for and is not built**, in this program or on the phone.
+  Nothing in the code is Xbox-aware: `sources/` has the PS5 Remote Play
+  source and the file source only. An Xbox source would be a new
+  `FrameSource` behind the existing interface, and the rest of the pipeline
+  would not change. Two ways to get the picture:
+  1. Microsoft's home streaming ("Xbox Remote Play"): a Microsoft account
+     sign-in and a WebRTC video receiver. A different protocol from Sony's;
+     none of the PS5 code carries over. Needs an Xbox to develop against.
+  2. An HDMI capture card with passthrough (the `uvc` source in the original
+     brief): works for any console, needs the hardware, and only helps the
+     laptop.
+  Neither was started, and no Xbox was available to test with.
+- **Things seen while reviewing that are still open** in this program:
+  - The guide's TV step still assumes adb debugging is already switched on;
+    a TV that refuses the connection gets one sentence, not a walkthrough.
+  - The installed copy writes its logs and game profiles inside the install
+    folder (`%LOCALAPPDATA%\Programs\Tarjim`), so removing the program
+    removes the user's game profiles too.
+  - The region editor shows the game picture only while a session runs.
+  - Women's names in the glossary must be marked by hand.
+  - No update check: a new version means downloading the installer again.
+  - `README-AR.md` from the original brief was replaced by `README.md`.
