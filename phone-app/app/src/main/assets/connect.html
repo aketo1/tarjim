@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ترجِم</title>
+<style>
+  :root { --ink: #0a0b0f; --ink-2: #111319; --ink-3: #181b23; --line: rgba(243,241,234,.14); --paper: #f3f1ea; --muted: #8e919f; --amber: #ffc233; --live: #37d39a; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--ink); color: var(--paper); font: 16px/1.7 system-ui, sans-serif; display: grid; align-content: center; justify-items: center; padding: 28px 22px; text-align: center; gap: 10px; }
+  img { width: 88px; height: 88px; border-radius: 26px; margin-bottom: 6px; }
+  h1 { font-size: 25px; margin: 0; font-weight: 800; }
+  p { margin: 0; color: var(--muted); max-width: 34ch; }
+  .list { display: grid; gap: 10px; width: min(100%, 340px); margin-top: 14px; }
+  button, input { font: inherit; color: inherit; }
+  .host { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 18px; background: var(--ink-2); border: 1.5px solid var(--line); text-align: start; width: 100%; }
+  .host:active { border-color: var(--amber); }
+  .host i { width: 10px; height: 10px; border-radius: 50%; background: var(--live); flex: none; box-shadow: 0 0 0 5px rgba(55,211,154,.16); }
+  .host b { display: block; line-height: 1.4; }
+  .host small { color: var(--muted); direction: ltr; display: block; text-align: right; }
+  .btn { height: 52px; border-radius: 16px; border: 0; background: var(--amber); color: #1c1400; font-weight: 800; font-size: 16px; width: 100%; }
+  .btn.soft { background: var(--ink-3); color: var(--paper); border: 1px solid var(--line); }
+  .spin { width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--ink-3); border-top-color: var(--amber); animation: spin .8s linear infinite; margin: 14px auto 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .manual { display: flex; gap: 8px; }
+  .manual input { flex: 1; min-width: 0; height: 52px; border-radius: 16px; background: var(--ink-2); border: 1.5px solid var(--line); padding: 0 14px; direction: ltr; text-align: left; outline: 0; }
+  .manual input:focus { border-color: var(--amber); }
+  .manual .btn { width: 92px; }
+  details { width: min(100%, 340px); margin-top: 8px; color: var(--muted); font-size: 14px; }
+  summary { padding: 8px; }
+  ol { text-align: start; padding-inline-start: 20px; margin: 4px 0 12px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+  <img src="icon.png" alt="">
+  <h1 id="title">أدوّر على ترجِم…</h1>
+  <p id="text">تأكد إن الجوال واللابتوب على نفس الواي فاي.</p>
+  <div class="spin" id="spin"></div>
+  <div class="list" id="list"></div>
+  <div class="list" id="actions" hidden>
+    <button class="btn" id="again">دوّر مرة ثانية</button>
+  </div>
+  <details>
+    <summary>اكتب عنوان اللابتوب بنفسك</summary>
+    <ol>
+      <li>في ترجِم على اللابتوب افتح «الجوال».</li>
+      <li>فعّل «التحكم من الجوال».</li>
+      <li>اكتب هنا الأرقام اللي قبل النقطتين.</li>
+    </ol>
+    <div class="manual"><input id="ip" inputmode="decimal" placeholder="192.168.1.20" maxlength="15"><button class="btn" id="go">افتح</button></div>
+  </details>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const q = new URLSearchParams(location.search);
+const saved = q.get("host") || "";
+if (saved) $("ip").value = saved;
+
+function search() {
+  $("spin").hidden = false;
+  $("actions").hidden = true;
+  $("list").replaceChildren();
+  $("title").textContent = "أدوّر على ترجِم…";
+  $("text").textContent = "تأكد إن الجوال واللابتوب على نفس الواي فاي.";
+  if (window.TarjimApp) TarjimApp.discover(); else window.onTarjimFound([]);
+}
+window.onTarjimFound = hosts => {
+  $("spin").hidden = true;
+  $("actions").hidden = false;
+  if (!hosts.length) {
+    $("title").textContent = q.get("failed") === "1" ? "ما قدرت أوصل لترجِم" : "ما لقيت ترجِم";
+    $("text").textContent = "افتح ترجِم على اللابتوب، ومن «الجوال» فعّل «التحكم من الجوال». ولو ويندوز سألك عن السماح بالاتصال، اضغط «السماح».";
+    return;
+  }
+  $("title").textContent = "لقيته";
+  $("text").textContent = "اضغط على لابتوبك.";
+  for (const h of hosts) {
+    const b = document.createElement("button");
+    b.className = "host";
+    const dot = document.createElement("i"), box = document.createElement("div");
+    const name = document.createElement("b"), ip = document.createElement("small");
+    name.textContent = h.name;
+    ip.textContent = h.host;
+    box.append(name, ip);
+    b.append(dot, box);
+    b.addEventListener("click", () => TarjimApp.connect(h.host));
+    $("list").append(b);
+  }
+};
+$("again").addEventListener("click", search);
+$("go").addEventListener("click", () => { if (window.TarjimApp) TarjimApp.connect($("ip").value); });
+search();
+</script>
+</body>
+</html>

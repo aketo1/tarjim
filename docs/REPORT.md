@@ -424,3 +424,102 @@ screen, turned into renderer and detector settings by `laptop/tarjim/settings.py
   scene; `o` holds unsaved overrides so the preview follows the controls.
 - In plate mode the stroke fill is still drawn under the plate: a translucent
   plate alone left the English readable through it.
+
+## 14. Version 0.2: the program's own executable, new interface, phone control, names (added 2026-11-16)
+
+Where this section disagrees with sections 12 and 13, this section is right.
+
+### What changed for the user
+
+| Complaint | Cause | Fix |
+| --- | --- | --- |
+| Pinned to the taskbar it showed "Python" | The window belonged to `pythonw.exe` | `Tarjim.exe` in the repo root hosts Python in its own process (`laptop/launcher/Tarjim.cs`, built by `launcher/build.py` with the C# compiler that ships with Windows). Verified: the window's process is `Tarjim.exe`, with its icon in the taskbar |
+| A cmd / PowerShell window flashed on some buttons | `adb.exe` and PowerShell were started from a window-less process without `CREATE_NO_WINDOW` | Every child program now gets `paths.NO_WINDOW`. Verified: no console child processes |
+| The interface looked cheap | Generic gradient-glass look | Redesigned: near-black "cinema room" palette with one accent (subtitle amber), a TV that plays what the real TV shows, one signal path for the three devices, a sticky live preview in the look studio |
+| The screen on the TV looked like a debug page | Plain text and two default buttons | Arabic status screen: state in one sentence, the TV's address, three checks, D-pad buttons with a clear focus state. New launcher icon and banner |
+| Starting it twice opened a browser copy | Second start fell back to Chrome app mode | Second start asks the running copy to come forward (`POST /api/focus`) and exits |
+
+Other details: the title bar is painted in the app's colour (DWM), the window remembers its size and place and is kept inside the work area, closing while a session runs asks first in the app's own dialog, the health check is merged into the device path, a latency sparkline and a session clock, `tv revert` is a button in the Guide, keyboard `Ctrl+1..4` switches screens, and the new icon (the letter teh with amber dots, `launcher/make_icon.py`).
+
+### New files
+
+| File | What it holds |
+| --- | --- |
+| `Tarjim.exe` (not in git) | The program. Shortcuts on the desktop and Start menu point to it (`app/shortcut.py`) |
+| `laptop/launcher/` | `Tarjim.cs`, `build.py`, `make_icon.py`, `shots.py` (headless screenshots of every screen into `out/`) |
+| `laptop/tarjim/app/window.py` | The native window: title bar colour, geometry, close question, focus |
+| `laptop/tarjim/app/remote.py` | Phone control: pairing, tokens, discovery, QR |
+| `phone-app/` | Android phone app `dev.tarjim.phone` (Kotlin, framework only, minSdk 24) |
+
+### Phone control
+
+Off by default; switched on in the app's "الجوال" screen. Then the laptop also
+listens on the home network, port 47901 (HTTP), and answers a UDP broadcast
+`TARJIM?` on 47902 with its name.
+
+- The phone gets the same interface as the laptop (it is responsive), minus
+  what needs the laptop itself: quit, PS5 linking, TV setup/revert, managing
+  phones. Enforced on the server (`LOCAL_ONLY` in `app/server.py`), not only hidden.
+- Pairing: a 6-digit code shown on the laptop, single use, replaced after 6
+  wrong tries with a one-minute pause. The phone then holds a random token;
+  only its SHA-256 is stored in `config.json` (`phone.devices`). Requests need
+  the token (header `X-Tarjim-Token`, or `?k=` for the event stream and
+  images) and must be same-origin.
+- The QR code on the laptop encodes `http://<laptop>:47901/?pair=<code>`: the
+  phone's camera opens the interface in the browser already paired. The page
+  offers the Android app (`/tarjim.apk`, served from `phone-app`'s build output).
+- The Android app finds the laptop by broadcast (or a typed address), remembers
+  it, and shows the laptop's page in a WebView; a built-in page handles "laptop
+  not found". Extra on the phone: a "second screen" view with the current
+  Arabic line in large type (screen kept on).
+- **A standalone phone version (no laptop) was not built**, on purpose: it needs
+  a Remote Play client, OCR and translation running on the phone, which is a
+  separate project and could not be tested here. The phone is a remote and a
+  second screen for the laptop.
+- Windows asks once to allow `Tarjim` through the firewall when phone control
+  is first switched on; without "Allow" the phone cannot connect.
+
+### Translation: names, fixes, speed
+
+Measured on the 395 distinct lines in `out/sessions/`:
+
+- **Names.** "Dutch" was translated as a nationality in 10 of 10 lines, and
+  other names got the model's own spelling: 14 of 59 name mentions were wrong.
+  `NameGuard` (`translate.py`) tries each glossary name once in four plain
+  sentences and files it as `ok`, `variant` (one consistent other spelling,
+  swapped afterwards) or `proxy` (replaced in the English by a stand-in name the
+  model writes reliably, "Edward", then swapped back). After: 0 of 59 wrong.
+  Cost: 63 ms instead of 57 ms for lines with names; trying a game's names takes
+  about 5 s the first time and is remembered (`names` table in the cache).
+- **Women's names** can be marked in the glossary (profile key `female`): they
+  use a female stand-in ("Victoria") so verbs come out feminine.
+- Lines with names are cached per spelling, so editing a name applies at once
+  (before, a cached line kept the old spelling).
+- **The user's own wording.** The pencil beside a line in the feed stores a fix
+  (`fix` table, `POST /api/line/fix {en, ar, profile}`); it wins over the engine
+  from then on.
+- Brackets the model puts around names are removed when the English has none.
+- **Speed.** The engine was benchmarked alone on this laptop: 4 threads, beam 2
+  gives 56 ms median; 6 threads no gain; beam 1 saves 2 ms and changes 42% of
+  the outputs. So the engine is at its floor here and was left as it is. Only
+  8 of 419 sentences repeat across different lines, so sentence-level caching
+  would not help either. What still costs time live is sharing the CPU with the
+  video decoder, and battery power.
+
+### API added
+
+`GET /api/hello`, `/api/phone`, `/api/phone/qr.svg`, `/tarjim.apk`;
+`POST /api/pair {pin, name}`, `/api/phone {enabled}`, `/api/phone/forget {id}`,
+`/api/line/fix`, `/api/focus`, `/api/tv/revert`. Events added: `phone`,
+`ask-close`. `state` carries `started_at`. Glossary rows carry `f` (female).
+
+### Verified, and not
+
+- Verified here: 114 automated tests pass (new: names, fixes, phone access
+  rules, QR read-back); `Tarjim.exe` starts, owns the window, second start
+  focuses it; no console windows; the TV app update installed through
+  `tv setup` and both overlay windows still answer; both Android apps build.
+- **Not verified:** the phone app on a real phone (none was connected), the
+  firewall prompt and a phone actually reaching the laptop, the new TV status
+  screen as it looks on the TV (it was not opened, so as not to interrupt the
+  TV), and a live play session with the name handling (the PS5 was off).

@@ -83,7 +83,7 @@ class Adb:
             cmd += ["-s", self.serial]
         cmd += arg_list
         try:
-            proc = subprocess.run(cmd, capture_output=True, timeout=timeout)
+            proc = subprocess.run(cmd, capture_output=True, timeout=timeout, creationflags=paths.NO_WINDOW)
         except subprocess.TimeoutExpired as exc:
             self._log(arg_list, "timeout")
             raise AdbError(f"adb timed out: {' '.join(arg_list)}") from exc

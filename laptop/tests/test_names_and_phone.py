@@ -1,0 +1,184 @@
+"""Glossary names kept right, the user's own fixes, and the phone-control access rules."""
+
+import json
+import threading
+import urllib.error
+import urllib.request
+from http.server import ThreadingHTTPServer
+
+import pytest
+
+from tarjim import paths
+from tarjim.translate import Cache, CachedTranslator
+
+
+class FakeEngine:
+    """Translates like the real small model misbehaves: "Dutch" becomes a nationality,
+    "Marston" always gets one other spelling, stand-in names come out reliably."""
+
+    name = "fake"
+    WORDS = {"Dutch": None, "Marston": "مارستون", "Arthur": "آرثر", "Edward": "إدوارد", "Harold": "هارولد",
+             "Victoria": "فيكتوريا", "Sadie": "سادي"}
+
+    def __init__(self):
+        self.calls = []
+
+    def translate(self, text, context=None):
+        self.calls.append(text)
+        out = []
+        for word in text.replace(",", " ,").replace(".", " .").split():
+            if word == "Dutch":
+                out.append("الهولندية" if "thinking" in text or "told" in text else "هولندي")  # unreliable on purpose
+            elif word in self.WORDS:
+                out.append(f"({self.WORDS[word]})")  # the model likes brackets around names
+            elif word in ",.":
+                out.append(word)
+            else:
+                out.append({"Hello": "مرحباً", "is": "", "thinking": "يفكر", "about": "في", "it": "ذلك", "I": "",
+                            "told": "أخبرت", "to": "أن", "wait": "ينتظر", "We": "", "got": "أمسكنا"}.get(word, "كلمة"))
+        return " ".join(w for w in out if w)
+
+
+def make(glossary, female=()):
+    engine = FakeEngine()
+    return engine, CachedTranslator(engine, Cache(":memory:"), profile="g", glossary=glossary, female=set(female))
+
+
+def test_an_unreliable_name_goes_through_a_stand_in():
+    engine, tr = make({"Dutch": "دتش"})
+    assert tr.names.mode("Dutch", "دتش")[0] == "proxy"
+    arabic, hit, _ = tr.translate("We got Dutch.")
+    assert "دتش" in arabic and "هولند" not in arabic and "إدوارد" not in arabic
+    assert engine.calls[-1] == "We got Edward."  # the engine never saw the troublesome word
+    assert "(" not in arabic  # brackets the engine adds on its own are removed
+
+
+def test_a_consistent_other_spelling_is_swapped_and_a_good_name_is_left_alone():
+    engine, tr = make({"Marston": "مارستن", "Arthur": "آرثر"})
+    assert tr.names.mode("Marston", "مارستن") == ("variant", "مارستون")
+    assert tr.names.mode("Arthur", "آرثر")[0] == "ok"
+    assert "مارستن" in tr.translate("Hello, Marston.")[0]
+    assert engine.calls[-1] == "Hello, Marston."  # translated as it is, then corrected
+    assert "آرثر" in tr.translate("Hello, Arthur.")[0]
+
+
+def test_a_womans_name_uses_a_female_stand_in():
+    engine, tr = make({"Sadie": "سيدي"}, female={"Sadie"})
+    arabic = tr.translate("I told Sadie to wait.")[0]
+    assert engine.calls[-1] == "I told Victoria to wait."
+    assert "سيدي" in arabic and "فيكتوريا" not in arabic
+
+
+def test_editing_a_name_takes_effect_despite_the_cache():
+    engine, tr = make({"Dutch": "دتش"})
+    first = tr.translate("We got Dutch.")[0]
+    assert tr.translate("We got Dutch.")[1] is True  # second time: from the cache
+    tr.glossary = {"Dutch": "داتش"}
+    again, hit, _ = tr.translate("We got Dutch.")
+    assert hit is False and "داتش" in again and again != first
+
+
+def test_the_users_own_wording_wins_and_can_be_removed():
+    engine, tr = make({})
+    tr.translate("Hello there.")
+    tr.fix("Hello  there.", "هلا والله")  # spacing differences do not matter
+    assert tr.translate("Hello there.") [0] == "هلا والله"
+    tr.fix("Hello there.", "")
+    assert tr.translate("Hello there.")[0] != "هلا والله"
+
+
+# -- phone control -----------------------------------------------------------------
+
+
+@pytest.fixture()
+def phone(tmp_path, monkeypatch):
+    from tarjim.app import server
+
+    repo = tmp_path / "repo"
+    (repo / "profiles").mkdir(parents=True)
+    (repo / "profiles" / "default.yaml").write_text("title: Any game\nglossary: {}\n", encoding="utf-8")
+    home = tmp_path / "home"
+    monkeypatch.setattr(paths, "HOME_DIR", home)
+    monkeypatch.setattr(paths, "CONFIG_FILE", home / "config.json")
+    monkeypatch.setattr(paths, "REPO", repo)
+    monkeypatch.setattr(paths, "PHONE_APK", repo / "none.apk")
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.RemoteHandler)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{httpd.server_address[1]}"
+
+    def call(path, body=None, token=None, headers=None):
+        h = dict(headers or {})
+        if token:
+            h["X-Tarjim-Token"] = token
+        data = None
+        if body is not None:
+            data = json.dumps(body).encode("utf-8")
+            h["Content-Type"] = "application/json"
+        req = urllib.request.Request(base + path, data=data, headers=h, method="POST" if data is not None else "GET")
+        try:
+            with urllib.request.urlopen(req, timeout=5) as r:
+                return r.status, r.read()
+        except urllib.error.HTTPError as e:
+            return e.code, e.read()
+
+    yield server, call
+    server.access.set_enabled(False)
+    httpd.shutdown()
+
+
+def test_phone_control_is_closed_until_switched_on_and_paired(phone):
+    server, call = phone
+    assert call("/")[0] == 403 and call("/api/hello")[0] == 403  # switched off: nothing at all
+    server.access.set_enabled(True)
+    assert call("/")[0] == 200 and call("/app.js")[0] == 200  # the page itself is public
+    assert json.loads(call("/api/hello")[1])["paired"] is False
+    assert call("/api/state")[0] == 403 and call("/api/state?k=guess")[0] == 403
+    assert call("/api/start", {"profile": "default"})[0] == 403
+
+    assert call("/api/pair", {"pin": "not it"})[0] == 400
+    status, body = call("/api/pair", {"pin": server.access.pin, "name": "Test phone"})
+    token = json.loads(body)["token"]
+    assert status == 200 and len(token) > 30
+    assert call("/api/state", token=token)[0] == 200 and call(f"/api/state?k={token}")[0] == 200
+    assert json.loads(call("/api/hello", token=token)[1])["paired"] is True
+    # A paired phone still cannot do what needs the laptop itself, and other sites cannot use its token.
+    for path in ("/api/quit", "/api/phone", "/api/tv/setup", "/api/tv/revert", "/api/ps5/discover", "/api/focus"):
+        assert call(path, {}, token=token)[0] == 403
+    assert call("/api/state", token=token, headers={"Origin": "http://evil.example"})[0] == 403
+
+    assert [d["name"] for d in server.access.devices()] == ["Test phone"]
+    assert "hash" not in server.access.devices()[0] and token not in paths.CONFIG_FILE.read_text(encoding="utf-8")
+    server.access.forget(server.access.devices()[0]["id"])
+    assert call("/api/state", token=token)[0] == 403
+
+
+def test_pairing_code_is_single_use_and_wrong_guesses_lock_it(phone):
+    server, call = phone
+    server.access.set_enabled(True)
+    pin = server.access.pin
+    assert call("/api/pair", {"pin": pin})[0] == 200
+    assert call("/api/pair", {"pin": pin})[0] == 400  # a used code is dead
+    from tarjim.app import remote
+
+    old = server.access.pin
+    for _ in range(remote.MAX_TRIES):
+        call("/api/pair", {"pin": "x"})
+    assert server.access.pin != old
+    assert call("/api/pair", {"pin": server.access.pin})[0] == 400  # locked for a minute, even with the right code
+
+
+def test_qr_code_reads_back_as_the_pairing_link():
+    import cv2
+    import numpy as np
+
+    from tarjim.app import remote
+
+    link = "http://192.168.1.20:47901/?pair=123456"
+    svg = remote.qr_svg(link).decode("utf-8")
+    assert svg.startswith("<svg") and "#0a0b0f" in svg
+    import segno
+
+    matrix = np.array(segno.make(link, error="m").matrix, dtype=np.uint8)
+    img = np.kron(1 - matrix, np.ones((8, 8), np.uint8)) * 255
+    img = cv2.copyMakeBorder(img, 32, 32, 32, 32, cv2.BORDER_CONSTANT, value=255)
+    assert cv2.QRCodeDetector().detectAndDecode(img)[0] == link

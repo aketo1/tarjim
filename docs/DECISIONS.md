@@ -159,3 +159,21 @@ Non-obvious choices and the evidence behind them. Newest last.
   non-subtitles.
 - **OpenCV thread count does not matter** for this load (1, 2 or 12 threads:
   MT 85-90 ms, detect 3-4 ms), so it is left at the default.
+- **Own executable by hosting Python, not by wrapping it** (2026-11-16). A shortcut to
+  `pythonw.exe` makes Windows show "Python" when the program is pinned. `Tarjim.exe` is a
+  40-line C# program (compiled with the `csc.exe` that ships with Windows) that loads
+  `python312.dll` and calls `Py_Main` with `-m tarjim.app`, setting `__PYVENV_LAUNCHER__`
+  so the project's environment is used. Checked: the window's process is `Tarjim.exe` and
+  pywebview (pythonnet) works inside it.
+- **Glossary names through stand-ins** (2026-11-16). On 395 logged lines the model got 14 of
+  59 name mentions wrong ("Dutch" as a nationality 10 of 10). Replacing an unreliable name
+  by "Edward" before translating and swapping back gave 0 wrong, at 63 ms vs 57 ms.
+  Stand-ins were chosen by checking that the model writes them identically in seven
+  different sentences (Edward, Harold, Leonard, Jonathan; Victoria, Catherine for women).
+- **Translation engine settings unchanged** (2026-11-16). Alone on this laptop: 2 threads
+  76 ms, 4 threads 56 ms, 6 threads 56 ms; beam 1 54 ms but 34 of 80 outputs differ;
+  `int8_float32` 58 ms. Nothing to gain.
+- **Phone = remote control, not a second brain** (2026-11-16). A phone-only version needs a
+  Remote Play client, OCR and translation on the phone; not attempted. The phone shows the
+  laptop's own interface over the home network after pairing with a one-time code.
+

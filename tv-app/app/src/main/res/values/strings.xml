@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Tarjim</string>
+    <string name="app_name">ترجِم</string>
     <string name="a11y_label">Tarjim overlay (window B)</string>
     <string name="a11y_description">Draws the Tarjim subtitle overlay. It reads nothing from the screen and receives no events.</string>
     <string name="notif_channel">Tarjim overlay</string>
-    <string name="notif_text">Overlay service is running</string>
+    <string name="notif_text">جاهز لاستقبال الترجمة</string>
 </resources>

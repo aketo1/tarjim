@@ -84,6 +84,7 @@ class LiveSession:
         self.profile = ""
         self.lines: list[dict] = []
         self.stats: dict = {}
+        self.started_at = 0.0  # wall-clock time the picture first arrived (0: not running)
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
         self._source = None
@@ -95,12 +96,17 @@ class LiveSession:
     def snapshot(self) -> dict:
         return {
             "state": self.state, "step": self.step, "error": self.error, "profile": self.profile,
-            "lines": self.lines[-30:], "stats": self.stats,
+            "lines": self.lines[-30:], "stats": self.stats, "started_at": self.started_at,
         }
 
     def _set(self, state: str, step: str = "", error: str = "") -> None:
         self.state, self.step, self.error = state, step, error
-        self.hub.publish("state", {"state": state, "step": step, "error": error, "profile": self.profile})
+        if state == "running" and not self.started_at:
+            self.started_at = time.time()
+        elif state == "idle":
+            self.started_at = 0.0
+        self.hub.publish("state", {"state": state, "step": step, "error": error, "profile": self.profile,
+                                   "started_at": self.started_at})
 
     def start(self, profile: str) -> bool:
         with self._lock:
@@ -159,7 +165,32 @@ class LiveSession:
             pipe.read_scale = float(prof.get("read_scale", 1.0))
             pipe.detect_params = settings.detect_params(prof)
             pipe.translator.glossary = {str(k): str(v) for k, v in (prof.get("glossary") or {}).items()}
+            pipe.translator.female = {str(n) for n in (prof.get("female") or [])}
+        # New names are tried against the engine now, off the frame loop, so no line waits for it.
+        threading.Thread(target=self._prepare_names, args=(pipe.translator,), daemon=True).start()
         return True
+
+    @staticmethod
+    def _prepare_names(translator) -> None:
+        try:
+            translator.prepare_names()
+        except Exception:
+            pass  # a name that could not be tried is simply translated the plain way
+
+    def fix_line(self, profile: str, english: str, arabic: str) -> None:
+        """The user rewrote a line: remember it, and correct it in the list on screen."""
+        from ..translate import Cache, normalize_arabic, normalize_english
+
+        ar = normalize_arabic(arabic)
+        cache = Cache()
+        try:
+            cache.put_fix(profile, normalize_english(english), ar or None)
+        finally:
+            cache.close()
+        if ar:
+            for item in self.lines:
+                if item["en"] == english:
+                    item["ar"] = ar
 
     # -- the session thread ---------------------------------------------------
 
@@ -192,7 +223,9 @@ class LiveSession:
                 self._engines[name] = engine
             glossary = {str(k): str(v) for k, v in (prof.get("glossary") or {}).items()}
             translator = CachedTranslator(self._engines[name], Cache(), profile=profile,
-                                          style=str(prof.get("style", "msa")), glossary=glossary)
+                                          style=str(prof.get("style", "msa")), glossary=glossary,
+                                          female={str(n) for n in (prof.get("female") or [])})
+            translator.prepare_names()  # first time for a game: a few seconds; afterwards remembered
             if self._stop.is_set():
                 return
 

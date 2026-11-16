@@ -16,8 +16,21 @@ HOME_DIR = Path.home() / ".tarjim"
 CONFIG_FILE = HOME_DIR / "config.json"
 TV_STATE_FILE = HOME_DIR / "tv-state.json"
 APK = REPO / "tv-app" / "app" / "build" / "outputs" / "apk" / "debug" / "app-debug.apk"
+PHONE_APK = REPO / "phone-app" / "app" / "build" / "outputs" / "apk" / "debug" / "app-debug.apk"
 
 _EXE = ".exe" if sys.platform == "win32" else ""
+
+# Child programs (adb, PowerShell) started from the window-less app must not flash a console window.
+NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0  # CREATE_NO_WINDOW
+
+
+def has_console() -> bool:
+    """True when this process owns a console (the command line), False inside the desktop app."""
+    if sys.platform != "win32":
+        return True
+    import ctypes
+
+    return bool(ctypes.windll.kernel32.GetConsoleWindow())
 
 
 def adb_path() -> Path | None:

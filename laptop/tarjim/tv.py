@@ -44,7 +44,10 @@ def build() -> None:
     wrapper = project / ("gradlew.bat" if sys.platform == "win32" else "gradlew")
     env = dict(os.environ, JAVA_HOME=str(jdk), ANDROID_HOME=str(sdk), ANDROID_SDK_ROOT=str(sdk))
     step("أبني تطبيق التلفزيون (أول مرة تاخذ كم دقيقة)...")
-    proc = subprocess.run([str(wrapper), "--no-daemon", "-q", "assembleDebug"], cwd=project, env=env)
+    proc = subprocess.run(
+        [str(wrapper), "--no-daemon", "-q", "assembleDebug"], cwd=project, env=env,
+        creationflags=0 if paths.has_console() else paths.NO_WINDOW,
+    )
     if proc.returncode != 0 or not paths.APK.exists():
         raise TvError("فشل بناء تطبيق التلفزيون.")
     ok(f"التطبيق جاهز: {paths.APK}")

@@ -29,7 +29,8 @@ def build_translator(engine: str | None, profile: str, cache_path: str | None = 
     name = engine or paths.load_config().get("mt_engine") or default_engine_name()
     engine_obj = make_engine(name)
     engine_obj.translate("Hello.")  # warm-up: the first call is several times slower
-    return CachedTranslator(engine_obj, Cache(cache_path), profile=profile, style=style, glossary=glossary)
+    return CachedTranslator(engine_obj, Cache(cache_path), profile=profile, style=style, glossary=glossary,
+                            female={str(n) for n in (prof.get("female") or [])})
 
 
 def _print_summary(pipe: Pipeline) -> None:

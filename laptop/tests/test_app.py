@@ -36,7 +36,7 @@ def test_profile_roundtrip_and_limits(sandbox):
     assert view["title"] == "My game" and view["font"] == "noto-naskh"
     assert view["font_size"] == 90 and view["font_auto"] is False  # clamped
     assert view["read_scale"] == 2.5 and view["background"] == "none" and view["settle_ms"] == 280
-    assert view["glossary"] == [{"en": "Morgan", "ar": "مورغان"}]  # incomplete rows are dropped
+    assert view["glossary"] == [{"en": "Morgan", "ar": "مورغان", "f": False}]  # incomplete rows are dropped
 
     server.profile_save({"name": "default", "font": "not-a-font", "font_size": None})
     view = server.profile_view("default")

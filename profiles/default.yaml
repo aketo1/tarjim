@@ -1,6 +1,9 @@
 title: أي لعبة (عام)
-# Default profile: used when no game profile is chosen.
-style: msa          # msa = simple Modern Standard Arabic; gulf = Gulf colloquial
+style: msa
 glossary: {}
-settle_ms: 60      # how long a line must stay unchanged before it is shown (raise for typewriter text)
-# font_size: 44    # fix the Arabic size by hand; otherwise it is measured once and remembered
+settle_ms: 280.0
+font: harmattan-bold
+effect: none
+background: cover
+plate_opacity: 0.62
+text_color: '#ffffff'

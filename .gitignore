@@ -15,3 +15,10 @@ samples/recordings/
 out/
 *.log
 models/
+phone-app/.gradle/
+phone-app/build/
+phone-app/app/build/
+phone-app/local.properties
+phone-app/.kotlin/
+tv-app/.kotlin/
+Tarjim.exe

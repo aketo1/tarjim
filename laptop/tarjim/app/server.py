@@ -20,6 +20,8 @@ from urllib.parse import parse_qs, urlparse
 
 from .. import paths
 from ..protocol import DEFAULT_PORT
+from . import remote as remote_mod
+from . import window as window_mod
 from .session import Hub, LiveSession, Tasks, friendly_error
 
 HOST = "127.0.0.1"
@@ -30,7 +32,17 @@ IDLE_EXIT_S = 40.0  # quit when no window has been open for this long and nothin
 hub = Hub()
 live = LiveSession(hub)
 tasks = Tasks(hub)
+access = remote_mod.RemoteAccess()
+access.on_change = lambda: hub.publish("phone", {})
 _shutdown = threading.Event()
+_remote_server: ThreadingHTTPServer | None = None
+_remote_lock = threading.Lock()
+
+# What a paired phone may not do: these need the laptop itself (a browser, the TV setup, the app's life).
+LOCAL_ONLY = ("/api/quit", "/api/focus", "/api/ps5/", "/api/tv/setup", "/api/tv/revert", "/api/tv/test",
+              "/api/phone", "/api/guide-seen")
+# What anyone on the home network may fetch without pairing: the page itself and the phone app.
+PUBLIC_REMOTE = ("/api/hello", "/api/pair")
 
 
 # -- helpers --------------------------------------------------------------------
@@ -109,7 +121,8 @@ def profile_view(name: str) -> dict:
     return {
         "name": name,
         "title": prof.get("title") or name,
-        "glossary": [{"en": str(k), "ar": str(v)} for k, v in (prof.get("glossary") or {}).items()],
+        "glossary": [{"en": str(k), "ar": str(v), "f": str(k) in {str(n) for n in (prof.get("female") or [])}}
+                     for k, v in (prof.get("glossary") or {}).items()],
         "font": prof.get("font", "harmattan"),
         "font_size": prof.get("font_size") or cfg.get("font_sizes", {}).get(name),
         "font_auto": not prof.get("font_size"),
@@ -138,12 +151,15 @@ def profile_save(body: dict) -> dict:
     if "title" in body:
         prof["title"] = str(body["title"]).strip()[:60] or name
     if "glossary" in body:
-        glossary = {}
+        glossary, female = {}, []
         for row in body["glossary"]:
             en, ar = str(row.get("en", "")).strip(), str(row.get("ar", "")).strip()
             if en and ar:
                 glossary[en[:60]] = ar[:60]
+                if row.get("f"):
+                    female.append(en[:60])
         prof["glossary"] = glossary
+        prof["female"] = female
     if "font" in body and body["font"] in FONT_FILES:
         prof["font"] = body["font"]
     if "font_size" in body:
@@ -310,6 +326,18 @@ def do_tv_test():
     return {"ok": True}
 
 
+def do_tv_revert():
+    """Remove our app from the TV and put back every setting the setup changed."""
+    from .. import tv
+
+    tv.revert(None)
+    cfg = paths.load_config()
+    for key in ("tv_ip", "tv", "overlay"):
+        cfg.pop(key, None)
+    paths.save_config(cfg)
+    return {"ok": True}
+
+
 def ps5_discover() -> dict:
     from ..sources import ps5
 
@@ -376,12 +404,31 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args) -> None:  # keep the console quiet
         return
 
-    def _local_only(self) -> bool:
-        host = (self.headers.get("Host") or "").split(":")[0]
+    remote = False  # True in the handler of the home-network listener
+
+    def _token(self) -> str | None:
+        token = self.headers.get("X-Tarjim-Token")
+        if token:
+            return token
+        values = parse_qs(urlparse(self.path).query).get("k")
+        return values[0] if values else None
+
+    def _allowed(self, path: str) -> bool:
+        host = self.headers.get("Host") or ""
         origin = self.headers.get("Origin")
-        if host not in ("127.0.0.1", "localhost"):
+        if not self.remote:
+            if host.split(":")[0] not in ("127.0.0.1", "localhost"):
+                return False
+            return origin is None or origin in (f"http://127.0.0.1:{PORT}", f"http://localhost:{PORT}")
+        # From the home network: same-origin requests only, the laptop-only actions never,
+        # and everything under /api/ needs a paired phone's token.
+        if origin is not None and origin != f"http://{host}":
             return False
-        return origin is None or origin in (f"http://127.0.0.1:{PORT}", f"http://localhost:{PORT}")
+        if not access.enabled or any(path.startswith(p) for p in LOCAL_ONLY):
+            return False
+        if not path.startswith("/api/") or path in PUBLIC_REMOTE:
+            return True
+        return access.allowed(self._token())
 
     def _send(self, code: int, body: bytes, ctype: str, cache: bool = False) -> None:
         self.send_response(code)
@@ -402,13 +449,28 @@ class Handler(BaseHTTPRequestHandler):
         return data if isinstance(data, dict) else {}
 
     def do_GET(self) -> None:
-        if not self._local_only():
-            return self._send(403, b"forbidden", "text/plain")
         url = urlparse(self.path)
+        if not self._allowed(url.path):
+            return self._send(403, b"forbidden", "text/plain")
         q = {k: v[0] for k, v in parse_qs(url.query).items()}
         try:
             if url.path == "/api/events":
                 return self._events()
+            if url.path == "/api/hello":
+                return self._json({"tarjim": 1, "remote": self.remote, "name": socket.gethostname(),
+                                   "paired": (not self.remote) or access.allowed(self._token()),
+                                   "apk": paths.PHONE_APK.exists()})
+            if url.path == "/tarjim.apk":
+                if not paths.PHONE_APK.exists():
+                    return self._send(404, b"not built", "text/plain")
+                return self._send(200, paths.PHONE_APK.read_bytes(), "application/vnd.android.package-archive")
+            if url.path == "/api/phone":
+                return self._json(access.view())
+            if url.path == "/api/phone/qr.svg":
+                view = access.view()
+                if not view["pair_url"]:
+                    return self._send(404, b"", "text/plain")
+                return self._send(200, remote_mod.qr_svg(view["pair_url"]), "image/svg+xml")
             if url.path == "/api/state":
                 from ..translate import list_profiles
 
@@ -416,7 +478,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({
                     "live": live.snapshot(), "task": tasks.snapshot(), "profiles": list_profiles(),
                     "last_profile": cfg.get("last_profile"), "guide_seen": bool(cfg.get("guide_seen")),
-                    "setup_done": bool(cfg.get("tv_ip") and cfg.get("ps5_user")),
+                    "setup_done": bool(cfg.get("tv_ip") and cfg.get("ps5_user")), "remote": self.remote,
+                    "now": time.time(),
                 })
             if url.path == "/api/check":
                 return self._json(checks())
@@ -488,11 +551,37 @@ class Handler(BaseHTTPRequestHandler):
             hub.unsubscribe(q)
 
     def do_POST(self) -> None:
-        if not self._local_only():
-            return self._send(403, b"forbidden", "text/plain")
         path = urlparse(self.path).path
+        if not self._allowed(path):
+            return self._send(403, b"forbidden", "text/plain")
         try:
             body = self._body()
+            if path == "/api/pair":
+                try:
+                    token = access.pair(str(body.get("pin", "")), str(body.get("name", "")))
+                except ValueError as exc:
+                    return self._json({"error": str(exc)}, 400)
+                return self._json({"token": token})
+            if path == "/api/phone":
+                access.set_enabled(bool(body.get("enabled")))
+                sync_remote_server()
+                return self._json(access.view())
+            if path == "/api/phone/forget":
+                access.forget(str(body.get("id", "")))
+                return self._json(access.view())
+            if path == "/api/line/fix":
+                en, ar = str(body.get("en", ""))[:400], str(body.get("ar", ""))[:400]
+                profile = str(body.get("profile") or live.profile or "default")
+                if not en.strip():
+                    return self._json({"error": "ما فيه سطر."}, 400)
+                live.fix_line(profile, en, ar)
+                return self._json({"ok": True})
+            if path == "/api/focus":
+                return self._json({"ok": window_mod.focus()})
+            if path == "/api/tv/revert":
+                if live.state != "idle":
+                    return self._json({"error": "وقّف الترجمة أول."}, 400)
+                return self._json({"started": tasks.run("tv-revert", do_tv_revert)})
             if path == "/api/start":
                 profile = str(body.get("profile") or "default")
                 cfg = paths.load_config()
@@ -554,7 +643,7 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/quit":
                 live.stop()
                 self._json({"ok": True})
-                threading.Thread(target=_quit_soon, daemon=True).start()
+                threading.Thread(target=_quit_now, daemon=True).start()
                 return None
             return self._json({"error": "unknown"}, 404)
         except Exception as exc:
@@ -581,7 +670,7 @@ def _open_url(url: str) -> None:
     """Open a normal browser tab (used for Sony's sign-in page)."""
     chrome = _chrome()
     if chrome:
-        subprocess.Popen([chrome, "--new-window", url])
+        subprocess.Popen([chrome, "--new-window", url], creationflags=paths.NO_WINDOW)
     else:
         webbrowser.open(url)
 
@@ -607,6 +696,28 @@ def _quit_soon() -> None:
     _shutdown.set()
 
 
+def _quit_now() -> None:
+    """The page asked to quit (its own "close" dialog): let the session clear the TV, then close."""
+    global _closing_confirmed
+    deadline = time.monotonic() + 6
+    while live.state != "idle" and time.monotonic() < deadline:
+        time.sleep(0.1)
+    _closing_confirmed = True
+    window_mod.close()
+    _shutdown.set()
+
+
+_closing_confirmed = False
+
+
+def _may_close() -> bool:
+    """Closing the window while a session runs: ask first, in the page's own dialog."""
+    if _closing_confirmed or live.state == "idle":
+        return True
+    hub.publish("ask-close", {})
+    return False
+
+
 def _watch_idle() -> None:
     """Browser fallback only: close the program when its window has been gone for a while."""
     while not _shutdown.wait(5.0):
@@ -615,31 +726,43 @@ def _watch_idle() -> None:
                 _shutdown.set()
 
 
-def _native_window() -> bool:
-    """Show the interface in the program's own desktop window. Blocks until it is closed."""
-    try:
-        import webview
-    except Exception:
-        return False
-    icon = WEB / "icon.ico"
-    try:
-        webview.create_window(
-            "ترجِم", f"http://{HOST}:{PORT}/", width=1200, height=860, min_size=(960, 680),
-            background_color="#0a0f1c", text_select=True,
-        )
-        kwargs = {"icon": str(icon)} if icon.exists() else {}
-        try:
-            webview.start(**kwargs)
-        except TypeError:  # older pywebview without the icon argument
-            webview.start()
-        return True
-    except Exception:
-        return False
+# -- phone control (home-network listener) ---------------------------------------------
+
+
+class RemoteHandler(Handler):
+    remote = True
+
+
+_discovery_stop: threading.Event | None = None
+
+
+def sync_remote_server() -> None:
+    """Start or stop the home-network listener to match the user's switch."""
+    global _remote_server, _discovery_stop
+    with _remote_lock:
+        if access.enabled and _remote_server is None:
+            try:
+                server = ThreadingHTTPServer(("0.0.0.0", remote_mod.REMOTE_PORT), RemoteHandler)
+            except OSError:
+                return  # port taken; the phone screen shows that the address is unavailable
+            server.daemon_threads = True
+            threading.Thread(target=server.serve_forever, name="tarjim-remote", daemon=True).start()
+            _remote_server = server
+            _discovery_stop = threading.Event()
+            threading.Thread(target=remote_mod.serve_discovery, args=(_discovery_stop, access),
+                             name="tarjim-discovery", daemon=True).start()
+        elif not access.enabled and _remote_server is not None:
+            server, _remote_server = _remote_server, None
+            if _discovery_stop is not None:
+                _discovery_stop.set()
+            threading.Thread(target=server.shutdown, daemon=True).start()
+            server.server_close()
 
 
 def _set_app_id() -> None:
-    """Give the window its own taskbar entry and icon instead of Python's."""
-    if sys.platform == "win32":
+    """Only when started through pythonw: give the window its own taskbar entry instead of Python's.
+    Under Tarjim.exe the executable itself is the identity, which is what makes pinning work."""
+    if sys.platform == "win32" and not os.environ.get("TARJIM_HOST"):
         try:
             import ctypes
 
@@ -648,11 +771,23 @@ def _set_app_id() -> None:
             pass
 
 
+def _ask_running_copy_to_show() -> None:
+    import urllib.request
+
+    try:
+        req = urllib.request.Request(f"http://{HOST}:{PORT}/api/focus", data=b"{}",
+                                     headers={"Content-Type": "application/json"}, method="POST")
+        urllib.request.urlopen(req, timeout=2).read()
+    except OSError:
+        pass
+
+
 def main(window: bool = True) -> int:
     os.environ.setdefault("PYTHONUTF8", "1")
-    if _port_open(HOST, PORT, 0.4):  # already running: its window is somewhere on screen
+    os.environ.pop("__PYVENV_LAUNCHER__", None)  # set by Tarjim.exe for this process only
+    if _port_open(HOST, PORT, 0.4):  # already running: bring its window forward instead of a second copy
         if window:
-            open_browser_window()
+            _ask_running_copy_to_show()
         return 0
     try:
         server = ThreadingHTTPServer((HOST, PORT), Handler)
@@ -661,8 +796,11 @@ def main(window: bool = True) -> int:
         return 1
     server.daemon_threads = True
     threading.Thread(target=server.serve_forever, name="tarjim-http", daemon=True).start()
+    sync_remote_server()
     _set_app_id()
-    shown = _native_window() if window else False  # returns when the user closes the window
+    shown = False
+    if window:  # returns when the user closes the window
+        shown = window_mod.run(f"http://{HOST}:{PORT}/", WEB / "icon.ico", _may_close)
     if not shown and not _shutdown.is_set():
         if window:
             open_browser_window()

@@ -71,7 +71,40 @@ class Cache:
             "CREATE TABLE IF NOT EXISTS tr (profile TEXT, en TEXT, engine TEXT, style TEXT, ar TEXT, ts REAL,"
             " PRIMARY KEY (profile, en, engine, style))"
         )
+        # A line the user corrected by hand always wins over the engine.
+        self._db.execute(
+            "CREATE TABLE IF NOT EXISTS fix (profile TEXT, en TEXT, ar TEXT, ts REAL, PRIMARY KEY (profile, en))"
+        )
+        # How the engine writes a glossary name on its own (see NameGuard).
+        self._db.execute(
+            "CREATE TABLE IF NOT EXISTS names (engine TEXT, en TEXT, mode TEXT, variant TEXT,"
+            " PRIMARY KEY (engine, en))"
+        )
         self._db.commit()
+
+    def get_fix(self, profile: str, en: str) -> str | None:
+        with self._lock:
+            row = self._db.execute("SELECT ar FROM fix WHERE profile=? AND en=?", (profile, en)).fetchone()
+        return row[0] if row else None
+
+    def put_fix(self, profile: str, en: str, ar: str | None) -> None:
+        """Store the user's own Arabic for a line; None or empty removes it."""
+        with self._lock:
+            if ar:
+                self._db.execute("INSERT OR REPLACE INTO fix VALUES (?,?,?,?)", (profile, en, ar, time.time()))
+            else:
+                self._db.execute("DELETE FROM fix WHERE profile=? AND en=?", (profile, en))
+            self._db.commit()
+
+    def get_name(self, engine: str, en: str) -> tuple[str, str] | None:
+        with self._lock:
+            row = self._db.execute("SELECT mode, variant FROM names WHERE engine=? AND en=?", (engine, en)).fetchone()
+        return (row[0], row[1] or "") if row else None
+
+    def put_name(self, engine: str, en: str, mode: str, variant: str) -> None:
+        with self._lock:
+            self._db.execute("INSERT OR REPLACE INTO names VALUES (?,?,?,?)", (engine, en, mode, variant))
+            self._db.commit()
 
     def get(self, profile: str, en: str, engine: str, style: str) -> str | None:
         with self._lock:
@@ -227,33 +260,155 @@ def apply_glossary(arabic: str, english: str, glossary: dict[str, str]) -> str:
     return arabic
 
 
+# -- names ---------------------------------------------------------------------------
+
+# Stand-in names the engine was measured to write the same way in every sentence.
+PROXIES = (("Edward", "إدوارد"), ("Harold", "هارولد"), ("Leonard", "ليونارد"), ("Jonathan", "جوناثان"))
+PROXIES_FEMALE = (("Victoria", "فيكتوريا"), ("Catherine", "كاثرين"))  # so verbs agree with a woman's name
+_PROBES = ("Hello, {}.", "{} is thinking about it.", "I told {} to wait.", "We got {}.")
+_AR_EDGE = "()«»\"'.,،؛؟!:… "
+
+
+def _words(arabic: str) -> set[str]:
+    return {w.strip(_AR_EDGE) for w in normalize_arabic(arabic).split()} - {""}
+
+
+class NameGuard:
+    """Keeps glossary names right.
+
+    A small translation model treats some names as words ("Dutch" came out as
+    "the Dutch woman" in every measured line) and spells others its own way.
+    Each name is tried once in a few plain sentences and filed as:
+
+    - "ok":      the engine already writes the agreed Arabic form;
+    - "variant": it always writes one other spelling, which is swapped afterwards;
+    - "proxy":   it is unreliable, so the name is replaced in the English by a
+                 stand-in name before translating, and swapped back in the Arabic.
+    """
+
+    def __init__(self, engine: Translator, cache: Cache) -> None:
+        self.engine = engine
+        self.cache = cache
+        self._proxy_out: dict[str, str] = {}
+        self._memo: dict[tuple[str, str], tuple[str, str]] = {}
+
+    def mode(self, en: str, ar: str) -> tuple[str, str]:
+        if (en, ar) in self._memo:
+            return self._memo[(en, ar)]
+        stored = self.cache.get_name(self.engine.name, en)
+        if stored is None:
+            stored = self._probe(en)
+            self.cache.put_name(self.engine.name, en, *stored)
+        mode, variant = stored
+        if mode == "variant" and variant == ar:
+            mode = "ok"
+        self._memo[(en, ar)] = (mode, variant)
+        return mode, variant
+
+    def _probe(self, en: str) -> tuple[str, str]:
+        """The one word the engine writes for this name in every trial sentence, if there is one:
+        the word that is in each translation with the name and in none with the stand-in."""
+        proxy_en = PROXIES[0][0]
+        common: set[str] | None = None
+        for probe in _PROBES:
+            if probe not in self._proxy_out:
+                self._proxy_out[probe] = self.engine.translate(probe.format(proxy_en))
+            own = _words(self.engine.translate(probe.format(en))) - _words(self._proxy_out[probe])
+            common = own if common is None else common & own
+            if not common:
+                return "proxy", ""
+        return ("variant", common.pop()) if common and len(common) == 1 else ("proxy", "")
+
+
+def _name_rx(en: str) -> re.Pattern:
+    return re.compile(rf"(?<![A-Za-z]){re.escape(en)}(?![A-Za-z])", flags=re.IGNORECASE)
+
+
 class CachedTranslator:
-    """Cache first, then the engine; always returns cleaned Arabic."""
+    """The user's own fix first, then the cache, then the engine; always returns cleaned Arabic."""
 
     def __init__(self, engine: Translator, cache: Cache, profile: str = "default", style: str = "msa",
-                 glossary: dict[str, str] | None = None) -> None:
+                 glossary: dict[str, str] | None = None, female: set[str] | None = None) -> None:
         self.engine = engine
         self.cache = cache
         self.profile = profile
         self.style = style
         self.glossary = glossary or {}
+        self.female = set(female or ())  # glossary names that belong to women
+        self.names = NameGuard(engine, cache)
         self.history: list[tuple[str, str]] = []
+
+    def prepare_names(self) -> None:
+        """Try every glossary name once now, so the first line with a name is not slowed down."""
+        for en, ar in list(self.glossary.items()):
+            self.names.mode(en, ar)
+
+    def _matched(self, key: str) -> list[tuple[str, str]]:
+        found = [(en, ar) for en, ar in self.glossary.items() if en and ar and _name_rx(en).search(key)]
+        return sorted(found, key=lambda pair: -len(pair[0]))  # "Mary Beth" before "Mary"
+
+    def _engine_key(self, matched: list[tuple[str, str]]) -> str:
+        """Lines with glossary names are cached per spelling, so editing a name takes effect at once."""
+        if not matched:
+            return self.engine.name
+        import hashlib
+
+        marked = sorted((en, ar, en in self.female) for en, ar in matched)
+        sig = hashlib.sha1(repr(marked).encode("utf-8")).hexdigest()[:10]
+        return f"{self.engine.name}#n2-{sig}"
+
+    def _translate_with_names(self, key: str, matched: list[tuple[str, str]]) -> str:
+        modes = {en: self.names.mode(en, ar) for en, ar in matched}
+        free = [p for p in PROXIES if not _name_rx(p[0]).search(key)]
+        free_f = [p for p in PROXIES_FEMALE if not _name_rx(p[0]).search(key)]
+        swaps: list[tuple[str, str]] = []  # (stand-in Arabic, agreed Arabic)
+        source = key
+        for en, ar in matched:
+            pool = free_f if en in self.female else free
+            # A woman's name always goes through a stand-in: the engine then gets her verbs right.
+            if (modes[en][0] == "proxy" or en in self.female) and pool:
+                proxy_en, proxy_ar = pool.pop(0)
+                source = _name_rx(en).sub(proxy_en, source)
+                swaps.append((proxy_ar, ar))
+        raw = self.engine.translate(source, self.history[-4:])
+        if swaps and all(proxy_ar in raw for proxy_ar, _ in swaps):
+            for proxy_ar, ar in swaps:
+                raw = raw.replace(proxy_ar, ar)
+        elif swaps:
+            raw = self.engine.translate(key, self.history[-4:])  # a stand-in got lost: plain translation
+        for en, ar in matched:
+            mode, variant = modes[en]
+            if mode == "variant" and variant and ar not in raw:
+                raw = raw.replace(variant, ar)
+        return apply_glossary(raw, key, dict(matched))
 
     def translate(self, text: str) -> tuple[str, bool, float]:
         """Returns (arabic, cache_hit, milliseconds)."""
         t0 = time.perf_counter()
         key = normalize_english(text)
-        hit = self.cache.get(self.profile, key, self.engine.name, self.style)
+        fixed = self.cache.get_fix(self.profile, key)
+        if fixed is not None:
+            return fixed, True, (time.perf_counter() - t0) * 1000.0
+        matched = self._matched(key)
+        engine_key = self._engine_key(matched)
+        hit = self.cache.get(self.profile, key, engine_key, self.style)
         if hit is not None:
             return hit, True, (time.perf_counter() - t0) * 1000.0
-        raw = self.engine.translate(key, self.history[-4:])
-        ar = normalize_arabic(apply_glossary(raw, key, self.glossary))
+        raw = self._translate_with_names(key, matched) if matched else self.engine.translate(key, self.history[-4:])
+        if "(" not in key:
+            raw = raw.replace("(", "").replace(")", "")  # the engine brackets names on its own
+        ar = normalize_arabic(raw)
         if not ar:
             raise TranslateError(f"empty translation for {key!r}")
-        self.cache.put(self.profile, key, self.engine.name, self.style, ar)
+        self.cache.put(self.profile, key, engine_key, self.style, ar)
         self.history.append((key, ar))
         del self.history[:-8]
         return ar, False, (time.perf_counter() - t0) * 1000.0
+
+    def fix(self, english: str, arabic: str | None) -> None:
+        """Remember the user's own wording for a line (None: forget it)."""
+        ar = normalize_arabic(arabic or "")
+        self.cache.put_fix(self.profile, normalize_english(english), ar or None)
 
 
 def dump_json(obj) -> str:

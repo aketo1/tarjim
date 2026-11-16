@@ -24,3 +24,8 @@ Not used yet; candidates for later milestones and their licences:
 `chiaki-ng` AGPL-3.0, RapidOCR Apache-2.0,
 CTranslate2 MIT, NLLB-200 weights CC-BY-NC-4.0, OPUS-MT weights CC-BY-4.0,
 Arabic fonts (Harmattan, Noto, IBM Plex Sans Arabic) OFL-1.1.
+
+## Added 2026-11-16
+
+- `segno` 1.6.6 (QR codes for phone pairing): BSD-3-Clause.
+- `pywebview` (BSD-3-Clause) and `psutil` (BSD-3-Clause) are now listed as direct dependencies; they were already installed.

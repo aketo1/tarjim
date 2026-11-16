@@ -2,212 +2,211 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0b0f">
 <title>ترجِم</title>
+<link rel="icon" href="icon.png">
 <link rel="stylesheet" href="app.css">
 </head>
-<body>
-<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<body class="booting">
+<div class="grain" aria-hidden="true"></div>
 
 <aside class="rail">
-  <div class="brand" title="ترجِم">
-    <svg viewBox="0 0 48 48" aria-hidden="true">
-      <defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34e0c4"/><stop offset="1" stop-color="#ffc857"/></linearGradient></defs>
-      <rect x="4" y="8" width="40" height="28" rx="7" fill="none" stroke="url(#g1)" stroke-width="3"/>
-      <path d="M13 24h22" stroke="url(#g1)" stroke-width="3.4" stroke-linecap="round"/>
-      <path d="M19 30h10" stroke="#eef4ff" stroke-width="3.4" stroke-linecap="round" opacity=".85"/>
-      <path d="M18 42h12" stroke="url(#g1)" stroke-width="3" stroke-linecap="round"/>
-    </svg>
-    <span>ترجِم</span>
-  </div>
+  <div class="brand" title="ترجِم"><img src="icon.png" alt=""><span>ترجِم</span></div>
   <nav>
     <button class="nav on" data-view="home">
-      <svg viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg><span>الرئيسية</span>
+      <svg viewBox="0 0 24 24"><path d="M4 11.2 12 4l8 7.2V19a1.5 1.5 0 0 1-1.5 1.5H15v-5.5H9v5.5H5.5A1.5 1.5 0 0 1 4 19z"/></svg><span>الرئيسية</span>
     </button>
     <button class="nav" data-view="game">
-      <svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h14"/><circle cx="9" cy="7" r="2.2"/><circle cx="15" cy="12" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg><span>الإعدادات</span>
+      <svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17" r="2"/></svg><span>المظهر</span>
     </button>
-    <button class="nav" data-view="guide">
-      <svg viewBox="0 0 24 24"><path d="M5 5.5A2.5 2.5 0 0 1 7.5 3H19v15H7.5A2.5 2.5 0 0 0 5 20.5z"/><path d="M5 20.5A2.5 2.5 0 0 0 7.5 23H19"/><path d="M9.5 8h6M9.5 12h4"/></svg><span>الدليل</span>
+    <button class="nav only-remote" data-view="screen">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 13h8M10 21h4"/></svg><span>شاشة ثانية</span>
+    </button>
+    <button class="nav only-local" data-view="phone">
+      <svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg><span>الجوال</span>
+    </button>
+    <button class="nav only-local" data-view="guide">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2 1-1.2 1.9M12 17h.01"/></svg><span>الدليل</span>
     </button>
   </nav>
-  <button class="nav quit" id="quit" title="إغلاق البرنامج">
-    <svg viewBox="0 0 24 24"><path d="M12 3v9"/><path d="M6.3 7.2a8 8 0 1 0 11.4 0"/></svg><span>إغلاق</span>
-  </button>
+  <div class="rail-foot only-local" id="power-chip" title=""><svg viewBox="0 0 24 24"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6z"/></svg></div>
 </aside>
 
 <main>
-  <!-- ============================ HOME ============================ -->
+  <!-- ================================ HOME ================================ -->
   <section class="view on" id="view-home">
     <header class="top">
-      <div>
-        <h1>ترجمة عربية فوق لعبتك</h1>
-        <p class="sub" id="home-sub">اختر اللعبة واضغط الزر. الباقي علينا.</p>
+      <div class="top-title">
+        <h1 id="home-title">جاهز متى ما أنت جاهز</h1>
+        <p class="sub" id="home-sub">اختر اللعبة واضغط «ابدأ». الباقي علينا.</p>
       </div>
-      <label class="pill-select">
-        <span>اللعبة</span>
-        <select id="game"></select>
+      <label class="picker" title="اللعبة">
+        <svg viewBox="0 0 24 24"><path d="M7 8h10a5 5 0 0 1 4.9 6l-.5 2.6a2.4 2.4 0 0 1-4.3 1L15.5 16h-7l-1.6 1.6a2.4 2.4 0 0 1-4.3-1L2.1 14A5 5 0 0 1 7 8z"/><path d="M8 11v3M6.5 12.5h3M16 12h.01M18 13.5h.01"/></svg>
+        <select id="game" aria-label="اللعبة"></select>
       </label>
     </header>
 
-    <div class="grid-home">
-      <div class="card stage" id="stage" data-state="idle">
-        <div class="chain">
-          <div class="node" id="n-ps5">
-            <svg viewBox="0 0 48 48"><rect x="9" y="6" width="13" height="36" rx="4"/><rect x="26" y="10" width="13" height="32" rx="4"/><path d="M22 36h4"/></svg>
-            <b>الـPS5</b><small id="n-ps5-t">—</small>
+    <div class="hero" id="stage" data-state="idle">
+      <div class="tvset">
+        <div class="glow" aria-hidden="true"></div>
+        <div class="tv-frame">
+          <div class="scene" aria-hidden="true">
+            <i class="moon"></i>
+            <svg class="hills h1" viewBox="0 0 1200 300" preserveAspectRatio="none"><path d="M0 300V190l90-48 80 30 110-82 120 96 90-40 130 70 100-110 140 120 110-60 130 64 100-30v180z"/></svg>
+            <svg class="hills h2" viewBox="0 0 1200 300" preserveAspectRatio="none"><path d="M0 300V230l140-50 120 44 160-70 150 76 170-58 160 70 140-40 160 48v50z"/></svg>
+            <svg class="hills h3" viewBox="0 0 1200 300" preserveAspectRatio="none"><path d="M0 300v-40l200-34 220 30 240-44 230 46 310-36v78z"/></svg>
           </div>
-          <div class="flow" id="f1"><i></i></div>
-          <div class="node" id="n-pc">
-            <svg viewBox="0 0 48 48"><rect x="9" y="10" width="30" height="20" rx="3"/><path d="M4 36h40l-3 4H7z"/></svg>
-            <b>اللابتوب</b><small id="n-pc-t">يقرأ ويترجم</small>
+          <div class="tv-top">
+            <span class="badge" id="tv-badge"><i></i><b id="tv-badge-t">معاينة</b></span>
+            <span class="tv-clock" id="tv-clock"></span>
           </div>
-          <div class="flow" id="f2"><i></i></div>
-          <div class="node" id="n-tv">
-            <svg viewBox="0 0 48 48"><rect x="5" y="8" width="38" height="24" rx="3"/><path d="M17 40h14M24 32v8"/><path d="M14 25h20" class="hl"/></svg>
-            <b>التلفزيون</b><small id="n-tv-t">—</small>
+          <div class="subs">
+            <div class="tv-en" id="tv-en" dir="ltr"></div>
+            <div class="tv-ar" id="tv-ar"></div>
           </div>
         </div>
+        <div class="tv-stand" aria-hidden="true"></div>
+      </div>
 
-        <button class="orb" id="orb" aria-label="تشغيل الترجمة">
-          <span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span>
-          <span class="spin"></span>
-          <span class="core">
-            <svg class="ic-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>
-            <svg class="ic-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5"/></svg>
+      <aside class="deck">
+        <button class="go" id="orb" aria-label="تشغيل الترجمة">
+          <span class="go-ic">
+            <svg class="ic-play" viewBox="0 0 24 24"><path d="M8 5.2v13.6a.8.8 0 0 0 1.2.7l11-6.8a.8.8 0 0 0 0-1.4l-11-6.8a.8.8 0 0 0-1.2.7z"/></svg>
+            <svg class="ic-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.5"/></svg>
+            <i class="ic-spin"></i>
           </span>
+          <span class="go-t"><b id="orb-title">ابدأ الترجمة</b><small id="orb-step">جاهز</small></span>
         </button>
-        <div class="orb-label">
-          <b id="orb-title">ابدأ الترجمة</b>
-          <span id="orb-step">جاهز</span>
-        </div>
+        <div class="progress" id="progress" aria-hidden="true"><i></i><i></i><i></i></div>
         <div class="alert" id="alert" hidden></div>
-      </div>
 
-      <div class="col">
-        <div class="card screen">
-          <div class="screen-head"><span class="dot"></span>اللي يطلع على التلفزيون</div>
-          <div class="tv">
-            <div class="tv-en" id="tv-en">English subtitle</div>
-            <div class="tv-ar" id="tv-ar">هنا تطلع الترجمة العربية</div>
-          </div>
-        </div>
-        <div class="stats">
-          <div class="stat"><b id="s-ms">—</b><span>سرعة الترجمة</span></div>
-          <div class="stat"><b id="s-lines">0</b><span>سطر مترجم</span></div>
-          <div class="stat"><b id="s-fps">—</b><span>صورة بالثانية</span></div>
-        </div>
-      </div>
+        <ol class="path" id="path">
+          <li id="n-ps5"><span class="pin"></span><div><b>الـPS5</b><small id="n-ps5-t">أفحص…</small></div><em id="n-ps5-s"></em></li>
+          <li id="n-pc"><span class="pin"></span><div><b>اللابتوب</b><small id="n-pc-t">أفحص…</small></div><em id="n-pc-s"></em></li>
+          <li id="n-tv"><span class="pin"></span><div><b>التلفزيون</b><small id="n-tv-t">أفحص…</small></div><em id="n-tv-s"></em></li>
+        </ol>
+        <button class="textbtn" id="recheck">أعد الفحص</button>
+      </aside>
+    </div>
 
-      <div class="card checks">
-        <div class="card-head">
-          <h3>فحص سريع</h3>
-          <button class="ghost" id="recheck">أعد الفحص</button>
-        </div>
-        <ul id="checklist"></ul>
-        <button class="link" data-goto="guide">افتح الدليل خطوة بخطوة ←</button>
+    <div class="stats">
+      <div class="stat wide">
+        <div><span>السرعة</span><b id="s-ms">—</b><small>من ظهور الإنجليزي إلى العربي</small></div>
+        <svg id="spark" viewBox="0 0 200 48" preserveAspectRatio="none" aria-hidden="true"><path class="area" d=""/><path class="line" d=""/></svg>
       </div>
+      <div class="stat"><span>سطور مترجمة</span><b id="s-lines">0</b></div>
+      <div class="stat"><span>صورة بالثانية</span><b id="s-fps">—</b></div>
+    </div>
 
-      <div class="card feed">
-        <div class="card-head"><h3>آخر السطور</h3><span class="muted" id="feed-count"></span></div>
-        <ol id="feed"><li class="empty">لما تبدأ اللعبة تتكلم، السطور تطلع هنا.</li></ol>
+    <div class="card feed">
+      <div class="card-head">
+        <h3>آخر السطور</h3>
+        <span class="muted" id="feed-count"></span>
       </div>
+      <ol id="feed"><li class="empty">أول ما تتكلم الشخصيات في اللعبة، السطور تطلع هنا. وتقدر تعدّل أي ترجمة ما عجبتك وتنحفظ للمرة الجاية.</li></ol>
     </div>
   </section>
 
-  <!-- ============================ GAME SETTINGS ============================ -->
+  <!-- ================================ LOOK / GAME SETTINGS ================================ -->
   <section class="view" id="view-game">
     <header class="top">
-      <div>
-        <h1>إعدادات <span id="g-title" class="grad">اللعبة</span></h1>
-        <p class="sub">كل تغيير ينحفظ لحاله وتشوف شكله على طول.</p>
+      <div class="top-title">
+        <h1>مظهر الترجمة</h1>
+        <p class="sub">كل تغيير ينحفظ لحاله، ولو الترجمة شغّالة يتطبّق على التلفزيون فوراً.</p>
       </div>
       <div class="row">
-        <label class="pill-select"><span>اللعبة</span><select id="game2"></select></label>
-        <button class="btn soft" id="new-game">+ لعبة جديدة</button>
+        <label class="picker" title="اللعبة">
+          <svg viewBox="0 0 24 24"><path d="M7 8h10a5 5 0 0 1 4.9 6l-.5 2.6a2.4 2.4 0 0 1-4.3 1L15.5 16h-7l-1.6 1.6a2.4 2.4 0 0 1-4.3-1L2.1 14A5 5 0 0 1 7 8z"/><path d="M8 11v3M6.5 12.5h3M16 12h.01M18 13.5h.01"/></svg>
+          <select id="game2" aria-label="اللعبة"></select>
+        </label>
+        <button class="btn soft" id="new-game">+ لعبة</button>
       </div>
     </header>
 
-    <div class="grid-game">
-      <div class="card preview">
-        <div class="card-head"><h3>المعاينة</h3><span class="muted">شكل الترجمة على الشاشة</span></div>
-        <div class="preview-box"><img id="preview" alt="معاينة الترجمة"><div class="shimmer" id="preview-load"></div></div>
-        <input class="text" id="preview-text" value="يجب أن نغادر قبل وصول العاصفة." aria-label="نص المعاينة">
-      </div>
-
-      <div class="card fontcard">
-        <div class="card-head"><h3>الخط</h3></div>
-        <div class="fonts" id="fonts"></div>
-        <div class="field">
-          <div class="field-head"><b>حجم الخط</b><span id="size-val" class="muted"></span></div>
-          <label class="switch"><input type="checkbox" id="size-auto"><i></i><span>تلقائي (يقيسه من خط اللعبة مرة وحدة ويثبّته)</span></label>
-          <input type="range" id="size" min="22" max="70" step="1">
+    <div class="studio">
+      <div class="studio-preview">
+        <div class="card preview">
+          <div class="preview-box"><img id="preview" alt="معاينة الترجمة"><div class="shimmer" id="preview-load"></div></div>
+          <div class="preview-tools">
+            <input class="text" id="preview-text" value="يجب أن نغادر قبل وصول العاصفة." aria-label="نص المعاينة">
+            <button class="btn soft" id="try-tv" title="يعرض السطر على التلفزيون 8 ثواني">
+              <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M9 21h6"/></svg>جرّب على التلفزيون
+            </button>
+          </div>
         </div>
-      </div>
-
-      <div class="card look">
-        <div class="card-head"><h3>شكل النص</h3><button class="btn soft" id="try-tv">جرّب على التلفزيون</button></div>
         <div class="presets" id="presets"></div>
-
-        <div class="field">
-          <div class="field-head"><b>الخلفية</b></div>
-          <div class="seg" id="bg">
-            <button data-v="cover"><i class="th th-cover"></i><span>تغطية ذكية</span></button>
-            <button data-v="plate"><i class="th th-plate"></i><span>خلفية داكنة</span></button>
-            <button data-v="none"><i class="th th-none"></i><span>بدون</span></button>
-          </div>
-          <div id="plate-row" class="sub-row">
-            <span class="muted">شفافية الخلفية</span>
-            <input type="range" id="plate" min="0.3" max="0.95" step="0.05">
-          </div>
-        </div>
-
-        <div class="field">
-          <div class="field-head"><b>لون النص</b><span id="color-val" class="muted"></span></div>
-          <div class="swatches" id="colors"></div>
-        </div>
-
-        <div class="field">
-          <div class="field-head"><b>تأثير الحروف</b></div>
-          <div class="seg small" id="effect">
-            <button data-v="shadow"><span>ظل ناعم</span></button>
-            <button data-v="outline"><span>حد أسود</span></button>
-            <button data-v="none"><span>بدون</span></button>
-          </div>
-        </div>
-
-        <div class="field">
-          <div class="field-head"><b>موضع الترجمة</b><span id="pos-val" class="muted"></span></div>
-          <input type="range" id="pos" min="-200" max="60" step="5">
-          <div class="range-ends"><span>أعلى</span><span>أسفل</span></div>
-        </div>
       </div>
 
-      <div class="card timing">
-        <div class="card-head"><h3>التوقيت</h3></div>
-        <label class="switch big"><input type="checkbox" id="typewriter"><i></i>
-          <span><b>اللعبة تكتب النص حرف حرف</b><small>فعّلها لو الترجمة تطلع قبل ما يكتمل السطر.</small></span></label>
-        <div class="field">
-          <div class="field-head"><b>مدة بقاء العربي</b><span id="read-val" class="muted"></span></div>
-          <input type="range" id="read" min="0.6" max="2" step="0.1">
-          <div class="range-ends"><span>أقصر</span><span>أطول</span></div>
+      <div class="studio-controls">
+        <div class="card">
+          <div class="card-head"><h3>الشكل</h3></div>
+          <div class="field">
+            <div class="field-head"><b>وش يصير بالإنجليزي؟</b></div>
+            <div class="seg" id="bg">
+              <button data-v="cover"><i class="th th-cover"></i><span>يتغطّى بلون المشهد</span></button>
+              <button data-v="plate"><i class="th th-plate"></i><span>خلفية داكنة</span></button>
+              <button data-v="none"><i class="th th-none"></i><span>يبقى تحته</span></button>
+            </div>
+            <div id="plate-row" class="sub-row">
+              <span class="muted">غُمق الخلفية</span>
+              <input type="range" id="plate" min="0.3" max="0.95" step="0.05">
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-head"><b>لون النص</b><span id="color-val" class="muted"></span></div>
+            <div class="swatches" id="colors"></div>
+          </div>
+          <div class="field">
+            <div class="field-head"><b>تأثير الحروف</b></div>
+            <div class="seg small" id="effect">
+              <button data-v="shadow"><span>ظل ناعم</span></button>
+              <button data-v="outline"><span>حد أسود</span></button>
+              <button data-v="none"><span>بدون</span></button>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-head"><b>الموضع</b><span id="pos-val" class="muted"></span></div>
+            <input type="range" id="pos" min="-200" max="60" step="5">
+            <div class="range-ends"><span>أعلى</span><span>أسفل</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>الخط</h3><span id="size-val" class="muted"></span></div>
+          <div class="fonts" id="fonts"></div>
+          <div class="field">
+            <label class="switch"><input type="checkbox" id="size-auto"><i></i><span>حجم تلقائي <small>يقيس خط اللعبة مرة ويثبّته</small></span></label>
+            <input type="range" id="size" min="22" max="70" step="1">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>التوقيت</h3></div>
+          <label class="switch"><input type="checkbox" id="typewriter"><i></i>
+            <span>اللعبة تكتب النص حرف حرف <small>فعّلها لو الترجمة تطلع قبل ما يكتمل السطر.</small></span></label>
+          <div class="field">
+            <div class="field-head"><b>مدة بقاء العربي</b><span id="read-val" class="muted"></span></div>
+            <input type="range" id="read" min="0.6" max="2" step="0.1">
+            <div class="range-ends"><span>أقصر</span><span>أطول</span></div>
+          </div>
         </div>
       </div>
 
       <div class="card region">
         <div class="card-head">
-          <h3>مكان الترجمة على الشاشة</h3>
+          <div><h3>وين يقرأ البرنامج؟</h3>
+          <p class="muted">اسحب الإطار فوق المكان اللي تطلع فيه ترجمة اللعبة. اللي برّاه ما ينقرأ، فما يلقط القوايم والعدّادات.</p></div>
           <div class="row">
-            <button class="ghost" id="region-shot">حدّث الصورة</button>
-            <button class="btn soft" id="region-reset">المكان الافتراضي</button>
+            <button class="btn soft" id="region-shot">حدّث الصورة</button>
+            <button class="btn soft" id="region-reset">الافتراضي</button>
           </div>
         </div>
-        <p class="muted">اسحب المربع وكبّره من زواياه فوق المكان اللي تطلع فيه ترجمة اللعبة. البرنامج ما يقرأ إلا اللي داخله، فما يلقط القوايم ولا العدّادات.</p>
         <div class="region-stage" id="region-stage" dir="ltr">
           <img id="region-img" alt="">
-          <div class="region-hint" id="region-hint">شغّل الترجمة من الرئيسية وتطلع صورة اللعبة هنا</div>
+          <div class="region-hint" id="region-hint">شغّل الترجمة وتطلع صورة لعبتك هنا</div>
           <div class="region-box" id="region-box">
-            <span class="tag">هنا تنقرأ الترجمة</span>
+            <span class="tag">منطقة القراءة</span>
             <i class="h nw" data-h="nw"></i><i class="h ne" data-h="ne"></i><i class="h sw" data-h="sw"></i><i class="h se" data-h="se"></i>
           </div>
         </div>
@@ -215,19 +214,63 @@
 
       <div class="card glossary">
         <div class="card-head">
-          <h3>قاموس الأسماء</h3>
+          <div><h3>قاموس الأسماء</h3>
+          <p class="muted">الاسم مثل ما يطلع بالإنجليزي، وكيف تبيه بالعربي. يثبت في كل السطور حتى لو المترجم فهمه كلمة عادية. علّم ♀ لأسماء النساء عشان تطلع الأفعال مؤنثة.</p></div>
           <button class="btn soft" id="add-name">+ اسم</button>
         </div>
-        <p class="muted">اكتب الاسم مثل ما يطلع بالإنجليزي، وكيف تبيه ينكتب بالعربي. يثبت في كل السطور.</p>
         <div id="names"></div>
       </div>
     </div>
   </section>
 
-  <!-- ============================ GUIDE ============================ -->
+  <!-- ================================ SECOND SCREEN (phone) ================================ -->
+  <section class="view" id="view-screen">
+    <div class="second" id="second">
+      <div class="second-state" id="second-state">الترجمة واقفة</div>
+      <div class="second-ar" id="second-ar">حط الجوال قدّامك: كل سطر يترجم يطلع هنا بخط كبير.</div>
+      <div class="second-en" id="second-en" dir="ltr"></div>
+    </div>
+  </section>
+
+  <!-- ================================ PHONE ================================ -->
+  <section class="view" id="view-phone">
+    <header class="top">
+      <div class="top-title">
+        <h1>تحكّم من جوالك</h1>
+        <p class="sub">شغّل ووقّف الترجمة وغيّر شكلها من الكنبة، والجوال يصير شاشة ثانية للترجمة.</p>
+      </div>
+    </header>
+    <div class="phone-grid">
+      <div class="card">
+        <label class="switch big"><input type="checkbox" id="phone-on"><i></i>
+          <span>التحكم من الجوال <small>يشتغل داخل شبكة بيتك فقط، ولازم الجوال على نفس الواي فاي.</small></span></label>
+        <div id="phone-body" hidden>
+          <div class="pairing">
+            <div class="qr" id="phone-qr"></div>
+            <ol class="todo">
+              <li><div>افتح كاميرا الجوال ووجّهها على المربع، واضغط الرابط اللي يطلع.</div></li>
+              <li><div>تفتح لك ترجِم في المتصفح وهي مربوطة جاهزة.</div></li>
+              <li><div>تبيها تطبيق؟ من نفس الصفحة اضغط <b>«نزّل تطبيق أندرويد»</b> وثبّته.</div></li>
+            </ol>
+          </div>
+          <div class="manual">
+            <div><span class="muted">أو اكتب في متصفح الجوال</span><b id="phone-url" dir="ltr">—</b></div>
+            <div><span class="muted">رمز الربط</span><b id="phone-pin" class="pin-code" dir="ltr">— — —</b></div>
+          </div>
+          <div class="note" id="phone-note">أول مرة تفعّلها، ويندوز يسألك «السماح لـTarjim بالاتصال؟» اضغط <b>السماح</b> (للشبكات الخاصة)، وإلا الجوال ما يوصل.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>الأجهزة المربوطة</h3></div>
+        <div id="phone-devices"><p class="muted">ما فيه جوال مربوط.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================ GUIDE ================================ -->
   <section class="view" id="view-guide">
     <header class="top">
-      <div>
+      <div class="top-title">
         <h1>الدليل</h1>
         <p class="sub">خطوة بخطوة، مرة وحدة بس. بعدها زر واحد.</p>
       </div>
@@ -235,23 +278,48 @@
     <div class="steps" id="steps"></div>
     <div class="card guide-body" id="guide-body"></div>
     <div class="guide-nav">
-      <button class="btn soft" id="g-prev">→ السابق</button>
+      <button class="btn soft" id="g-prev">السابق</button>
       <span class="muted" id="g-pos"></span>
-      <button class="btn" id="g-next">التالي ←</button>
+      <button class="btn" id="g-next">التالي</button>
     </div>
   </section>
 </main>
 
-<div class="toast" id="toast"></div>
+<!-- pairing screen for a phone that is not trusted yet -->
+<div class="pair" id="pair" hidden>
+  <img src="icon.png" alt="">
+  <h2>اربط الجوال بترجِم</h2>
+  <p>في ترجِم على اللابتوب افتح <b>«الجوال»</b> واكتب الرمز اللي تشوفه هناك.</p>
+  <input id="pair-pin" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" dir="ltr" aria-label="رمز الربط">
+  <button class="btn" id="pair-go">اربط</button>
+  <div class="alert" id="pair-err" hidden></div>
+</div>
+
+<a class="apk-banner" id="apk-banner" href="/tarjim.apk" hidden>
+  <svg viewBox="0 0 24 24"><path d="M12 4v11M7.5 11 12 15.5 16.5 11M5 20h14"/></svg>نزّل تطبيق أندرويد
+</a>
+
+<div class="toast" id="toast" role="status"></div>
 
 <dialog id="dlg-new">
   <form method="dialog" class="dlg">
     <h3>لعبة جديدة</h3>
-    <p class="muted">اكتب اسم اللعبة. تقدر تضيف أسماء الشخصيات بعدين.</p>
+    <p class="muted">اكتب اسم اللعبة. كل لعبة لها شكلها وقاموس أسمائها.</p>
     <input class="text" id="new-title" placeholder="مثال: Silent Hill 2" dir="auto" maxlength="60">
     <div class="row end">
       <button class="btn soft" value="cancel">إلغاء</button>
       <button class="btn" value="ok">أضف</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-ask">
+  <form method="dialog" class="dlg">
+    <h3 id="ask-title"></h3>
+    <p class="muted" id="ask-text"></p>
+    <div class="row end">
+      <button class="btn soft" value="cancel" id="ask-no">إلغاء</button>
+      <button class="btn danger" value="ok" id="ask-yes">نعم</button>
     </div>
   </form>
 </dialog>

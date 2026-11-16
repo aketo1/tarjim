@@ -1,6 +1,6 @@
 # Tarjim status
 
-Last update: 2026-11-15. The full picture is in `docs/REPORT.md`.
+Last update: 2026-11-16. The full picture is in `docs/REPORT.md` (section 14 is the newest).
 
 ## Milestones
 
@@ -15,7 +15,8 @@ Last update: 2026-11-15. The full picture is in `docs/REPORT.md`.
 | GATE 2 (T3 to T5) | Informally passed | The user judged position, look and controller feel during live play; no formal T3 boxes test, no calibration tools built |
 | M5 Robustness | Partly | Reading-time hold on a plate, split-line rejoin, fixed font size, reconnect. Not built: `frost`/`auto` modes, boxed-subtitle handling, record/replay |
 | M6 Gemini | Tried and removed | Slower than local live (1.2 s vs under 0.1 s) and rate-limited on the free tier; see `DECISIONS.md` |
-| M7 Finish | Not done | No `README-AR.md`, no user interface yet |
+| M7 Finish | Mostly | Desktop program `Tarjim.exe` with its own interface and guide; still no `README-AR.md` |
+| 0.2 polish | Done | Own executable (taskbar shows Tarjim), no console flashes, redesigned laptop and TV interfaces, phone control + Android app, glossary names kept right (14 of 59 wrong -> 0), user fixes. 114 tests pass |
 
 ## Live numbers (15-minute RDR2 session, laptop on mains)
 
@@ -29,3 +30,5 @@ p90 243 ms; translation median 96 ms; stream 30 fps, 0 reconnects.
 3. Fill colour under HDR is unverified by photo; the user has not reported a mismatch.
 4. Only RDR2 has been played live. Other games need their own profile (glossary, settle time).
 5. The laptop must be on mains: on battery translation was about 4 times slower.
+6. The phone app was built but never run on a real phone; the firewall prompt and a phone reaching the laptop are untested.
+7. The name handling and the new TV status screen have not been seen in a live session yet (PS5 was off).
