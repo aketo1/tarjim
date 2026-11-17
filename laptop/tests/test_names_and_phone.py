@@ -229,7 +229,7 @@ def test_qr_code_reads_back_as_the_pairing_link():
 
     link = "http://192.168.1.20:47901/?pair=123456"
     svg = remote.qr_svg(link).decode("utf-8")
-    assert svg.startswith("<svg") and "#0a0b0f" in svg
+    assert svg.startswith("<svg") and "#0b0d24" in svg  # the dark of the night sky
     import segno
 
     matrix = np.array(segno.make(link, error="m").matrix, dtype=np.uint8)

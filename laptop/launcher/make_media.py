@@ -110,7 +110,7 @@ def tour() -> None:
             continue
         img = Image.open(path).convert("RGB")
         img = img.crop((0, 0, img.width, min(img.height, int(img.width * 0.66))))
-        canvas = Image.new("RGB", (1000, 660), (10, 11, 15))
+        canvas = Image.new("RGB", (1000, 660), (7, 10, 28))
         img.thumbnail((1000, 660), Image.LANCZOS)
         canvas.paste(img, ((1000 - img.width) // 2, 0))
         shots.append(canvas)

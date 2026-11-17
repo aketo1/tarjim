@@ -345,6 +345,9 @@ live run, then tuning from the user's feedback. The findings that cost time:
   games into tests or docs.
 - **Talk to the user in simple Arabic**; keep code, comments and commits in
   English. The user is not a programmer: one concrete action at a time.
+- **One page for both apps.** Change the interface only in
+  `laptop/tarjim/app/web`, then run `launcher/sync_phone_web.py` and rebuild
+  the phone app (section 18). Keep the look's code in `glass.js`, out of `app.js`.
 - **Licences.** This is a personal, non-distributed project. It depends on
   GPL-3.0 code (`ps5-remoteplay-mcp`) and on NLLB weights that are
   non-commercial; see `LICENSES.md` before sharing anything.
@@ -700,3 +703,100 @@ were not tried against real subtitles; the 28 lists were written from what is
 known about each game, not checked against the games' own text. Exporting was
 checked through its route, not by clicking the button (that writes to the
 Downloads folder).
+
+## 18. A new look: desert night and liquid glass (added 2026-11-17)
+
+The user asked for the interface of both apps to be redone from scratch, creative
+rather than the usual generated look, with ideas from Apple's and Android's
+current design (Liquid Glass, blur, Material 3 Expressive). Both apps show the
+same page, so this is one redesign for both.
+
+### What changed for the user
+
+- **The page sits under a night sky over the dunes**: stars, the milky way, a
+  crescent moon, a shooting star now and then, and a dawn glow on the horizon
+  that rises while the translation runs.
+- **A floating glass dock** replaces the side rail: centred at the top on a
+  computer, a capsule at the bottom on a phone. A glass lens slides to the
+  chosen tab and stretches like a drop while it moves.
+- **Liquid glass** (real refraction at the rim, as on iOS 26) on the dock, the
+  game pickers, the TV's «معاينة/مباشر» badge and the phone-browser download
+  banner. Content sits on calmer frosted panels so it stays easy to read.
+- **The start button changes shape**, as Android 16's controls do: a
+  nine-lobed shape in dawn colours that turns slowly while idle, a morphing
+  loader while starting (with a wavy progress line for the three steps), and a
+  soft square of night glass with a coral stop while running.
+- **Home**: the TV preview shows a dusk scene; a reading light passes over the
+  English line before it turns Arabic. The three devices sit in one row under
+  it with arrows of light flowing PS5 → laptop → TV while running. The control
+  island carries a thin Al Sadu band (the Saudi weave pattern), as do the sheets.
+- **Controls**: switches whose knob turns into a drop of glass while held,
+  sliders that fill with dawn and whose thumb turns to glass while dragged,
+  segmented choices with a sliding glass thumb, corner-bracket handles on the
+  reading area (they stay inside the picture now, they were half cut off).
+- **Library cards are posters** drawn from the game's name: colour and pattern
+  per series (Red Dead a sun over the horizon in rust, GTA a magenta city grid,
+  Yakuza crimson rings, ...). No game art.
+- **Sheets** are glass, centred on a computer and rising from the bottom with
+  a grabber on a phone. Messages are popovers now, so they show above an open
+  sheet (adding from the library used to confirm behind it, unseen).
+- **Large titles** use a condensed heavy cut of Noto Sans Arabic (its width
+  axis, through `font-stretch`), so no new font files.
+- **A new icon** (the teh in moonlight white, its dots in dawn colours, on a
+  night tile with dunes), and the window's title bar, the pairing QR code, the
+  installer's colours and the phone's status and navigation bars follow.
+
+### Files
+
+| File | What it holds |
+| --- | --- |
+| `laptop/tarjim/app/web/index.html`, `app.css`, `app.js` | The page, rewritten. `app.js` keeps all the program logic; it gained the posters, the popover messages and `?still&ok` |
+| `laptop/tarjim/app/web/glass.js` (new) | The look's moving parts: stars, liquid-glass filters, the dock's lens, segmented thumbs, slider fill, the start button's shapes, the light under the mouse. Talks to nothing |
+| `laptop/launcher/sync_phone_web.py` (new) | Copies the page into the phone app (`assets/web`) |
+| `laptop/launcher/make_icon.py` | The new icon; also writes the standalone phone app's icons |
+| `laptop/launcher/shots.py` | Phone-width shots (`m-home`, `m-game`, `m-guide`, `m-screen`) and `?still&ok` (devices shown ready) |
+
+**One page for both apps.** `laptop/tarjim/app/web` is the only source now: it
+holds the phone-only parts too (hidden on the laptop by `.only-app`), and the
+phone's `assets/web` is a byte-for-byte copy. Change the page here, then run
+`launcher/sync_phone_web.py` and build the phone app.
+
+### How the liquid glass works
+
+`glass.js` draws one displacement map per size of glass element on a canvas:
+inside a rounded rectangle, a pixel near the rim samples the picture behind it
+from further inside (strongest at the edge, nothing after an 18 px bezel), the
+way the thick edge of a lens bends light. The map feeds an SVG filter (slight
+blur, `feImage`, `feDisplacementMap`, saturate) that the element uses as
+`backdrop-filter: url(#lgN)` through the custom property `--lg`. A
+ResizeObserver redraws when a size changes; filters are kept per size. SVG
+backdrop filters work in Chromium only, which is what both apps run (WebView2
+on the laptop, Android WebView on the phone); elsewhere `--lg` falls back to
+`blur(18px) saturate(170%)`. Checked on a striped test page in Chrome: the
+stripes bend at the rim, evenly on every side.
+
+**Power.** The sky is still: the stars are drawn once per window size, and only
+six small twinkles and the shooting star animate (compositor only). While a
+session runs the twinkles, the star and the TV scene's birds pause; on the
+phone the glass falls back to plain blur and the start button stops turning, so
+the page stands still while the phone works. Content panels blur on a computer
+and are opaque on a phone. Reduced motion and reduced transparency are honoured.
+
+### Verified, and not
+
+**Verified:** 129 tests pass (one updated: the QR code's dark colour is the new
+night blue). Screenshots at 1240, 1000 and 520 px of every screen (home idle
+and running, look, names, library, guide, phone control, second screen, phone
+setup, pairing). Clicked through in Chrome on a throw-away copy of the
+profiles: the dock's lens, the segmented thumbs, choosing the background (the
+preview follows), adding two games from the library (cards turn «مضافة»), the
+sheets; no console errors. The phone app builds with the new page and icon
+(`gradlew -PtarjimPrebuilt assembleDebug`, the page and `glass.js` inside the APK).
+
+**Not verified:** nothing ran on the phone (it was not connected), so the look
+in the S20 FE's WebView is unseen; refraction should work there (Chromium), and
+on an older WebView the messages show without the popover. The installer was
+not rebuilt: its new colours come with the next build, and the README's
+installer pictures still show the 0.3.0 installer, which is what the download
+gives. The TV app's icon and banner files changed; the TV shows the old icon
+until it is set up again from a new build.

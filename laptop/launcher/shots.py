@@ -17,7 +17,7 @@ CHROME = [
     r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
 ]
 SHOTS = {
-    "home": ("?still", 1240, 800),
+    "home": ("?still&ok", 1240, 800),
     "home-live": ("?still&demo", 1240, 1240),
     "game": ("?still&view=game", 1240, 2000),
     "phone": ("?still&view=phone", 1240, 800),
@@ -28,6 +28,10 @@ SHOTS = {
     "library": ("?still&library", 1240, 900),
     "library-phone": ("?still&library", 520, 900),
     "names": ("?still&view=game&game=rdr2", 1240, 2300),
+    "m-home": ("?still&demo", 520, 1900),
+    "m-game": ("?still&view=game", 520, 2600),
+    "m-guide": ("?still&view=guide&step=2", 520, 1500),
+    "m-screen": ("?still&demo&view=screen", 520, 1000),
 }
 
 

@@ -42,9 +42,17 @@ let toastTimer;
 function toast(msg) {
   const t = $("#toast");
   t.textContent = msg;
-  t.classList.add("on");
+  // A popover sits above an open sheet (the library, a question), so the message is never hidden behind it.
+  try {
+    if (t.matches(":popover-open")) t.hidePopover();
+    t.showPopover?.();
+  } catch { /* no popovers in this browser: the plain element still shows */ }
+  requestAnimationFrame(() => t.classList.add("on"));
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove("on"), 2400);
+  toastTimer = setTimeout(() => {
+    t.classList.remove("on");
+    toastTimer = setTimeout(() => { try { t.hidePopover?.(); } catch { /* already closed */ } }, 450);
+  }, 2600);
 }
 
 function ask(title, text, yes = "نعم", danger = true) {
@@ -76,7 +84,8 @@ function go(view) {
   if (view === "game") loadProfile();
   if (view === "guide") renderGuide();
   if (view === "phone") loadPhone();
-  window.TarjimApp?.keepAwake?.(view === "screen");
+  if (view === "setup") loadSetup();
+  if (!S.app) window.TarjimApp?.keepAwake?.(view === "screen");
 }
 $$(".nav[data-view]").forEach(b => b.addEventListener("click", () => go(b.dataset.view)));
 document.addEventListener("click", e => {
@@ -156,6 +165,11 @@ function renderLive() {
     seg.classList.toggle("now", at === i);
   });
   $("#second-state").textContent = state === "running" ? "مباشر" : "الترجمة واقفة";
+  if (S.app) {
+    // Android slows a hidden app to a crawl: keep the screen on for as long as the translation runs.
+    window.TarjimApp?.keepAwake?.(state !== "idle");
+    if (state === "idle" && !$("#rest-screen").hidden) rest(false);
+  }
 
   if (state !== lastState) {
     if (state === "idle") demoLoop(true);
@@ -240,6 +254,7 @@ function editLine(li, item) {
 
 function addLine(item, animate = true) {
   if (S.live.state !== "idle" || S.still) playLine(item.en, item.ar, animate ? 1.1 : 0);
+  $("#rest-line").textContent = item.ar;
   const sar = $("#second-ar");
   sar.textContent = item.ar;
   $("#second-en").textContent = item.en;
@@ -404,6 +419,7 @@ async function loadProfile() {
 
   renderNames();
   refreshPreview();
+  UI.ranges();
 }
 $("#preview-text").addEventListener("input", refreshPreview);
 
@@ -483,6 +499,7 @@ function renderLook() {
   posLabel();
   pos.oninput = () => { S.profile.y_offset = Number(pos.value); posLabel(); refreshPreview(); };
   pos.onchange = () => save({ y_offset: Number(pos.value) });
+  UI.ranges();
 }
 
 $("#try-tv").addEventListener("click", async e => {
@@ -598,6 +615,13 @@ $("#names-find").addEventListener("input", filterNames);
 
 const LIB = { items: [] };
 const hueOf = text => [...String(text)].reduce((h, c) => (h * 31 + c.codePointAt(0)) % 360, 7);
+// Each series gets its own poster: a colour and a pattern that suit it (no game art). [hue, pattern, saturation]
+const SERIES_LOOK = {
+  "Red Dead": [14, 0, 1], "Grand Theft Auto": [292, 4, 1], "Yakuza": [338, 1, 1], "Like a Dragon": [338, 1, 1],
+  "The Last of Us": [128, 2, .75], "Silent Hill": [222, 1, .4], "Max Payne": [206, 2, .7], "L.A. Noire": [38, 0, .7],
+  "Bully": [22, 2, .9], "Baldur's Gate": [268, 1, 1], "Final Fantasy": [188, 4, 1], "Kingdom Come": [80, 3, .7],
+  "Mafia": [30, 0, .85], "Persona": [356, 2, 1],
+};
 
 async function openLibrary() {
   const d = $("#dlg-library");
@@ -617,7 +641,13 @@ function renderLibrary() {
 }
 function libCard(p) {
   const card = el("article", `lib-card ${p.installed ? "on" : ""}`);
-  card.style.setProperty("--hue", hueOf(p.series || p.title));
+  const family = p.series || p.title;
+  const [hue, pattern, sat] = SERIES_LOOK[family] || [hueOf(family), hueOf(`${family}#`) % 5, 1];
+  card.style.setProperty("--hue", hue);
+  card.style.setProperty("--sat", sat);
+  const poster = el("div", `poster p${pattern}`);
+  poster.append(el("b", "poster-ar", p.title_ar || p.title));
+  if (p.installed) poster.append(el("span", "poster-ok", "✓ مضافة"));
   const title = el("b", "lib-title", p.title);
   title.dir = "ltr";
   const foot = el("div", "lib-foot");
@@ -631,7 +661,7 @@ function libCard(p) {
   b.title = !p.installed ? "تنضاف كلعبة جديدة بقاموسها" : p.new > 0 ? "أسماء جديدة تنضاف لقاموسك، واللي كتبته أنت يبقى" : "";
   b.addEventListener("click", () => addFromLibrary(p, b));
   foot.append(chips, b);
-  card.append(el("div", "lib-top", [p.series, p.year].filter(Boolean).join(" · ")), title,
+  card.append(poster, el("div", "lib-top", [p.series, p.year].filter(Boolean).join(" · ")), title,
     el("span", "lib-ar", p.title_ar), el("p", "lib-note", p.note || ""), foot);
   return card;
 }
@@ -796,6 +826,78 @@ $("#phone-on").addEventListener("change", async e => {
   try { await api("/api/phone", { enabled: e.target.checked }); } catch (err) { toast(err.message); }
   loadPhone();
 });
+
+/* ------------------------------ inside the phone app ------------------------------ */
+
+function rest(on) {
+  $("#rest-screen").hidden = !on;
+  window.TarjimApp?.dim?.(on);
+}
+let restTap = 0;
+$("#rest").addEventListener("click", () => {
+  if (S.live.state === "idle") return toast("شغّل الترجمة أول");
+  $("#rest-line").textContent = "";
+  rest(true);
+});
+$("#rest-screen").addEventListener("click", () => {
+  const now = Date.now();
+  if (now - restTap < 450) rest(false);
+  restTap = now;
+});
+window.onAppBack = () => {
+  if (!$("#rest-screen").hidden) { rest(false); return true; }
+  if (!$("#view-home").classList.contains("on")) { go("home"); return true; }
+  return false;
+};
+window.onAppResume = () => {
+  if ($("#view-setup").classList.contains("on")) loadSetup();
+  S.check = null;
+  runCheck();
+};
+
+async function loadSetup() {
+  let v;
+  try { v = await api("/api/setup"); } catch (e) { return toast(e.message); }
+  // PlayStation or Xbox: one card each; the Xbox one is the same linking steps as on the laptop.
+  const xboxCard = $("#su-xbox"), ps5Card = $("#su-ps5card");
+  xboxCard.hidden = S.kind !== "xbox";
+  ps5Card.hidden = S.kind === "xbox";
+  if (S.kind === "xbox") { if (!xboxCard.firstChild || !$("#x-link", xboxCard)) xboxCard.replaceChildren(xboxGuide()); }
+  else { xboxCard.replaceChildren(); if (!ps5Card.dataset.wired) { ps5Card.dataset.wired = "1"; kindSwitch(ps5Card); } }
+  const tv = $("#su-tv"), ps5 = $("#su-ps5");
+  if (document.activeElement !== tv) tv.value = v.tv;
+  if (document.activeElement !== ps5) ps5.value = v.console;
+  const linked = $("#su-linked");
+  linked.className = `linked ${v.consoles.length ? "" : "none"}`;
+  linked.textContent = v.consoles.length
+    ? `الجوال مربوط بـ${v.consoles.join("، ")} ✓${v.account && v.account !== "محفوظ" ? ` (الحساب: ${v.account})` : ""}`
+    : "الجوال مو مربوط بالـPS5 للحين.";
+  $("#su-relogin").hidden = !v.account;
+  $("#su-link").textContent = v.consoles.length ? "اربط من جديد" : "اربط الـPS5";
+  $("#su-link").className = v.consoles.length ? "btn soft" : "btn";
+  const free = !!window.TarjimApp?.batteryExempt?.();
+  $("#su-batt-state").textContent = free ? "مسموح ✓" : "";
+  $("#su-batt").hidden = free;
+}
+const ADDRESS = /^\d{1,3}(\.\d{1,3}){3}$/;
+for (const [id, key] of [["#su-tv", "tv"], ["#su-ps5", "console"]]) {
+  $(id).addEventListener("change", async e => {
+    const value = e.target.value.trim();
+    if (value && !ADDRESS.test(value)) return toast("العنوان يكون بهذا الشكل: 192.168.1.50");
+    try { await api("/api/setup", { [key]: value }); toast("انحفظ ✓"); S.check = null; runCheck(); } catch (err) { toast(err.message); }
+  });
+}
+$("#su-link").addEventListener("click", () => {
+  const host = $("#su-ps5").value.trim();
+  if (!ADDRESS.test(host)) return toast("اكتب عنوان الـPS5 أول");
+  window.TarjimApp?.register?.(host, false);
+});
+$("#su-relogin").addEventListener("click", () => {
+  const host = $("#su-ps5").value.trim();
+  if (!ADDRESS.test(host)) return toast("اكتب عنوان الـPS5 أول");
+  window.TarjimApp?.register?.(host, true);
+});
+$("#su-batt").addEventListener("click", () => window.TarjimApp?.askBattery?.());
 
 /* ---------------------------------- guide ---------------------------------- */
 
@@ -981,7 +1083,7 @@ function kindSwitch(view) {
     S.kind = b.dataset.v;
     S.check = null;
     await runCheck();
-    renderGuide();
+    if (S.app) loadSetup(); else renderGuide();
   }));
 }
 
@@ -1053,7 +1155,8 @@ function xboxGuide() {
   $("#x-forget", view).addEventListener("click", async () => {
     if (!await ask("تفصل حساب مايكروسوفت؟", "ترجِم ينسى الحساب والجهاز المختار. تقدر تربط من جديد بأي وقت.", "افصله")) return;
     await api("/api/xbox/forget", {}).catch(e => toast(e.message));
-    S.check = null; runCheck(); renderGuide();
+    S.check = null; runCheck();
+    if (S.app) loadSetup(); else renderGuide();
   });
   $("#x-find", view).addEventListener("click", showConsoles);
   api("/api/xbox").then(st => {
@@ -1151,7 +1254,15 @@ async function boot() {
   const helloRes = await fetch(withKey("/api/hello"));
   const hello = await helloRes.json();
   S.remote = !!hello.remote;
+  S.app = hello.app === "phone";
   document.body.classList.toggle("remote", S.remote);
+  document.body.classList.toggle("phoneapp", S.app);
+  if (S.app) {
+    $("#n-pc-n").textContent = "الجوال";
+    // The phone covers the English with a plate; it cannot repaint the scene under the letters.
+    for (const preset of PRESETS) if (preset.set.background === "cover") preset.set.background = "plate";
+    $("#try-tv").title = "يشتغل والترجمة شغّالة";
+  }
   if (S.remote && !hello.paired) {
     if (q.get("pair")) {
       try { await pairWith(q.get("pair")); return location.replace(location.pathname); } catch { /* fall through to the code screen */ }
@@ -1181,8 +1292,14 @@ async function boot() {
   requestAnimationFrame(() => document.body.classList.remove("booting"));
 
   // ?still&view=game&step=2&demo : a frozen page for screenshots (no live connection, no timers).
+  // &demo also plays a running session; &ok (and &demo) show the three devices ready.
   if (S.still) {
     await runCheck();
+    if (q.has("demo") || q.has("ok")) {
+      setNode("n-ps5", "ok", "PS5 · شغّال", "192.168.1.60");
+      setNode("n-pc", "ok", "على الشاحن · يقرأ ويترجم");
+      setNode("n-tv", "ok", "Android TV · جاهز", "192.168.1.50");
+    }
     if (q.get("step")) S.guideStep = Number(q.get("step"));
     if (q.get("game")) selectGame(q.get("game"));
     if (q.get("view")) go(q.get("view"));
@@ -1200,7 +1317,8 @@ async function boot() {
     return;
   }
   connect();
-  if (!S.remote && !st.guide_seen && !st.setup_done) go("guide");
+  if (S.app && !st.setup_done) go("setup");
+  if (!S.app && !S.remote && !st.guide_seen && !st.setup_done) go("guide");
   runCheck();
   setInterval(() => { if (S.live.state === "idle" && document.visibilityState === "visible") runCheck(); }, 20000);
 }

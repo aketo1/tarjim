@@ -143,7 +143,7 @@ def qr_svg(text: str) -> bytes:
     import segno
 
     out = io.BytesIO()
-    segno.make(text, error="m").save(out, kind="svg", scale=8, border=2, dark="#0a0b0f", light="#f3f1ea",
+    segno.make(text, error="m").save(out, kind="svg", scale=8, border=2, dark="#0b0d24", light="#fbf6ec",
                                      xmldecl=False, svgns=True, nl=False)
     return out.getvalue()
 

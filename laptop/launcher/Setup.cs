@@ -331,10 +331,11 @@ sealed class SetupForm : Form
 {
     enum Page { Welcome, Working, Done, Failed, AskRemove, Removed }
 
-    static readonly Color Ink = Color.FromArgb(10, 11, 15), Ink2 = Color.FromArgb(17, 19, 25), Ink3 = Color.FromArgb(24, 27, 35),
-        Ink4 = Color.FromArgb(32, 35, 46), Paper = Color.FromArgb(243, 241, 234), Muted = Color.FromArgb(142, 145, 159),
-        Amber = Color.FromArgb(255, 194, 51), AmberInk = Color.FromArgb(28, 20, 0), Live = Color.FromArgb(55, 211, 154),
-        Bad = Color.FromArgb(255, 100, 112);
+    // The program's "desert night": night-sky inks, moonlight paper, dawn for what you press.
+    static readonly Color Ink = Color.FromArgb(7, 10, 28), Ink2 = Color.FromArgb(17, 15, 40), Ink3 = Color.FromArgb(28, 24, 60),
+        Ink4 = Color.FromArgb(44, 38, 82), Paper = Color.FromArgb(251, 246, 236), Muted = Color.FromArgb(160, 154, 180),
+        Amber = Color.FromArgb(255, 179, 92), AmberInk = Color.FromArgb(43, 19, 5), Live = Color.FromArgb(98, 230, 182),
+        Bad = Color.FromArgb(255, 107, 120);
 
     static readonly string[][] Lines = new string[][] {
         new string[] { "We should leave before the storm gets here.", "يجب أن نغادر قبل وصول العاصفة." },

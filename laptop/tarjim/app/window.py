@@ -10,7 +10,7 @@ from pathlib import Path
 from .. import paths
 
 TITLE = "ترجِم"
-BACKGROUND = "#0a0b0f"
+BACKGROUND = "#04050f"  # the top of the night sky in the page
 DEFAULT_SIZE = (1240, 860)
 MIN_SIZE = (980, 660)
 
@@ -43,8 +43,8 @@ def _style_title_bar() -> None:
     for attribute, value in (
         (20, ctypes.c_int(1)),  # DWMWA_USE_IMMERSIVE_DARK_MODE
         (35, colour(BACKGROUND)),  # DWMWA_CAPTION_COLOR
-        (34, colour("#20232e")),  # DWMWA_BORDER_COLOR
-        (36, colour("#f3f1ea")),  # DWMWA_TEXT_COLOR
+        (34, colour("#2a2550")),  # DWMWA_BORDER_COLOR
+        (36, colour("#fbf6ec")),  # DWMWA_TEXT_COLOR
     ):
         try:
             dwm.DwmSetWindowAttribute(ctypes.c_void_p(hwnd), attribute, ctypes.byref(value), ctypes.sizeof(value))
