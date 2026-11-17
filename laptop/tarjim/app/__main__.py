@@ -17,7 +17,8 @@ def _selftest(path: str) -> int:
 
         heavy = []
         for name in ("cv2", "numpy", "ctranslate2", "sentencepiece", "onnxruntime", "rapidocr", "uharfbuzz",
-                     "freetype", "yaml", "segno", "psutil", "PIL", "ps5_remoteplay_mcp.vendor.pyremoteplay"):
+                     "freetype", "yaml", "segno", "psutil", "PIL", "ps5_remoteplay_mcp.vendor.pyremoteplay",
+                     "tarjim.sources.xbox"):
             __import__(name)
             heavy.append(name)
         model = paths.REPO / "models" / "opus-mt-tc-big-en-ar-ct2" / "model.bin"
