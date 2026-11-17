@@ -8,6 +8,7 @@ plus shadow) and, for the frost and dim modes, `plate`.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 
 import cv2
 import numpy as np
@@ -59,6 +60,7 @@ class RgbaLayer:
         return buf.tobytes()
 
 
+@lru_cache(maxsize=32)
 def _ellipse(k: int) -> np.ndarray:
     return cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
 
@@ -83,9 +85,10 @@ def estimate_background(bgr: np.ndarray, hole: np.ndarray) -> np.ndarray:
     """
     h, w = hole.shape
     valid = (hole == 0).astype(np.float32)
-    img = bgr.astype(np.float32) * valid[:, :, None]
+    masked_bgr = bgr.copy()
+    masked_bgr[hole > 0] = 0
     small = (max(1, w // 2), max(1, h // 2))
-    img_s = cv2.resize(img, small, interpolation=cv2.INTER_AREA)
+    img_s = cv2.resize(masked_bgr, small, interpolation=cv2.INTER_AREA).astype(np.float32)
     valid_s = cv2.resize(valid, small, interpolation=cv2.INTER_AREA)
     est = np.zeros_like(img_s)
     todo = valid_s < 0.999
@@ -114,8 +117,9 @@ def make_fill(frame_bgr: np.ndarray, block: Block, layer_id: str = "fill") -> Rg
     bg = estimate_background(crop, hole)
     soft = cv2.GaussianBlur(hole, (0, 0), 0.8 * s)
     alpha = cv2.max(hole, soft)
-    bgra = np.dstack([bg, alpha])
-    bgra[alpha == 0] = 0  # colour under transparent pixels would double the PNG size
+    bg[alpha == 0] = 0  # colour under transparent pixels would double the PNG size
+    bgra = cv2.cvtColor(bg, cv2.COLOR_BGR2BGRA)
+    bgra[:, :, 3] = alpha
     return RgbaLayer(layer_id, block.x0, block.y0, bgra, z=0)
 
 
@@ -128,6 +132,8 @@ def stroke_color(frame_bgr: np.ndarray, block: Block) -> tuple[int, int, int]:
         sel = crop[block.mask > 0]
     if len(sel) == 0:
         return (241, 247, 242)
+    if len(sel) > 200:
+        sel = sel[::4]
     b, g, r = np.median(sel, axis=0)
     return int(b), int(g), int(r)
 
@@ -204,7 +210,7 @@ class TextLayout:
 
 def layout_text(text: str, block: Block, style: Style) -> TextLayout:
     asc, baselines = latin_metrics(block)
-    size = style.fixed_size or measured_size(block, style)
+    size = style.fixed_size or arabic.size_for_alef(style.font, (asc + 1) * style.size_factor)
     words = text.split()
     center_x = float(np.mean([(l.x0 + l.x1) / 2 for l in block.lines]))
     max_w = float(max(l.x1 - l.x0 for l in block.lines))
@@ -271,15 +277,14 @@ def make_text(frame_bgr: np.ndarray, block: Block, text: str, style: Style = Sty
         shadow = np.zeros_like(glyphs)
         shadow[max(0, dy) :, max(0, dx) :] = glyphs[: glyphs.shape[0] - max(0, dy), : glyphs.shape[1] - max(0, dx)]
         shadow = cv2.GaussianBlur(shadow, (0, 0), style.shadow_sigma).astype(np.float32) * style.shadow_opacity
-    ga = glyphs.astype(np.float32) / 255.0
-    sa = shadow / 255.0
+    ga = glyphs.astype(np.float32) * (1.0 / 255.0)
+    sa = shadow * (1.0 / 255.0)
     out_a = ga + sa * (1.0 - ga)  # glyphs over shadow (shadow is black)
-    safe = np.maximum(out_a, 1e-6)
-    bgra = np.zeros(glyphs.shape + (4,), dtype=np.uint8)
+    ratio = ga / np.maximum(out_a, 1e-6)
+    bgra = np.empty(glyphs.shape + (4,), dtype=np.uint8)
     for c in range(3):
-        bgra[:, :, c] = np.clip(color[c] * ga / safe, 0, 255).astype(np.uint8)
+        bgra[:, :, c] = (color[c] * ratio).astype(np.uint8)
     bgra[:, :, 3] = np.clip(out_a * 255.0, 0, 255).astype(np.uint8)
-    bgra[bgra[:, :, 3] == 0] = 0
     return RgbaLayer(layer_id, x0, y0, bgra, z=2)
 
 

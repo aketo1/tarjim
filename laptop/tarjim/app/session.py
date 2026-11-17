@@ -60,8 +60,10 @@ def friendly_error(exc: Exception) -> str:
         return "ما قدرت أوصل لخدمة الإكس بوكس. تأكد من الإنترنت وإن الإكس بوكس شغّال ومفعّل فيه «الميزات عن بُعد»."
     if "5555" in text or "التلفزيون رفض" in text or "ما قدرت أتصل بالتلفزيون" in text:
         return "ما قدرت أوصل للتلفزيون. تأكد إنه شغّال وعلى نفس الشبكة، ثم جرّب مرة ثانية."
-    if "ما قدرت أكلّم التطبيق" in text:
+    if "47800" in text or "ما قدرت أكلّم التطبيق" in text:
         return "تطبيق ترجِم على التلفزيون ما يرد. افتح «الدليل» وأعد تجهيز التلفزيون."
+    if "cannot connect to" in low:
+        return "ما قدرت أوصل للتلفزيون. تأكد إنه شغّال وعلى نفس الشبكة، ثم جرّب مرة ثانية."
     if "rest mode" in low:
         return "الـPS5 في وضع الراحة. شغّله ثم جرّب."
     if "no answer from the console" in low or "no ps5" in low:

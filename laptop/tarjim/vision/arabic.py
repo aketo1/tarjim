@@ -8,6 +8,7 @@ each run with HarfBuzz and rasterise the glyphs with FreeType.
 
 from __future__ import annotations
 
+import re
 import unicodedata
 from dataclasses import dataclass
 from functools import lru_cache
@@ -18,6 +19,8 @@ import numpy as np
 import uharfbuzz as hb
 
 from .. import paths
+
+_INVISIBLE = re.compile(r"[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff\u2047\ufffd]")
 
 FONT_DIR = paths.REPO / "fonts"
 FONT_FILES = {
@@ -74,6 +77,8 @@ def load_font(name: str) -> Font:
 
 def _strong(ch: str) -> str | None:
     """'R', 'L', 'N' (number) or None for neutral characters."""
+    if ch in "،؛؟٪":
+        return "R"
     b = unicodedata.bidirectional(ch)
     if b in ("R", "AL"):
         return "R"
@@ -89,9 +94,11 @@ def bidi_runs(text: str) -> list[tuple[str, str]]:
 
     Numbers form LTR runs. Neutrals (spaces, punctuation) between two LTR
     pieces stay LTR; every other neutral takes the RTL base direction.
-    Number separators between digits stay with the number.
+    Number separators and attached signs/percent stay with the number.
     """
     n = len(text)
+    if n == 0:
+        return []
     kinds = [_strong(c) for c in text]
     dirs: list[str | None] = [None] * n
     for i, k in enumerate(kinds):
@@ -101,6 +108,13 @@ def bidi_runs(text: str) -> list[tuple[str, str]]:
             dirs[i] = "L"
         elif unicodedata.bidirectional(text[i]) == "NSM" and i > 0:
             dirs[i] = dirs[i - 1]
+            kinds[i] = kinds[i - 1]
+    for i in range(n):
+        if dirs[i] is None:
+            if i > 0 and kinds[i - 1] == "N" and text[i] in "%°":
+                dirs[i], kinds[i] = "L", "N"
+            elif i + 1 < n and kinds[i + 1] == "N" and text[i] in "$£€+-" and (i == 0 or dirs[i - 1] is None):
+                dirs[i], kinds[i] = "L", "N"
     i = 0
     while i < n:
         if dirs[i] is not None:
@@ -112,8 +126,6 @@ def bidi_runs(text: str) -> list[tuple[str, str]]:
         before = dirs[i - 1] if i > 0 else "R"
         after = dirs[j] if j < n else "R"
         fill = "L" if before == "L" and after == "L" else "R"
-        if fill == "R" and before == "L" and after == "L":
-            fill = "L"
         # "3.5", "10:30", "1,000": a single separator between two digits.
         if j - i == 1 and i > 0 and j < n and kinds[i - 1] == "N" and kinds[j] == "N":
             fill = "L"
@@ -167,7 +179,9 @@ def _pick_fonts(text: str, fonts: list[Font]) -> list[tuple[Font, str]]:
     return pieces
 
 
+@lru_cache(maxsize=4096)
 def shape_line(text: str, size: int, font: str = "harmattan") -> ShapedLine:
+    text = _INVISIBLE.sub("", text)
     fonts = [load_font(font)] + [load_font(f) for f in FALLBACKS if f != font]
     glyphs: list[Glyph] = []
     missing = 0
@@ -197,19 +211,28 @@ def line_width(text: str, size: int, font: str = "harmattan") -> float:
     return shape_line(text, size, font).width
 
 
+@lru_cache(maxsize=4096)
+def _render_glyph(font: Font, size: int, gid: int) -> tuple[np.ndarray, int, int] | None:
+    font.set_size(size)
+    font.ft.load_glyph(gid, freetype.FT_LOAD_RENDER | freetype.FT_LOAD_NO_HINTING)
+    slot = font.ft.glyph
+    bmp = slot.bitmap
+    if bmp.width == 0 or bmp.rows == 0:
+        return None
+    arr = np.array(bmp.buffer, dtype=np.uint8).reshape(bmp.rows, bmp.pitch)[:, : bmp.width].copy()
+    return arr, slot.bitmap_left, slot.bitmap_top
+
+
 def rasterize(line: ShapedLine, size: int, pad: int = 4) -> tuple[np.ndarray, int, int]:
     """Return (alpha uint8, x of the line's left edge, y of the baseline) inside the image."""
     boxes = []
     for g in line.glyphs:
-        g.font.set_size(size)
-        g.font.ft.load_glyph(g.gid, freetype.FT_LOAD_RENDER | freetype.FT_LOAD_NO_HINTING)
-        slot = g.font.ft.glyph
-        bmp = slot.bitmap
-        if bmp.width == 0 or bmp.rows == 0:
+        rendered = _render_glyph(g.font, size, g.gid)
+        if rendered is None:
             continue
-        arr = np.array(bmp.buffer, dtype=np.uint8).reshape(bmp.rows, bmp.pitch)[:, : bmp.width]
-        left = int(round(g.x)) + slot.bitmap_left
-        top = -int(round(g.y)) - slot.bitmap_top  # relative to the baseline, y down
+        arr, bmp_left, bmp_top = rendered
+        left = int(round(g.x)) + bmp_left
+        top = -int(round(g.y)) - bmp_top  # relative to the baseline, y down
         boxes.append((left, top, arr))
     if not boxes:
         return np.zeros((1, 1), np.uint8), 0, 0

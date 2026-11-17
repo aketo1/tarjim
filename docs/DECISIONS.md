@@ -177,3 +177,24 @@ Non-obvious choices and the evidence behind them. Newest last.
   Remote Play client, OCR and translation on the phone; not attempted. The phone shows the
   laptop's own interface over the home network after pairing with a one-time code.
 
+## Translation rules and speed (2026-11-18)
+
+- **8 model threads, not 4.** While the laptop decoded a 1080p 30 fps H.264 picture in real
+  time and searched every frame (as in play): 4 threads 102 / 105 ms per sentence, 6 threads
+  92 / 118 ms, 8 threads 87 / 114 ms; the picture stayed at 30 fps each time. The earlier
+  "4x slower" with more threads is not seen any more; 8 is kept, 4 is the fallback.
+- **Female stand-in: Catherine, not Victoria.** On 8 longer lines with women's names,
+  "Victoria" broke 4 (a masdar for the command: «الذهاب الحصول على بعض النوم»), "Sarah" 2,
+  "Mary" 1, "Catherine" and "Anna" none. "Anna" was not chosen: «آنا» is one hamza from
+  «أنا» ("I").
+- **Groups get a plural stand-in** ("soldiers"): one man's name made a group's verbs singular
+  («البينكرتون سيلحق»).
+- **Gender as one table for whole verb families**, not a rule per sentence: the earlier
+  rules fixed the exact lines they were written for; a list of 193 masculine commands, with
+  the feminine derived (plus 30 irregular pairs) and object endings, covers every line.
+  Commands change only where a command can stand (start, after punctuation, «و/ف» joined,
+  after «ثم», after «لا»), so «جدي» (my grandfather), «دوري» (my turn), «وقف الرجل» (stood) and
+  «أذهب» ("I go") stay as they are.
+- **A rule is judged on sentences written after it.** Antigravity scored 100/100 on its own
+  set but improved 2 of 22 new sentences; after the fixes, a set written last: 4 better,
+  1 worse, 15 the same.

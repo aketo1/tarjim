@@ -61,14 +61,17 @@ def split_speaker(text: str) -> tuple[str | None, str]:
 class OcrEngine:
     def __init__(self) -> None:
         from rapidocr import RapidOCR
+        from rapidocr.ch_ppocr_rec.typings import TextRecInput
         from rapidocr.utils.typings import LangRec
 
+        self._rec_input = TextRecInput
         self._engine = RapidOCR(
             params={
                 "Rec.lang_type": LangRec.EN,
                 "Global.use_det": False,
                 "Global.use_cls": False,
                 "Global.log_level": "error",
+                "EngineConfig.onnxruntime.intra_op_num_threads": 4,
             }
         )
 
@@ -76,7 +79,7 @@ class OcrEngine:
         self._engine(np.full((TARGET_LINE_H, 320, 3), 255, np.uint8), use_det=False, use_cls=False, use_rec=True)
 
     def _read_line(self, img: np.ndarray) -> tuple[str, float]:
-        res = self._engine(img, use_det=False, use_cls=False, use_rec=True)
+        res = self._engine.text_rec(self._rec_input(img=[img]))
         txts = getattr(res, "txts", None) or ()
         scores = getattr(res, "scores", None) or ()
         if not txts:

@@ -60,7 +60,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = src.add_parser("setup", help="يربط اللابتوب بالـPS5 (حساب ثاني + رقم الربط)")
     p.add_argument("--host", help="عنوان IP للـPS5")
     p.add_argument("--redirect-url", help="عنوان صفحة redirect بعد تسجيل الدخول عند Sony")
-    p.add_argument("--pin", help="رقم الربط من الـPS5 (8 خانات)")
+    p.add_argument("--pin", help="رقم الربط من الـPS5 (8 أرقام)")
     p = src.add_parser("test", help="يقيس الدقة وعدد الصور والانقطاعات")
     p.add_argument("--backend", default="rp-pyremoteplay", choices=["rp-pyremoteplay", "file"])
     p.add_argument("--seconds", type=float, default=30)

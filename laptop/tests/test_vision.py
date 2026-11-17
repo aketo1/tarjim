@@ -187,6 +187,11 @@ def test_bidi_keeps_latin_names_and_numbers_in_reading_order():
     assert ("L", "Valentine") in runs and ("L", "1899") in runs
     assert runs[-1] == ("R", ".")  # final full stop belongs to the Arabic sentence
     assert arabic.bidi_runs("الساعة 10:30 تماماً")[1] == ("L", "10:30")
+    assert arabic.bidi_runs("الأرقام 1، 2، 3") == [("R", "الأرقام "), ("L", "1"), ("R", "، "), ("L", "2"), ("R", "، "), ("L", "3")]
+    assert arabic.bidi_runs("نسبة 25% الآن")[1] == ("L", "25%")
+    assert arabic.bidi_runs("الدرجة -5 الآن")[1] == ("L", "-5")
+    assert arabic.bidi_runs("معي $50 فقط")[1] == ("L", "$50")
+    assert arabic.shape_line("\u200fمرحباً\u200e", 40).missing == 0
     # Visual order: the first logical word ends up at the right edge.
     shaped = arabic.shape_line("أ Arthur", 48)
     latin_x = [g.x for g in shaped.glyphs if g.font is not None][:6]

@@ -18,7 +18,7 @@ class FakeEngine:
 
     name = "fake"
     WORDS = {"Dutch": None, "Marston": "مارستون", "Arthur": "آرثر", "Edward": "إدوارد", "Harold": "هارولد",
-             "Victoria": "فيكتوريا", "Sadie": "سادي"}
+             "Victoria": "فيكتوريا", "Catherine": "كاثرين", "Margaret": "مارغريت", "Sadie": "سادي"}
 
     def __init__(self):
         self.calls = []
@@ -65,8 +65,9 @@ def test_a_consistent_other_spelling_is_swapped_and_a_good_name_is_left_alone():
 def test_a_womans_name_uses_a_female_stand_in():
     engine, tr = make({"Sadie": "سيدي"}, female={"Sadie"})
     arabic = tr.translate("I told Sadie to wait.")[0]
-    assert engine.calls[-1] == "I told Victoria to wait."
-    assert "سيدي" in arabic and "فيكتوريا" not in arabic
+    # Catherine first: with "Victoria" the real model broke 4 of 8 longer lines, with Catherine none.
+    assert engine.calls[-1] == "I told Catherine to wait."
+    assert "سيدي" in arabic and "كاثرين" not in arabic
 
 
 def test_editing_a_name_takes_effect_despite_the_cache():
@@ -139,6 +140,70 @@ def test_trying_names_stops_when_asked():
     tr = CachedTranslator(engine, Cache(":memory:"), profile="g", glossary={f"Name{i}": "اسم" for i in range(12)})
     tr.prepare_names(stop=lambda: True)
     assert engine.calls == []
+
+
+def test_female_vocative_title_and_plural_agreement():
+    engine, tr = make(
+        {"Clara": "كلارا", "Elena": "إيلينا", "Nora": "نورا", "Barton": "بارتون"},
+        female={"Clara", "Elena", "Nora"},
+    )
+    # A surname preceded by Mrs./Miss uses a female stand-in even when the surname itself is not marked female.
+    tr.translate("Mrs. Barton is waiting.")
+    assert "Mrs. Catherine" in engine.calls[-1]
+    tr.translate("Mr. Barton is waiting.")
+    assert "Catherine" not in engine.calls[-1]
+
+    # Vocative imperatives and 2nd-person verbs are feminised when addressing a woman.
+    classMasc = type("MascEngine", (), {
+        "name": "m",
+        "translate": lambda self, text, context=None: "كاثرين! إنتبه! يجب أن تبقى هنا. تحتاج إلى الراحة. أجبني!",
+    })()
+    tr_f = CachedTranslator(classMasc, Cache(":memory:"), profile="g", glossary={"Clara": "كلارا"}, female={"Clara"})
+    out = tr_f.translate("Clara! Watch out! You need to stay here. Answer me!")[0]
+    assert out == "كلارا! انتبهي! يجب أن تبقي هنا. تحتاجين إلى الراحة. أجيبيني!"
+
+    # Three female subjects get feminine plural verbs instead of masculine -وا.
+    classPlur = type("PlurEngine", (), {
+        "name": "p",
+        "translate": lambda self, text, context=None: "كاثرين ومارغريت وإليزابيث غادروا هذا الصباح.",
+    })()
+    tr_p = CachedTranslator(
+        classPlur, Cache(":memory:"), profile="g",
+        glossary={"Clara": "كلارا", "Elena": "إيلينا", "Nora": "نورا"},
+        female={"Clara", "Elena", "Nora"},
+    )
+    assert tr_p.translate("Clara, Elena and Nora left this morning.")[0] == "كلارا وإيلينا ونورا غادرن هذا الصباح."
+
+
+def test_multi_word_names_and_word_name_fallback():
+    engine, tr = make({"Silas Vance": "سيلاس فانس", "Oak Manor": "قصر أوك", "Ash": "آش"})
+    # Multi-word names always use a stand-in so neither word is left behind or doubled.
+    assert tr.names.mode("Silas Vance", "سيلاس فانس") == ("proxy", "")
+    assert tr.names.mode("Oak Manor", "قصر أوك") == ("proxy", "")
+
+    # If a name was filed as "ok" in probes but translated as a common noun in a sentence, it retries with a stand-in.
+    class AshEngine:
+        name = "ash"
+
+        def __init__(self):
+            self.calls = []
+
+        def translate(self, text, context=None):
+            self.calls.append(text)
+            if "Follow Edward" in text:
+                return "اتبع إدوارد إلى الكهف."
+            if "Edward" in text:
+                return "مرحباً إدوارد."
+            if "Follow Ash" in text:
+                return "اتبع الرماد إلى الكهف."
+            return "مرحباً آش."
+
+    ash_engine = AshEngine()
+    tr_ash = CachedTranslator(ash_engine, Cache(":memory:"), profile="g", glossary={"Ash": "آش"})
+    assert tr_ash.names.mode("Ash", "آش")[0] == "ok"
+    ar, _, _ = tr_ash.translate("Follow Ash into the cave.")
+    assert ar == "اتبع آش إلى الكهف." and "الرماد" not in ar
+    assert ash_engine.calls[-1] == "Follow Edward into the cave."
 
 
 # -- phone control -----------------------------------------------------------------

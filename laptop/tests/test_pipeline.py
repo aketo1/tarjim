@@ -105,6 +105,56 @@ def test_arabic_and_english_normalisation():
     assert apply_glossary("ذهب Arthur إلى البلدة", "Arthur went to town", {"Arthur": "آرثر"}) == "ذهب آرثر إلى البلدة"
 
 
+def test_idioms_contractions_and_phrase_memory():
+    from tarjim.translate import _phrase_lookup, preprocess_english
+
+    assert _phrase_lookup("Piece of cake.") == "أمر سهل جداً."
+    assert _phrase_lookup("Hold your horses!") == "تمهّل قليلاً!"
+    assert _phrase_lookup("Fair enough...") == "هذا معقول..."
+    assert _phrase_lookup("Hm.") == "همم."
+    assert _phrase_lookup("Check.") == "تم."
+    assert _phrase_lookup("What?") == "ماذا؟"
+
+    assert preprocess_english("(sighs) We gotta move, I'm freezin' out here.") == "We have to move, I'm freezing out here."
+    assert preprocess_english("Get that wagon outta here.") == "take that wagon out of here."
+    assert preprocess_english("ust making sure you're alright.") == "Just making sure you're alright."
+    assert preprocess_english("I dont know what youre talking about.") == "I don't know what you're talking about."
+    assert preprocess_english("Either way, it ain't getting us nowhere.") == "Either way, it is not leading us anywhere."
+    assert preprocess_english("We're gonna make it.") == "We're going to survive."
+    assert preprocess_english("Don't take it out on her.") == "Don't blame her."
+    assert preprocess_english("LOOK AT THE HORIZON!") == "Look at the horizon!"
+
+
+def test_arabic_orthography_and_leftover_english_cleanup():
+    assert normalize_arabic("(أنت مصابة يا (فيكتوريا.") == "أنت مصابة يا فيكتوريا."
+    assert normalize_arabic("ذهبنا و رأينا المكان.") == "ذهبنا ورأينا المكان."
+    assert normalize_arabic("شكراً يا السيد حسن ويا الآنسة سلمى.") == "شكراً يا سيد حسن ويا آنسة سلمى."
+    assert normalize_arabic("إهدأ وإنتظر هنا، الإستماع والإهتمام مطلوبان، اعطني المفتاح.") == (
+        "اهدأ وانتظر هنا، الاستماع والاهتمام مطلوبان، أعطني المفتاح."
+    )
+    assert normalize_arabic("⁇ وصلنا إلى البوابة OK xy") == "وصلنا إلى البوابة حسناً"
+    assert normalize_arabic("انهم ينتظرون في الداخل..،لا تتأخر!") == "إنهم ينتظرون في الداخل...، لا تتأخر!"
+
+
+def test_sentence_splitting_and_punctuation_restoration():
+    from tarjim.translate import join_sentences, split_sentences
+
+    assert split_sentences("We met J. Carter and Rev. Miller in St. Louis. They were ready.") == [
+        "We met J. Carter and Rev. Miller in St. Louis.",
+        "They were ready.",
+    ]
+    assert split_sentences("-Stay behind the wall. -Watch out!") == ["-Stay behind the wall.", "-Watch out!"]
+    assert split_sentences("Lock the gate; do not let anyone in.") == ["Lock the gate", "do not let anyone in."]
+    assert split_sentences("We reached the tower. Elena: Look at the bridge.") == [
+        "We reached the tower.",
+        "Elena: Look at the bridge.",
+    ]
+    assert join_sentences(
+        ["Are you ready?", "Move now!", "Wait for me..."],
+        ["هل أنت مستعد.", "تحرك الآن.", "انتظرني."],
+    ) == "هل أنت مستعد؟ تحرك الآن! انتظرني..."
+
+
 # -- end to end on FakeTv -------------------------------------------------------------
 
 

@@ -120,11 +120,11 @@ def checks() -> dict:
          "hint": "شبّك الشاحن: على البطارية الترجمة أبطأ أربع مرات تقريباً."},
         {"id": "models", "ok": models, "title": "ملفات الترجمة موجودة", "hint": "مجلد models ناقص."},
         {"id": "tv", "ok": tv_reach, "title": "التلفزيون على الشبكة",
-         "hint": "شغّل التلفزيون وتأكد إنه على نفس الشبكة." if tv_ip else "التلفزيون ما تجهّز للحين. افتح الدليل."},
+         "hint": "شغّل التلفزيون وتأكد إنه على نفس الشبكة." if tv_ip else "التلفزيون ما تجهّز للحين. افتح «الدليل»."},
         {"id": "ps5", "ok": bool(ps5 and ps5["on"]), "title": "الـPS5 شغّال",
-         "hint": "شغّل الـPS5 (مو وضع الراحة)." if ps5_host else "الـPS5 ما انربط للحين. افتح الدليل."},
+         "hint": "شغّل الـPS5 (مو وضع الراحة)." if ps5_host else "الـPS5 ما انربط للحين. افتح «الدليل»."},
         {"id": "link", "ok": bool(ps5 and ps5["linked"]) or bool(cfg.get("ps5_user")), "title": "اللابتوب مربوط بالـPS5",
-         "hint": "كمّل خطوة ربط الـPS5 في الدليل."},
+         "hint": "كمّل خطوة ربط الـPS5 في «الدليل»."},
     ]
     return {
         "items": items, "ready": all(i["ok"] for i in items if i["id"] != "power"),
@@ -143,9 +143,9 @@ def _xbox_checks(cfg: dict, tv_ip, tv_reach: bool, tv_app: bool, models: bool) -
          "hint": "شبّك الشاحن: على البطارية الترجمة أبطأ أربع مرات تقريباً."},
         {"id": "models", "ok": models, "title": "ملفات الترجمة موجودة", "hint": "مجلد models ناقص."},
         {"id": "tv", "ok": tv_reach, "title": "التلفزيون على الشبكة",
-         "hint": "شغّل التلفزيون وتأكد إنه على نفس الشبكة." if tv_ip else "التلفزيون ما تجهّز للحين. افتح الدليل."},
-        {"id": "ps5", "ok": bool(chosen.get("id")), "title": "الإكس بوكس مختار", "hint": "اختر الإكس بوكس من الدليل ‹ الجهاز."},
-        {"id": "link", "ok": linked, "title": "اللابتوب مربوط بحساب الإكس بوكس", "hint": "اربط حساب مايكروسوفت من الدليل ‹ الجهاز."},
+         "hint": "شغّل التلفزيون وتأكد إنه على نفس الشبكة." if tv_ip else "التلفزيون ما تجهّز للحين. افتح «الدليل»."},
+        {"id": "ps5", "ok": bool(chosen.get("id")), "title": "الإكس بوكس مختار", "hint": "اختر الإكس بوكس من «الدليل» ‹ «الجهاز»."},
+        {"id": "link", "ok": linked, "title": "اللابتوب مربوط بحساب الإكس بوكس", "hint": "اربط حساب مايكروسوفت من «الدليل» ‹ «الجهاز»."},
     ]
     return {
         "items": items, "ready": all(i["ok"] for i in items if i["id"] != "power"), "kind": "xbox",
@@ -444,9 +444,9 @@ def ps5_error(exc: Exception) -> str:
     if "redirect" in text:
         return "هذا مو عنوان صفحة redirect. انسخ العنوان كامل من شريط المتصفح بعد تسجيل الدخول."
     if "rejected the sign-in code" in text:
-        return "الرمز انتهى (يصلح دقايق بس). افتح صفحة الدخول من جديد وانسخ العنوان على طول."
+        return "الرمز انتهى (يصلح دقائق بس). افتح صفحة الدخول من جديد وانسخ العنوان على طول."
     if "PIN must be 8 digits" in text:
-        return "الرقم لازم يكون 8 خانات."
+        return "الرقم لازم يكون 8 أرقام."
     if "rejected the PIN" in text:
         return "الـPS5 رفض الرقم (يتغيّر كل كم دقيقة). طلّع رقم جديد وجرّب."
     return friendly_error(exc)

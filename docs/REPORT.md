@@ -349,6 +349,10 @@ live run, then tuning from the user's feedback. The findings that cost time:
   `laptop/tarjim/app/web`, then run `launcher/sync_phone_web.py` and rebuild
   the phone app (section 19). Keep the look's code in `look.js`, out of `app.js`.
   The games' pictures come only from `launcher/fetch_art.py` (section 19).
+- **The translation rules live twice**: `laptop/tarjim/translate.py` + `gender.py` and the
+  phone app's `TarjimEngine.kt` + `Gender.kt`. Change both, keep `test_gender.py` and
+  `GenderTest.kt` alike, and raise `RULES` in `translate.py` so the cache is not reused
+  (section 20). Judge a change on sentences written after it, not on the ones it was made for.
 - **Licences.** This is a personal, non-distributed project. It depends on
   GPL-3.0 code (`ps5-remoteplay-mcp`) and on NLLB weights that are
   non-commercial; see `LICENSES.md` before sharing anything.
@@ -922,3 +926,100 @@ version. The TV app's icon changes with its next build.
 
 The art belongs to its publishers. It is used to show the player which game is
 which, in this personal, non-distributed project; see `LICENSES.md`.
+
+## 20. Arabic wording, a stronger translation engine, and speed (added 2026-11-18)
+
+The user asked for the Arabic of both apps and the translation to be improved, without
+making it slower. At the user's request this was first done by another agent (Google
+Antigravity 2.32, model "Gemini 4 Argon" at high effort, given this report's rules), in
+two rounds; its work was then checked independently and its mistakes fixed here.
+
+### What changed for the user
+
+- **One name per feature, everywhere**: «المظهر»، «الأسماء»، «المكتبة»، «ألعابي»، «الجوال»،
+  «اللابتوب»، «التلفزيون»، «الدليل»، «الإعداد» in titles, buttons and messages; spelling and
+  hamza fixes («القوائم»، «دائماً»); the phone app's own messages (errors, the PS5 link
+  screen) in plain Arabic instead of English.
+- **Commands in the right gender.** The model guesses whether "you" is a man or a woman
+  («غطّي» said to Javier, «ابصقيها» to nobody). The program now knows: a woman's name →
+  feminine, a man's name or nobody named → masculine, for whole families of verbs at once
+  (193 commands, their object endings «ساعدني/ساعديني», "don't" «لا تفعل/لا تفعلي», the
+  hollow and hamza verbs «قم/قومي»، «اهدأ/اهدئي»), not one sentence at a time
+  (`tarjim/gender.py`, the same list in the phone app's `Gender.kt`).
+- **Groups of people are plural**: «البينكرتون يراقبون / سيلحقون»، «الأودريسكول هاجموا». A group
+  name used to be stood in for by one man's name, which made its verbs singular; it now gets
+  a plural stand-in ("soldiers").
+- **Women's names keep longer sentences intact.** The female stand-in "Victoria" broke 4 of 8
+  longer lines in a test ("Karen, you're drunk again, go get some sleep" came out as
+  «الذهاب الحصول على بعض النوم»); "Catherine" broke none, so it comes first now.
+- **Idioms and phrasal verbs** are put into plain English before translation (158
+  patterns: "hold your horses", "count me in", "the bridge is out", "I owe you one", "spit
+  it out", "take it or leave it", "you've got some nerve", ...), and 104 short set phrases
+  come from a phrase memory.
+- **Cleaner Arabic**: hamza on commands («اهدأ»، «أعطني»)، «يا سيد», joined «و», no brackets,
+  times like 7:45, Arabic punctuation, no leftover English words.
+- **Faster** (below). Translations made by the older rules are not reused from the cache
+  (`RULES = "r3"` is part of the cache key).
+
+### Measured
+
+Whole path of one line (names, rules, model, clean-up; nothing cached), 66 sentences written
+for the check, two rounds each, the original engine against this one, on this laptop:
+
+| | Original | Now |
+| --- | --- | --- |
+| Median per line | 127 / 119 ms | 105 / 107 ms |
+| Slowest 10% | 168 / 159 ms | 165 / 160 ms |
+| Drawing the Arabic (median) | 7.2 ms | 4.7 ms |
+
+Where the time went: the model runs 8 threads instead of 4, decodes at most 64 tokens per
+sentence (sentences are split first), and translates the sentences of a line in one batch;
+the English rules are compiled once and skipped when nothing in the line can match; the
+reader calls the recogniser directly; the Arabic drawing keeps shaped lines and glyphs and
+samples fewer points for the colour behind the English.
+
+**Threads, during play.** The old code used 4 threads on purpose ("oversubscription made
+translation 4x slower"). Measured again while the laptop decoded a 1080p 30 fps H.264 picture
+in real time and searched every frame for subtitles, as in play (`threads_real_load.py`, two
+rounds): 4 threads 102 / 105 ms, 6 threads 92 / 118 ms, 8 threads 87 / 114 ms, and the
+picture stayed at 30 fps in every case. 8 is kept; if a real session shows otherwise, set
+`_threads()` back to 4.
+
+**Quality.** Antigravity reported 100 of 100 correct on its own evaluation set
+(`tests/test_eval.py`), but it wrote both the set and the rules for it. On 22 new sentences
+it had not seen, only 2 got better after its two rounds. The fixes here were guided by those
+22 and by 24 more, so those sets are not a fair test of them. A last set of 20 sentences was
+written after all the fixes, and compared with the original engine:
+
+- better, 4: «سايدي، راقبي الطريق واصرخي إذا رأيت راكبين» (was «ومشاهدة الطريق وصراخ»),
+  «الأودريسكول يخيمون» (was «الـالأودريسكول»), and two of punctuation and spacing;
+- worse, 1: «لا تطلق النار إلا إذا أطلقوا أولاً» lost «النار» the second time;
+- the same, 15: mostly plain sentences that were already right.
+
+In the sets that guided the work: «اذهبي واحظي ببعض النوم» (was «الذهاب الحصول على بعض النوم»),
+«غطّ الجانب الأيسر» said to a man (was «غطّي»), «البينكرتون سيلحقون» (was «سيلحق»), «أنا مدين لك»
+(was «أدين لك بواحدة»), «أنا لا أثق به على الإطلاق» (was «ولا حتى قليلاً»), «قلها الآن» (was
+«ابصقيها»), «تيلي، لا تخبري أحداً» (was «لا تجرؤين على إخبار»).
+
+Still wrong, from the model itself: "If the law finds us here" →  «إذا وجدنا القانون هنا»,
+"we've got company" → «لدينا رفقة», "Don't worry about me, worry about yourself" (the second
+half is not a command). A much better translation needs a stronger model, which is slower.
+
+### Files
+
+| File | What it holds |
+| --- | --- |
+| `laptop/tarjim/translate.py` | Idioms, phrasal verbs and the phrase memory; women's and groups' stand-ins; gender and plural rules; Arabic clean-up; 8 threads, 64 tokens, batches; `RULES` in the cache key |
+| `laptop/tarjim/gender.py` (new) | Masculine/feminine commands, object endings, "don't", present tense; where a command can stand |
+| `laptop/tarjim/vision/ocr.py`, `render.py`, `arabic.py` | The faster reader call; the drawing caches and the lighter colour sampling |
+| `laptop/tarjim/app/web/index.html`, `app.js`, `app/server.py`, `session.py`, `cli.py`, `source_cli.py`, `tv.py` | The Arabic wording |
+| `laptop/tests/test_gender.py` (new), `test_eval.py` (new, Antigravity's 100 lines) | A line that becomes broken or word-for-word is a regression; another correct wording is not |
+
+### Verified, and not
+
+**Verified:** 144 tests pass. The phone app builds with the same rules, and their unit test
+(`GenderTest.kt`, the same cases as `test_gender.py`) passes on the computer. The speed
+numbers above. **Not verified:** a real play session (the speed under real load was
+simulated with a decoded video), and anything on the phone: its translator is Google's on-
+device one (ML Kit), whose mistakes differ from this model's, so the shared rules were not
+measured there.

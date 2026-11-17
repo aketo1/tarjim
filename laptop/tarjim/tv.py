@@ -62,7 +62,7 @@ def connect(adb: Adb, wait_s: float = 90.0) -> None:
     if "refused" in out or "cannot connect" in out or "failed to connect" in out:
         raise TvError(
             "التلفزيون رفض الاتصال على المنفذ 5555.\n"
-            "في التلفزيون: الإعدادات > النظام > خيارات المطوّر > فعّل «تصحيح أخطاء USB» "
+            "في التلفزيون: الإعدادات ‹ النظام ‹ خيارات المطوّر ‹ فعّل «تصحيح أخطاء USB» "
             "(أو «تصحيح الأخطاء اللاسلكي»)، وتأكد إن عنوان الـIP صحيح."
         )
     asked = False
@@ -299,7 +299,7 @@ def revert(ip: str | None) -> None:
     adb = Adb(_serial(ip))
     connect(adb, wait_s=20)
 
-    step("أوقف الخدمة...")
+    step("أوقّف الخدمة...")
     adb.run("shell", "am", "stopservice", "-n", OVERLAY_SERVICE, check=False)
 
     step("أشيل خدمتنا من قائمة خدمات الوصول...")
