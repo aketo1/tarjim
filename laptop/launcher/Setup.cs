@@ -331,11 +331,12 @@ sealed class SetupForm : Form
 {
     enum Page { Welcome, Working, Done, Failed, AskRemove, Removed }
 
-    // The program's "desert night": night-sky inks, moonlight paper, dawn for what you press.
-    static readonly Color Ink = Color.FromArgb(7, 10, 28), Ink2 = Color.FromArgb(17, 15, 40), Ink3 = Color.FromArgb(28, 24, 60),
-        Ink4 = Color.FromArgb(44, 38, 82), Paper = Color.FromArgb(251, 246, 236), Muted = Color.FromArgb(160, 154, 180),
-        Amber = Color.FromArgb(255, 179, 92), AmberInk = Color.FromArgb(43, 19, 5), Live = Color.FromArgb(98, 230, 182),
-        Bad = Color.FromArgb(255, 107, 120);
+    // The program's look: graphite and white, no colours of its own (the games bring theirs).
+    // "Amber" is what you press: white, with near-black writing on it, like the program's start button.
+    static readonly Color Ink = Color.FromArgb(11, 11, 13), Ink2 = Color.FromArgb(22, 22, 26), Ink3 = Color.FromArgb(34, 34, 40),
+        Ink4 = Color.FromArgb(54, 54, 62), Paper = Color.FromArgb(255, 255, 255), Muted = Color.FromArgb(160, 160, 170),
+        Amber = Color.FromArgb(255, 255, 255), AmberInk = Color.FromArgb(12, 12, 14), Live = Color.FromArgb(52, 210, 123),
+        Bad = Color.FromArgb(255, 107, 107);
 
     static readonly string[][] Lines = new string[][] {
         new string[] { "We should leave before the storm gets here.", "يجب أن نغادر قبل وصول العاصفة." },
@@ -455,31 +456,28 @@ sealed class SetupForm : Form
         Centered(g, text, font, Color.FromArgb(alpha, 242, 247, 241), box, rtl);
     }
 
-    /// <summary>The same dusk scene as the program's home screen, playing one line: English, then Arabic in its place.</summary>
+    /// <summary>A quiet graphite scene, like the program's home before a game is chosen, playing one line: English, then Arabic in its place.</summary>
     void DrawScene(Graphics g, RectangleF r)
     {
         using (GraphicsPath clip = Round(r, 18 * s))
         {
             GraphicsState saved = g.Save();
             g.SetClip(clip);
-            using (LinearGradientBrush sky = new LinearGradientBrush(r, Color.Black, Color.Black, 90f))
-            {
-                ColorBlend blend = new ColorBlend();
-                blend.Colors = new Color[] { Color.FromArgb(16, 18, 44), Color.FromArgb(44, 37, 82), Color.FromArgb(125, 65, 105), Color.FromArgb(217, 121, 79), Color.FromArgb(255, 194, 122), Color.FromArgb(255, 194, 122) };
-                blend.Positions = new float[] { 0f, 0.26f, 0.46f, 0.6f, 0.7f, 1f };
-                sky.InterpolationColors = blend;
-                g.FillRectangle(sky, r);
-            }
+            using (LinearGradientBrush ground = new LinearGradientBrush(r, Color.FromArgb(30, 30, 35), Color.FromArgb(11, 11, 13), 90f))
+                g.FillRectangle(ground, r);
             double t = time.Elapsed.TotalSeconds;
-            float mx = r.X + r.Width * 0.7f, my = r.Y + r.Height * 0.2f, mr = r.Width * 0.075f;
-            for (int i = 6; i >= 1; i--)
-                using (SolidBrush halo = new SolidBrush(Color.FromArgb(9, 255, 226, 160)))
-                    g.FillEllipse(halo, mx - mr - i * 7 * s, my - mr - i * 7 * s, (mr + i * 7 * s) * 2, (mr + i * 7 * s) * 2);
-            using (SolidBrush moon = new SolidBrush(Color.FromArgb(255, 243, 210))) g.FillEllipse(moon, mx - mr, my - mr, mr * 2, mr * 2);
-
-            Hills(g, r, 0.46f, Color.FromArgb(90, 58, 99), new float[] { .37f, .53f, .43f, .7f, .38f, .52f, .3f, .66f, .26f, .46f, .25f, .35f }, (float)Math.Sin(t / 7) * 6 * s);
-            Hills(g, r, 0.36f, Color.FromArgb(51, 38, 74), new float[] { .23f, .4f, .25f, .49f, .24f, .43f, .2f, .33f, .17f, .3f }, (float)Math.Sin(t / 5 + 1) * 9 * s);
-            Hills(g, r, 0.24f, Color.FromArgb(21, 18, 31), new float[] { .13f, .25f, .15f, .3f, .14f, .26f }, 0);
+            // a soft light from the top corner that drifts a little, as a screen glows in a dark room
+            float lx = r.X + r.Width * (0.78f + 0.04f * (float)Math.Sin(t / 6)), ly = r.Y - r.Height * 0.1f, lr = r.Width * 0.75f;
+            using (GraphicsPath glow = new GraphicsPath())
+            {
+                glow.AddEllipse(lx - lr, ly - lr * 0.8f, lr * 2, lr * 1.6f);
+                using (PathGradientBrush light = new PathGradientBrush(glow))
+                {
+                    light.CenterColor = Color.FromArgb(70, 140, 140, 156);
+                    light.SurroundColors = new Color[] { Color.FromArgb(0, 30, 30, 35) };
+                    g.FillPath(light, glow);
+                }
+            }
             using (LinearGradientBrush shade = new LinearGradientBrush(r, Color.FromArgb(70, 0, 0, 0), Color.FromArgb(130, 0, 0, 0), 90f))
             {
                 ColorBlend fade = new ColorBlend();
@@ -502,26 +500,17 @@ sealed class SetupForm : Form
             g.Restore(saved);
         }
         using (GraphicsPath edge = Round(r, 18 * s))
-        using (Pen pen = new Pen(Color.FromArgb(46, 49, 62), 1.5f * s)) g.DrawPath(pen, edge);
-    }
-
-    static void Hills(Graphics g, RectangleF r, float height, Color color, float[] peaks, float shift)
-    {
-        List<PointF> pts = new List<PointF>();
-        pts.Add(new PointF(r.X - 30, r.Bottom));
-        for (int i = 0; i < peaks.Length; i++)
-            pts.Add(new PointF(r.X - 20 + shift + (r.Width + 40) * i / (peaks.Length - 1), r.Bottom - r.Height * peaks[i] * Math.Min(1f, 1.15f * r.Width / r.Height)));
-        pts.Add(new PointF(r.Right + 30, r.Bottom));
-        using (SolidBrush b = new SolidBrush(color)) g.FillPolygon(b, pts.ToArray());
+        using (Pen pen = new Pen(Color.FromArgb(52, 52, 60), 1.5f * s)) g.DrawPath(pen, edge);
     }
 
     void Button(Graphics g, RectangleF r, string label, bool filled, bool hot, Color fill)
     {
         using (GraphicsPath p = Round(r, 14 * s))
         {
-            Color back = filled ? (hot ? ControlPaint.Light(fill, 0.25f) : fill) : (hot ? Ink4 : Ink3);
+            Color lit = fill.GetBrightness() > 0.9f ? Color.FromArgb(228, 228, 232) : ControlPaint.Light(fill, 0.25f);
+            Color back = filled ? (hot ? lit : fill) : (hot ? Ink4 : Ink3);
             using (SolidBrush b = new SolidBrush(back)) g.FillPath(b, p);
-            if (!filled) using (Pen pen = new Pen(Color.FromArgb(48, 51, 64), s)) g.DrawPath(pen, p);
+            if (!filled) using (Pen pen = new Pen(Color.FromArgb(60, 60, 68), s)) g.DrawPath(pen, p);
         }
         using (Font f = Ui(16.5f, FontStyle.Bold)) Centered(g, label, f, filled ? AmberInk : Paper, r, true);
     }
@@ -534,14 +523,14 @@ sealed class SetupForm : Form
         g.InterpolationMode = InterpolationMode.HighQualityBicubic;
         float W = ClientSize.Width, H = ClientSize.Height, pad = 26 * s;
 
-        // a warm glow behind the scene, like a TV's backlight on the wall
+        // a soft glow behind the scene, like a TV's backlight on the wall
         RectangleF scene = new RectangleF(pad, pad, 370 * s, H - pad * 2);
         using (GraphicsPath halo = new GraphicsPath())
         {
             halo.AddEllipse(scene.X - 90 * s, scene.Y + scene.Height * 0.25f, scene.Width + 260 * s, scene.Height * 0.9f);
             using (PathGradientBrush b = new PathGradientBrush(halo))
             {
-                b.CenterColor = Color.FromArgb(46, 240, 163, 90);
+                b.CenterColor = Color.FromArgb(34, 210, 210, 222);
                 b.SurroundColors = new Color[] { Color.FromArgb(0, 10, 11, 15) };
                 g.FillPath(b, halo);
             }
@@ -593,9 +582,9 @@ sealed class SetupForm : Form
             // switch: desktop shortcut
             toggle = new RectangleF(left, y, width, 30 * s);
             RectangleF track = new RectangleF(right - 46 * s, y + 2 * s, 46 * s, 26 * s);
-            using (GraphicsPath p = Round(track, 13 * s)) using (SolidBrush b = new SolidBrush(desktopShortcut ? Amber : Ink4)) g.FillPath(b, p);
+            using (GraphicsPath p = Round(track, 13 * s)) using (SolidBrush b = new SolidBrush(desktopShortcut ? Live : Ink4)) g.FillPath(b, p);
             float knob = desktopShortcut ? track.X + 3 * s : track.Right - 23 * s;
-            using (SolidBrush b = new SolidBrush(desktopShortcut ? AmberInk : Muted)) g.FillEllipse(b, knob, track.Y + 3 * s, 20 * s, 20 * s);
+            using (SolidBrush b = new SolidBrush(desktopShortcut ? Paper : Muted)) g.FillEllipse(b, knob, track.Y + 3 * s, 20 * s, 20 * s);
             using (Font f = Ui(14, FontStyle.Regular)) Rtl(g, "اختصار على سطح المكتب", f, Paper, new RectangleF(left, y, width - 58 * s, 30 * s), StringAlignment.Center);
             primary = bottomButton;
             Button(g, primary, "ثبّت ترجِم", true, hover == 1, Amber);

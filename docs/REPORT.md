@@ -347,7 +347,8 @@ live run, then tuning from the user's feedback. The findings that cost time:
   English. The user is not a programmer: one concrete action at a time.
 - **One page for both apps.** Change the interface only in
   `laptop/tarjim/app/web`, then run `launcher/sync_phone_web.py` and rebuild
-  the phone app (section 18). Keep the look's code in `glass.js`, out of `app.js`.
+  the phone app (section 19). Keep the look's code in `look.js`, out of `app.js`.
+  The games' pictures come only from `launcher/fetch_art.py` (section 19).
 - **Licences.** This is a personal, non-distributed project. It depends on
   GPL-3.0 code (`ps5-remoteplay-mcp`) and on NLLB weights that are
   non-commercial; see `LICENSES.md` before sharing anything.
@@ -706,6 +707,8 @@ Downloads folder).
 
 ## 18. A new look: desert night and liquid glass (added 2026-11-17)
 
+*Replaced the same day by section 19; kept here for the record.*
+
 The user asked for the interface of both apps to be redone from scratch, creative
 rather than the usual generated look, with ideas from Apple's and Android's
 current design (Liquid Glass, blur, Material 3 Expressive). Both apps show the
@@ -800,3 +803,122 @@ not rebuilt: its new colours come with the next build, and the README's
 installer pictures still show the 0.3.0 installer, which is what the download
 gives. The TV app's icon and banner files changed; the TV shows the old icon
 until it is set up again from a new build.
+
+## 19. Two layouts over the games' own pictures (added 2026-11-17)
+
+The look of section 18 did not survive the user's first look: too busy, colours
+that tire the eye, menus they did not like, and above all no games in it. They
+asked for something transparent, with the games' pictures, and with the
+program's own picture of the game behind the page. Three mockups were made
+first (plain pictures, no code); the user chose two of them and asked for both,
+with a choice between them, game pictures fetched from the internet (not the
+screenshots in `samples/`), and an answer: would the live picture behind the
+page slow the program down?
+
+### What changed for the user
+
+- **The game is the background.** Behind the page sits the chosen game's own
+  picture (its official art). While the translation runs, it is replaced by
+  the live picture the program receives from the console, four times a second
+  on the laptop. Every other page shows the same picture out of focus and
+  darker, so its panels stay easy to read.
+- **No colours of the program's own**: white writing, clear glass, a white
+  start button. Green, amber and red appear only as the devices' status dots.
+- **Two layouts**, chosen from the menu at the bar's far left (one button with
+  a small picture of each). The choice is kept per device.
+  - **سينما (cinema)**: the picture fills the window. A glass pill of tabs at
+    the top, the three devices as glass circles with a dot each (a tap shows
+    their card), and at the bottom the game's logo, one status line, what the
+    game is set to (names, font, background) and the start button with round
+    glass buttons for the look, the names and the library. The latest lines sit
+    in a glass card at the bottom left once there are any.
+  - **رف الألعاب (shelf)**: the games as box covers in a row at the top, as on
+    a console's home screen, the last played first. The chosen one is larger
+    with a white ring; its picture fills the background and its Arabic name
+    stands large. The devices card sits at the bottom left, and while
+    translating the latest lines take its place.
+- **The line the TV shows right now** appears over the picture too, in the
+  subtitle font, for about as long as it stays on the TV.
+- **Game pictures**: the 28 games of the library have a wide picture, a tall
+  one for phones, the box cover and (all but GTA VI) the logo. The covers fill
+  the shelf, the new «ألعابي» sheet (a tap on the game's name) and the library.
+  A game added by hand gets them too when its English title matches a library
+  game (exactly, or starting with it); otherwise it gets a plain tile with its
+  name.
+- **«المظهر» and «الأسماء» are separate tabs now** (one page before).
+- **A new icon**: the black teh on a white tile, the same as the page's corner.
+  The window frame, the pairing QR code, the installer and the phone app's bars
+  follow the graphite and white.
+
+### The live picture: measured
+
+The user's question was whether the live picture would make the program heavy
+or late. Measured on this laptop (i5-12450H, 12 threads, Intel UHD):
+
+**Making the pictures** (`Live.frame_jpeg`, the newest frame cut to 960 px and
+saved as JPEG): 1.4 ms and 47 KB each. With a 30 fps detect loop running and a
+third thread making pictures, the time from "new English line" to "Arabic
+ready" did not change (median 135 ms with none, 129 / 135 / 133 ms with 4 / 10
+/ 30 pictures a second: noise).
+
+**Showing them**, in the real program window (WebView2) on a throw-away copy,
+fed a moving picture, 30 s per row:
+
+| Pictures a second | Window CPU (one core) | Graphics chip | Program CPU (one core) |
+| --- | --- | --- | --- |
+| none | 1 to 2% | 0.1% | 0.2 to 0.4% |
+| 4, each fading into the next (0.3 s) | 25 to 26% | 20 to 22% | 8 to 11% |
+| **4, each replacing the last (kept)** | **8 to 9%** | **3%** | **6%** |
+| 10, each replacing the last | 17 to 18% | 4% | 18% |
+
+(The program column includes making the test picture from the art, more work
+than the real one.) With the translation work running in the same process, a
+subtitle line took 136 ms (median) both with and without 4 pictures a second;
+the 90th percentile went from 181 to 189-191 ms, inside the run-to-run spread.
+
+So the page asks for 4 pictures a second on the laptop and 2 on a phone, each
+replacing the last without a fade (the fade alone cost three times as much),
+only on the home page, only while a PS5 session runs (an Xbox session sends
+the program only the subtitle strip), and none while the window is hidden or
+the phone's screen is dimmed. It can be switched off in the same menu.
+`?every=<ms>` or `?every=off` on the page's address changes the pace, to
+measure again.
+
+### Files
+
+| File | What it holds |
+| --- | --- |
+| `laptop/tarjim/app/web/index.html`, `app.css` | The page, rewritten. One page, both layouts: `body[data-layout]` decides where things go |
+| `laptop/tarjim/app/web/look.js` (new, replaces `glass.js`) | The picture behind the page (the game's, cross-faded when the game changes; the live one), matching a game to its pictures, the layout menu, slider fill. Talks to nothing but `/api/frame` |
+| `laptop/tarjim/app/web/art/`, `art.js` (new) | 111 WebP pictures, 6.8 MB, and their list (where the subject is, logo or not, English and Arabic titles). Written by `fetch_art.py`; do not edit by hand |
+| `laptop/tarjim/app/web/app.js` | Home rewritten (shelf, «ألعابي» sheet, devices, status line, the mirrored line, the live picture); look and names split; the library uses the covers. The program logic is unchanged |
+| `laptop/launcher/fetch_art.py` (new) | Downloads the official art (Steam's image server by app id; Rockstar's page for GTA VI) and writes `art/` and `art.js` |
+| `laptop/launcher/sync_phone_web.py` | Copies `art/`, `art.js` and `look.js` too, and removes `glass.js` from the phone app |
+| `laptop/launcher/make_icon.py`, `Setup.cs` | The new icon; the installer's graphite colours and a plain scene |
+| `laptop/launcher/shots.py`, `make_media.py` | New shot list (`&layout=shelf`, `&games`, `&scroll=`); the README's swap demo runs over a game's art |
+| `laptop/tests/test_art.py` (new) | Every library game has its pictures in the right shapes; the phone copy takes every file the page loads |
+
+To add a game to the library with pictures: add its pack (section 17), add its
+Steam app id and the subject's position to `GAMES` in `fetch_art.py`, run it,
+then `sync_phone_web.py`.
+
+### Verified, and not
+
+**Verified:** 132 tests pass (3 new). Screenshots at 1280, 1000 and 520 px of
+every screen in both layouts, idle and running. Clicked through in Chrome on a
+throw-away copy: switching layouts, choosing games on the shelf and in the
+sheet (the background follows), the devices card, the "stop first" message when
+choosing another game while translating, and the live picture arriving behind
+the page; no console errors. The live picture was measured in the real window
+(above). The installer compiles; the phone app builds with the page and all
+111 pictures inside.
+
+**Not verified:** nothing ran on the phone (not connected). There the live
+picture comes from the phone's own copy of the frame (`frameJpeg`, a PixelCopy
+of the decoder's surface), which has never run on the phone; if it fails, the
+page simply keeps the game's own picture. The installer was not rebuilt (the
+GitHub release is still 0.3.0) and the README's installer pictures show that
+version. The TV app's icon changes with its next build.
+
+The art belongs to its publishers. It is used to show the player which game is
+which, in this personal, non-distributed project; see `LICENSES.md`.

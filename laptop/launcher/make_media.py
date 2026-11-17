@@ -2,8 +2,9 @@
 
     python launcher/make_media.py
 
-- docs/media/swap.gif      a dusk scene with English subtitles; the real detector finds each
-                           line and the real renderer replaces it with Arabic (what the TV shows)
+- docs/media/swap.gif      a game's own picture (the app's art of The Last of Us Part I) with English
+                           subtitles; the real detector finds each line and the real renderer
+                           replaces it with Arabic (what the TV shows)
 - docs/media/before.png, after.png   one frame of the same, side by side material
 - docs/media/tour.gif      the app's screens, from the screenshots in out/ (launcher/shots.py)
 - docs/media/*.png         copies of the screenshots the README uses
@@ -31,27 +32,11 @@ LINES = [
 
 
 def scene(w: int = 1920, h: int = 1080) -> Image.Image:
-    """The dusk landscape of the app's home screen, as a 1080p "game" frame."""
-    stops = [(0.0, (16, 18, 44)), (0.26, (44, 37, 82)), (0.46, (125, 65, 105)), (0.6, (217, 121, 79)), (0.7, (255, 194, 122)), (1.0, (255, 194, 122))]
-    ys = np.linspace(0, 1, h)
-    sky = np.zeros((h, w, 3), np.float32)
-    for c in range(3):
-        sky[..., c] = np.interp(ys, [s[0] for s in stops], [s[1][c] for s in stops])[:, None]
-    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
-    halo = np.exp(-(((xx - w * 0.7) / 260) ** 2 + ((yy - h * 0.2) / 260) ** 2))
-    sky += halo[..., None] * np.array([60, 50, 30], np.float32)
-    img = Image.fromarray(np.clip(sky, 0, 255).astype(np.uint8))
-    draw = ImageDraw.Draw(img)
-    draw.ellipse((w * 0.7 - 70, h * 0.2 - 70, w * 0.7 + 70, h * 0.2 + 70), fill=(255, 243, 210))
-
-    def hills(peaks, colour):
-        pts = [(-40, h)] + [(-30 + (w + 60) * i / (len(peaks) - 1), h - h * p) for i, p in enumerate(peaks)] + [(w + 40, h)]
-        draw.polygon(pts, fill=colour)
-
-    hills([.37, .53, .43, .7, .38, .52, .3, .66, .26, .46, .25, .35], (90, 58, 99))
-    hills([.23, .4, .25, .49, .24, .43, .2, .33, .17, .3], (51, 38, 74))
-    hills([.13, .25, .15, .3, .14, .26], (21, 18, 31))
-    return img
+    """A 1080p "game" frame: the app's own picture of a game (tarjim/app/web/art), cut to 16:9."""
+    art = Image.open(LAPTOP / "tarjim" / "app" / "web" / "art" / "tlou1-bg.webp").convert("RGB")
+    cw = int(art.height * w / h)
+    x = int((art.width - cw) * 0.5)  # Ellie in the middle, a calm street under the subtitle
+    return art.crop((x, 0, x + cw, art.height)).resize((w, h), Image.LANCZOS)
 
 
 def with_english(base: Image.Image, line: str) -> np.ndarray:
@@ -87,9 +72,9 @@ def swap() -> None:
         if block is None:
             raise RuntimeError(f"the detector did not find: {en}")
         after = render.composite(frame, [render.make_fill(frame, block), render.make_text(frame, block, ar, style)])
-        if i == 0:
-            Image.fromarray(frame[:, :, ::-1]).save(MEDIA / "before.png")
-            Image.fromarray(after[:, :, ::-1]).save(MEDIA / "after.png")
+        if i == 0:  # the bottom of the frame, where the line is: a game picture is too big as a whole PNG
+            for img, name in ((frame, "before.png"), (after, "after.png")):
+                Image.fromarray(img[620:1080, :, ::-1]).resize((1280, 307), Image.LANCZOS).save(MEDIA / name, optimize=True)
         add(frame, 900)
         for k in (1, 2, 3):  # a short blend, like the fade on the TV
             mix = (frame.astype(np.float32) * (1 - k / 4) + after.astype(np.float32) * (k / 4)).astype(np.uint8)
@@ -102,7 +87,7 @@ def swap() -> None:
 
 
 def tour() -> None:
-    names = ["home", "home-live", "game", "guide1", "m-home"]
+    names = ["home", "home-shelf", "home-live", "games", "look", "m-home"]
     shots = []
     for n in names:
         path = OUT / f"app-{n}.png"
@@ -110,7 +95,7 @@ def tour() -> None:
             continue
         img = Image.open(path).convert("RGB")
         img = img.crop((0, 0, img.width, min(img.height, int(img.width * 0.66))))
-        canvas = Image.new("RGB", (1000, 660), (7, 10, 28))
+        canvas = Image.new("RGB", (1000, 660), (11, 11, 13))
         img.thumbnail((1000, 660), Image.LANCZOS)
         canvas.paste(img, ((1000 - img.width) // 2, 0))
         shots.append(canvas)
@@ -123,7 +108,8 @@ def tour() -> None:
 
 
 def copies() -> None:
-    wanted = {"app-home.png": "home.png", "app-home-live.png": "home-live.png", "app-game.png": "look.png",
+    wanted = {"app-home.png": "home.png", "app-home-shelf.png": "home-shelf.png", "app-home-live.png": "home-live.png",
+              "app-look.png": "look.png", "app-m-home-shelf.png": "phone-shelf.png",
               "app-m-home.png": "phone-home.png", "app-m-screen.png": "phone-screen.png",
               "setup-welcome.png": "setup.png", "setup-progress.png": "setup-progress.png", "setup-done.png": "setup-done.png"}
     for src, dst in wanted.items():

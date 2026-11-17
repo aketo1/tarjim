@@ -29,3 +29,12 @@ Arabic fonts (Harmattan, Noto, IBM Plex Sans Arabic) OFL-1.1.
 
 - `segno` 1.6.6 (QR codes for phone pairing): BSD-3-Clause.
 - `pywebview` (BSD-3-Clause) and `psutil` (BSD-3-Clause) are now listed as direct dependencies; they were already installed.
+
+## Added 2026-11-17
+
+- **Game pictures** (`laptop/tarjim/app/web/art/`, made by `launcher/fetch_art.py`): the
+  publishers' own store art (wide picture, box cover, logo) from Steam's image server, and for
+  GTA VI the picture Rockstar's own page shares. They belong to their publishers (Rockstar Games,
+  Sony Interactive Entertainment, Sega, Square Enix, Atlus, Larian, Warhorse, 2K, Konami, and
+  the other owners of each game). Shown only to tell the player which game is which, in this
+  personal, non-distributed project. Remove them (and `art.js`) before sharing anything.

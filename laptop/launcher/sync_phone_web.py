@@ -15,7 +15,16 @@ from pathlib import Path
 LAPTOP = Path(__file__).resolve().parents[1]
 WEB = LAPTOP / "tarjim" / "app" / "web"
 PHONE_WEB = LAPTOP.parent.parent / "tarjim-android" / "tarjim-phone" / "android" / "app" / "src" / "main" / "assets" / "web"
-FILES = ("index.html", "app.css", "app.js", "glass.js", "xbox.js", "xCloudPlayer.min.js", "icon.png")
+FILES = ("index.html", "app.css", "app.js", "look.js", "art.js", "xbox.js", "xCloudPlayer.min.js", "icon.png")
+FOLDERS = ("art",)  # the games' pictures (launcher/fetch_art.py)
+GONE = ("glass.js",)  # files of an older page that the phone app must not keep
+
+
+def wanted() -> list[str]:
+    names = list(FILES)
+    for folder in FOLDERS:
+        names += sorted(p.relative_to(WEB).as_posix() for p in (WEB / folder).rglob("*") if p.is_file())
+    return names
 
 
 def main() -> int:
@@ -24,13 +33,26 @@ def main() -> int:
         return 1
     PHONE_WEB.mkdir(exist_ok=True)
     changed = 0
-    for name in FILES:
+    names = wanted()
+    for name in names:
         src, dst = WEB / name, PHONE_WEB / name
         if dst.exists() and filecmp.cmp(src, dst, shallow=False):
             continue
+        dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dst)
         changed += 1
         print("copied", name)
+    for folder in FOLDERS:  # a picture taken out of the page leaves the phone app too
+        for p in sorted((PHONE_WEB / folder).rglob("*")) if (PHONE_WEB / folder).exists() else []:
+            if p.is_file() and p.relative_to(PHONE_WEB).as_posix() not in names:
+                p.unlink()
+                changed += 1
+                print("removed", p.relative_to(PHONE_WEB).as_posix())
+    for name in GONE:
+        if (PHONE_WEB / name).exists():
+            (PHONE_WEB / name).unlink()
+            changed += 1
+            print("removed", name)
     print(f"{changed} file(s) changed in {PHONE_WEB}")
     return 0
 
