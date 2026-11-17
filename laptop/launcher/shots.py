@@ -25,6 +25,9 @@ SHOTS = {
     "guide1": ("?still&view=guide&step=1", 1240, 900),
     "guide3": ("?still&view=guide&step=3", 1240, 900),
     "narrow": ("?still&demo", 1000, 1300),
+    "library": ("?still&library", 1240, 900),
+    "library-phone": ("?still&library", 520, 900),
+    "names": ("?still&view=game&game=rdr2", 1240, 2300),
 }
 
 

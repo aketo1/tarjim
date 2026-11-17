@@ -10,6 +10,7 @@ the code finds its files unchanged:
     laptop/.venv/           its libraries (pyvenv.cfg is written by the installer)
     models/opus-...         the translation model
     fonts/  profiles/       fonts and the game profiles
+    packs/                  the game library (names for games without Arabic)
     .tools/platform-tools/  adb, for setting up the TV
     tv-app/.../app-debug.apk, phone-app/.../app-debug.apk
 
@@ -70,6 +71,7 @@ def payload():
     yield from tree(REPO / "models" / "opus-mt-tc-big-en-ar-ct2", "models/opus-mt-tc-big-en-ar-ct2")
     yield from tree(REPO / "fonts", "fonts")
     yield from tree(REPO / "profiles", "profiles")
+    yield from tree(REPO / "packs", "packs", {"source"})  # the game library (its sources stay in the repo)
     yield from tree(REPO / ".tools" / "platform-tools", ".tools/platform-tools")
     for app in ("tv-app", "phone-app"):
         apk = REPO / app / "app" / "build" / "outputs" / "apk" / "debug" / "app-debug.apk"

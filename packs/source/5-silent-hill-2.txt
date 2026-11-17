@@ -1,0 +1,45 @@
+# Silent Hill 2 (the 2024 remake; the names are the same as in the original).
+# Format: see laptop/launcher/build_packs.py. Names only, never lines from the game.
+
+[game sh2r]
+title: Silent Hill 2
+title_ar: سايلنت هيل 2
+series: Silent Hill
+year: 2024
+note: جيمس وماري وماريا، والبلدة وأماكنها.
+
+James Sunderland = جيمس سندرلاند
+James = جيمس
+Sunderland = سندرلاند
+Mary Shepherd-Sunderland = ماري شيبرد سندرلاند ♀
+Mary = ماري ♀
+Maria = ماريا ♀
+Angela Orosco = أنجيلا أوروسكو ♀
+Angela = أنجيلا ♀
+Orosco = أوروسكو
+Thomas Orosco = توماس أوروسكو
+Eddie Dombrowski = إيدي دومبروسكي
+Eddie = إيدي
+Dombrowski = دومبروسكي
+Laura = لورا ♀
+Walter Sullivan = والتر سوليفان
+Pyramid Head = رأس الهرم
+Silent Hill = سايلنت هيل
+Otherworld = العالم الآخر
+Toluca Lake = بحيرة تولوكا
+Toluca Prison = سجن تولوكا
+Toluca = تولوكا
+South Vale = ساوث فيل
+Brookhaven Hospital = مستشفى بروكهيفن
+Brookhaven = بروكهيفن
+Lakeview Hotel = فندق ليك فيو
+Lakeview = ليك فيو
+Wood Side Apartments = شقق وود سايد
+Wood Side = وود سايد
+Blue Creek Apartments = شقق بلو كريك
+Blue Creek = بلو كريك
+Rosewater Park = منتزه روزووتر
+Heaven's Night = هيفنز نايت
+Pete's Bowl-O-Rama = بيتز بول أو راما
+Neely's Bar = حانة نيلي
+Jack's Inn = نُزل جاك

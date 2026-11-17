@@ -31,7 +31,9 @@
 | ⚡ **سريع** | 0.15 ثانية (الوسيط) من ظهور الإنجليزي إلى ظهور العربي، مقاسة في جلسة لعب حقيقية |
 | 🔌 **بدون إنترنت** | القراءة والترجمة كلها على اللابتوب |
 | 🎮 **ما يلمس اللعبة** | الـPS5 يبقى موصّل بالتلفزيون بـHDMI مثل ما هو. لا تأخير في اليد ولا تغيير في الصورة |
-| 🧾 **أسماء صح** | قاموس أسماء لكل لعبة، عشان «Dutch» يطلع «دتش» مو «الهولندية» |
+| 🧾 **أسماء صح** | قاموس أسماء لكل لعبة، عشان «Dutch» يطلع «داتش» مو «الهولندية» |
+| 📚 **مكتبة ألعاب** | قوائم أسماء جاهزة لـ28 لعبة ما فيها عربي: ريد ديد، قراند، ياكوزا، ذا لاست أوف أس، سايلنت هيل 2 وغيرها. ضغطة وحدة وتنضاف |
+| 🔁 **شارك تعديلاتك** | صدّر ملف لعبتك (الأسماء والسطور اللي عدّلتها ومكان الترجمة) وأرسله لأي أحد، يفتحه في اللابتوب أو الجوال |
 | ✍️ **تعدّل بنفسك** | ترجمة ما عجبتك؟ اكتبها بطريقتك مرة، وتطلع كذا كل مرة |
 | 📱 **من الكنبة** | شغّل ووقّف وغيّر الشكل من جوالك |
 
@@ -111,6 +113,8 @@ flowchart LR
 
 **اسم شخصية يطلع غلط؟** أضفه في «المظهر» ‹ قاموس الأسماء. ولأسماء النساء علّم ♀ عشان تطلع الأفعال مؤنثة.
 
+**أبي قاموس جاهز للعبتي؟** افتح «مكتبة الألعاب» من الرئيسية واضغط «أضف». وصلك ملف لعبة من أحد؟ «المظهر» ‹ قاموس الأسماء ‹ «استورد ملف»: الجديد ينضاف، واللي كتبته أنت يبقى.
+
 **الترجمة تطلع قبل ما يكتمل السطر؟** فعّل «اللعبة تكتب النص حرف حرف» في «المظهر» ‹ التوقيت.
 
 **وش اللي ما يسويه؟** ما يترجم القوايم والعدّادات، وما يقرأ الترجمات الداكنة أو الملوّنة بقوة، وجودة الترجمة هي جودة مترجم محلي صغير: ممتازة للجمل الواضحة وأضعف في العامية والنكت.
@@ -128,13 +132,15 @@ laptop/      Python 3.12 package "tarjim" (pipeline + desktop app) and its tests
 tv-app/      Android TV overlay app (Kotlin, no libraries)
 phone-app/   Android phone remote (Kotlin WebView shell)
 profiles/    one YAML file per game
+packs/       the game library (generated from packs/source/*.txt)
 docs/        report, decisions, protocol, licences
 ```
 
 ```powershell
 cd laptop
 uv sync                              # environment
-uv run pytest                        # 114 tests, no devices needed
+uv run pytest                        # 129 tests, no devices needed
+python launcher/build_packs.py       # the game library, for this program and the phone app
 python launcher/build.py             # Tarjim.exe
 python launcher/build_setup.py       # dist/Tarjim-Setup-<version>.exe
 python launcher/make_media.py        # the pictures in this README

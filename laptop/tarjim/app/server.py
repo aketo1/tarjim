@@ -243,6 +243,21 @@ def profile_save(body: dict) -> dict:
     return profile_view(name)
 
 
+def pack_in(path: str, body: dict) -> dict:
+    """A game from the bundled library, or a game file the user picked, into a profile."""
+    from .. import packs
+    from ..translate import list_profiles
+
+    if path == "/api/packs/add":
+        pack = packs.library_pack(str(body.get("id", "")))
+    else:
+        pack = packs.parse(body.get("pack"))
+    result = packs.merge(pack, into=str(body.get("into") or "") or None)
+    live.apply_profile(result["name"])  # the running game gets its new names at once
+    result["profiles"] = list_profiles()
+    return result
+
+
 _preview_cache: dict = {}
 SAMPLE_AR = "يجب أن نغادر قبل وصول العاصفة."
 
@@ -484,9 +499,9 @@ class Handler(BaseHTTPRequestHandler):
     def _json(self, obj, code: int = 200) -> None:
         self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8")
 
-    def _body(self) -> dict:
+    def _body(self, limit: int = 200_000) -> dict:
         length = int(self.headers.get("Content-Length") or 0)
-        if length <= 0 or length > 200_000:
+        if length <= 0 or length > limit:
             return {}
         data = json.loads(self.rfile.read(length).decode("utf-8"))
         return data if isinstance(data, dict) else {}
@@ -537,6 +552,15 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(checks())
             if url.path == "/api/profile":
                 return self._json(profile_view(q.get("name", "default")))
+            if url.path == "/api/packs":
+                from .. import packs
+
+                return self._json({"packs": packs.library_view()})
+            if url.path == "/api/pack/export":
+                from .. import packs
+
+                pack = packs.export(q.get("name", "default"))
+                return self._json({"pack": pack, "file": packs.file_name(pack)})
             if url.path == "/api/preview":
                 from ..translate import load_profile
 
@@ -617,7 +641,10 @@ class Handler(BaseHTTPRequestHandler):
                 raw = self.rfile.read(length) if 0 < length < 400_000 else b""
                 status, answer = xbox_auth().proxy("POST", self.path, raw, self.headers.get("X-MS-Device-Info"))
                 return self._send(status, answer, "application/json; charset=utf-8")
-            body = self._body()
+            # A game file with a player's line fixes can be a few megabytes.
+            body = self._body(8_000_000 if path == "/api/pack/import" else 200_000)
+            if path in ("/api/packs/add", "/api/pack/import"):
+                return self._json(pack_in(path, body))
             if path == "/api/console":
                 kind = "xbox" if body.get("kind") == "xbox" else "ps5"
                 cfg = paths.load_config()

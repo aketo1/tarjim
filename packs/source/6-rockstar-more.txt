@@ -1,0 +1,160 @@
+# More Rockstar games without Arabic: Max Payne 3, L.A. Noire, Bully.
+# Format: see laptop/launcher/build_packs.py. Names only, never lines from the game.
+
+[game max-payne-3]
+title: Max Payne 3
+title_ar: ماكس باين 3
+series: Max Payne
+year: 2012
+note: ماكس وعائلة برانكو في ساو باولو.
+
+Max Payne = ماكس باين
+Max = ماكس
+Payne = باين
+Raul Passos = راؤول باسوس
+Passos = باسوس
+Rodrigo Branco = رودريغو برانكو
+Rodrigo = رودريغو
+Victor Branco = فيكتور برانكو
+Victor = فيكتور
+Marcelo Branco = مارسيلو برانكو
+Marcelo = مارسيلو
+Fabiana Branco = فابيانا برانكو ♀
+Fabiana = فابيانا ♀
+Branco = برانكو
+Giovanna Taborda = جيوفانا تابوردا ♀
+Giovanna = جيوفانا ♀
+Taborda = تابوردا
+Alvaro Serrano = ألفارو سيرانو
+Serrano = سيرانو
+Armando Becker = أرماندو بيكر
+Becker = بيكر
+Milo Rego = ميلو ريغو
+Wilson Da Silva = ويلسون دا سيلفا
+Da Silva = دا سيلفا
+Anthony DeMarco = أنتوني ديماركو
+DeMarco = ديماركو
+Comando Sombra = كوماندو سومبرا
+Crachá Preto = كراشا بريتو
+Cracha Preto = كراشا بريتو
+UFE = وحدة يو إف إي
+São Paulo = ساو باولو
+Sao Paulo = ساو باولو
+Nova Esperança = نوفا إسبيرانسا
+Nova Esperanca = نوفا إسبيرانسا
+Panama = بنما
+Hoboken = هوبوكن
+
+[game la-noire]
+title: L.A. Noire
+title_ar: إل إيه نوار
+series: L.A. Noire
+year: 2011
+note: المحقق كول فيلبس وشرطة لوس أنجلوس في الأربعينات.
+
+Cole Phelps = كول فيلبس
+Cole = كول
+Phelps = فيلبس
+Jack Kelso = جاك كيلسو
+Kelso = كيلسو
+Roy Earle = روي إيرل
+Roy = روي
+Earle = إيرل
+Stefan Bekowsky = ستيفان بيكوفسكي
+Bekowsky = بيكوفسكي
+Rusty Galloway = رستي غالواي
+Rusty = رستي
+Galloway = غالواي
+Herschel Biggs = هيرشل بيغز
+Biggs = بيغز
+Elsa Lichtmann = إلسا ليشتمان ♀
+Elsa = إلسا ♀
+Lichtmann = ليشتمان ♀
+Mickey Cohen = ميكي كوهين
+Cohen = كوهين
+Leland Monroe = ليلاند مونرو
+Monroe = مونرو
+Courtney Sheldon = كورتني شيلدون
+Sheldon = شيلدون
+Harlan Fontaine = هارلان فونتين
+Fontaine = فونتين
+Ira Hogeboom = إيرا هوجبوم
+Hogeboom = هوجبوم
+Captain Donnelly = الكابتن دونيلي
+Donnelly = دونيلي
+Chief Worrell = الرئيس وورل
+Worrell = وورل
+Ray Pinker = راي بينكر
+Pinker = بينكر
+Malcolm Carruthers = مالكوم كاروثرز
+Carruthers = كاروثرز
+Suburban Redevelopment Fund = صندوق تطوير الضواحي
+Elysian Fields = إليزيان فيلدز
+Black Dahlia = الداليا السوداء
+LAPD = شرطة لوس أنجلوس
+Los Angeles = لوس أنجلوس
+Hollywood = هوليوود
+Okinawa = أوكيناوا
+
+[game bully]
+title: Bully
+title_ar: بولي
+series: Bully
+year: 2006
+note: جيمي هوبكنز وطلاب أكاديمية بولوورث وشللها.
+
+Jimmy Hopkins = جيمي هوبكنز
+Jimmy = جيمي
+Hopkins = هوبكنز
+Gary Smith = غاري سميث
+Gary = غاري
+Pete Kowalski = بيت كوالسكي
+Petey = بيتي
+Pete = بيت
+Dr. Crabblesnitch = الدكتور كرابلسنيتش
+Crabblesnitch = كرابلسنيتش
+Russell Northrop = راسل نورثروب
+Russell = راسل
+Earnest Jones = إرنست جونز
+Earnest = إرنست
+Derby Harrington = ديربي هارينغتون
+Derby = ديربي
+Johnny Vincent = جوني فينسنت
+Johnny = جوني
+Lola Lombardi = لولا لومباردي ♀
+Lola = لولا ♀
+Ted Thompson = تيد طومسون
+Ted = تيد
+Mandy Wiles = ماندي وايلز ♀
+Mandy = ماندي ♀
+Zoe Taylor = زوي تايلور ♀
+Zoe = زوي ♀
+Beatrice Trudeau = بياتريس ترودو ♀
+Beatrice = بياتريس ♀
+Algernon Papadopoulos = ألجيرنون بابادوبولوس
+Algie = ألجي
+Edgar Munsen = إدغار مونسن
+Edgar = إدغار
+Pinky Gauthier = بينكي غوتييه ♀
+Pinky = بينكي ♀
+Mr. Burton = السيد بيرتون
+Burton = بيرتون
+Miss Phillips = الآنسة فيليبس ♀
+Mr. Hattrick = السيد هاتريك
+Hattrick = هاتريك
+Mr. Galloway = السيد غالواي
+Galloway = غالواي
+Edna = إدنا ♀
+Bullworth Academy = أكاديمية بولوورث
+Bullworth Town = بلدة بولوورث
+Old Bullworth Vale = أولد بولوورث فيل
+Bullworth = بولوورث
+New Coventry = نيو كوفنتري
+Blue Skies = بلو سكايز
+Harrington House = بيت هارينغتون
+Preppies = البريبيز
+Greasers = الغريسرز
+Jocks = الجوكس
+Nerds = النيردز
+Bullies = المتنمرون
+Townies = التاونيز

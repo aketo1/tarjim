@@ -87,6 +87,60 @@ def test_the_users_own_wording_wins_and_can_be_removed():
     assert tr.translate("Hello there.")[0] != "هلا والله"
 
 
+def test_a_name_inside_a_longer_name_is_part_of_it():
+    engine, tr = make({"Sadie Adler": "سايدي آدلر", "Sadie": "سايدي", "Adler": "آدلر", "Dutch": "داتش"})
+    assert [en for en, _ in tr._matched("Sadie Adler and Dutch left.")] == ["Sadie Adler", "Dutch"]
+    assert [en for en, _ in tr._matched("Sadie went, Adler stayed.")] == ["Sadie", "Adler"]
+    # Both names need a stand-in: the shorter one must not use up a second one and fail the line.
+    tr.names._memo.update({("Sadie Adler", "سايدي آدلر"): ("proxy", ""), ("Dutch", "داتش"): ("proxy", "")})
+    arabic = tr.translate("We got Sadie Adler and Dutch.")[0]
+    assert engine.calls[-1] == "We got Edward and Harold."
+    assert "سايدي آدلر" in arabic and "داتش" in arabic
+
+
+def test_a_capitalised_name_is_not_taken_for_the_same_word_in_small_letters():
+    engine, tr = make({"Chop": "تشوب", "van der Linde": "فان دير ليند", "O'Driscoll": "أودريسكول"})
+    assert tr._matched("Chop, come here!") == [("Chop", "تشوب")]
+    assert tr._matched("CHOP! COME HERE!") == [("Chop", "تشوب")]
+    assert tr._matched("I will chop the wood.") == []
+    assert tr._matched("Van der Linde is gone.") == [("van der Linde", "فان دير ليند")]  # small letters: any case
+    assert tr._matched("An O’Driscoll was here.") == [("O'Driscoll", "أودريسكول")]  # curly apostrophe
+
+
+class BatchEngine(FakeEngine):
+    """The fake engine, with the batch call the real engines have."""
+
+    def __init__(self):
+        super().__init__()
+        self.batches = 0
+
+    def translate_many(self, texts):
+        self.batches += 1
+        return [FakeEngine.translate(self, t) for t in texts]
+
+
+def test_names_tried_in_batches_get_the_same_verdict_as_one_by_one():
+    glossary = {"Dutch": "دتش", "Marston": "مارستن", "Arthur": "آرثر", "Sadie": "سادي"}
+    single = make(glossary)[1]
+    single.prepare_names()
+    engine = BatchEngine()
+    batched = CachedTranslator(engine, Cache(":memory:"), profile="g", glossary=glossary)
+    batched.prepare_names()
+    for en, ar in glossary.items():
+        assert batched.names.mode(en, ar) == single.names.mode(en, ar), en
+    assert engine.batches == 2  # the stand-in's sentences, then all four names together
+    calls = len(engine.calls)
+    batched.prepare_names()
+    assert len(engine.calls) == calls  # remembered: nothing is tried twice
+
+
+def test_trying_names_stops_when_asked():
+    engine = BatchEngine()
+    tr = CachedTranslator(engine, Cache(":memory:"), profile="g", glossary={f"Name{i}": "اسم" for i in range(12)})
+    tr.prepare_names(stop=lambda: True)
+    assert engine.calls == []
+
+
 # -- phone control -----------------------------------------------------------------
 
 

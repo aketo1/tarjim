@@ -1,0 +1,355 @@
+# Yakuza / Like a Dragon: every main game, Gaiden and Pirate Yakuza.
+# Format: see laptop/launcher/build_packs.py. Names only, never lines from the game.
+# The talk boxes in these games type their text letter by letter, so every game here
+# starts with the "typewriter" timing (settle 280 ms).
+
+[game yakuza0]
+title: Yakuza 0
+title_ar: ياكوزا 0
+series: Yakuza
+year: 2015
+settle: 280
+note: كيريو وماجيما في الثمانينات: الأرض الخالية، عائلة دوجيما، وسوتينبوري.
+
+Makoto Makimura = ماكوتو ماكيمورا ♀
+Makimura = ماكيمورا ♀
+Makoto = ماكوتو ♀
+Tetsu Tachibana = تيتسو تاتشيبانا
+Tachibana Real Estate = تاتشيبانا العقارية
+Tachibana = تاتشيبانا
+Jun Oda = جون أودا
+Oda = أودا
+Hiroki Awano = هيروكي آوانو
+Awano = آوانو
+Daisaku Kuze = دايساكو كوزي
+Kuze = كوزي
+Keiji Shibusawa = كيجي شيباساوا
+Shibusawa = شيباساوا
+Lao Gui = لاو غوي
+Nikkyo Consortium = اتحاد نيكيو
+Nikkyo = نيكيو
+Empty Lot = الأرض الخالية
+Cabaret Grand = كباريه غراند
+
+[game yakuza-kiwami]
+title: Yakuza Kiwami
+title_ar: ياكوزا كيوامي
+series: Yakuza
+year: 2016
+settle: 280
+note: القصة الأولى: كيريو بعد السجن، نيشيكياما، يومي وهاروكا.
+
+Yumi Sawamura = يومي ساوامورا ♀
+Yumi = يومي ♀
+Mizuki = ميزوكي ♀
+Kyohei Jingu = كيوهي جينغو
+Jingu = جينغو
+Lau Ka Long = لاو كا لونغ
+Snake Flower Triad = ثالوث سنيك فلاور
+Shinji Tanaka = شينجي تاناكا
+Shinji = شينجي
+Reina = رينا ♀
+Nishikiyama Family = عائلة نيشيكياما
+
+[game yakuza-kiwami2]
+title: Yakuza Kiwami 2
+title_ar: ياكوزا كيوامي 2
+series: Yakuza
+year: 2017
+settle: 280
+note: تنين كانساي ريوجي غودا، كاورو ساياما، وحرب طوجو مع أومي.
+
+Kaoru Sayama = كاورو ساياما ♀
+Sayama = ساياما ♀
+Kaoru = كاورو ♀
+Jin Goda = جين غودا
+Ryo Takashima = ريو تاكاشيما
+Takashima = تاكاشيما
+Gary Buster Holmes = غاري باستر هولمز
+Jingweon Mafia = مافيا جينغوين
+Jingweon = جينغوين
+Majima Construction = شركة ماجيما للإنشاءات
+Kamurocho Hills = تلال كاموروتشو
+
+[game yakuza3]
+title: Yakuza 3 (Remastered / Kiwami 3)
+title_ar: ياكوزا 3
+series: Yakuza
+year: 2009
+settle: 280
+note: كيريو وأطفال الميتم في أوكيناوا، وميني وريكيا. تنفع لـ«كيوامي 3» بعد.
+
+Rikiya Shimabukuro = ريكيا شيمابوكورو
+Rikiya = ريكيا
+Shimabukuro = شيمابوكورو
+Shigeru Nakahara = شيغيرو ناكاهارا
+Nakahara = ناكاهارا
+Yoshitaka Mine = يوشيتاكا ميني
+Mine = ميني
+Tsuyoshi Kanda = تسويوشي كاندا
+Kanda = كاندا
+Ryuzo Tamashiro = ريوزو تاماشيرو
+Tamashiro = تاماشيرو
+Joji Kazama = جوجي كازاما
+Andre Richardson = أندريه ريتشاردسون
+Richardson = ريتشاردسون
+Ryukyu = ريوكيو
+Ryudo = ريودو
+
+[game yakuza4]
+title: Yakuza 4
+title_ar: ياكوزا 4
+series: Yakuza
+year: 2010
+settle: 280
+note: أربعة أبطال: أكياما وسايجيما وتانيمورا وكيريو.
+
+Masayoshi Tanimura = ماسايوشي تانيمورا
+Tanimura = تانيمورا
+Lily = ليلي ♀
+Sayaka = سايكا ♀
+Munetaka Arase = مونيتاكا أراسي
+Arase = أراسي
+Seishiro Munakata = سيشيرو موناكاتا
+Munakata = موناكاتا
+Ryuzo Sasai = ريوزو ساساي
+Sasai = ساساي
+Ueno Seiwa Clan = عشيرة أوينو سيوا
+Ueno Seiwa = أوينو سيوا
+
+[game yakuza5]
+title: Yakuza 5
+title_ar: ياكوزا 5
+series: Yakuza
+year: 2012
+settle: 280
+note: خمس مدن وخمسة أبطال، منها هاروكا وشينادا.
+
+Tatsuo Shinada = تاتسو شينادا
+Shinada = شينادا
+Mirei Park = ميري بارك ♀
+Mirei = ميري ♀
+Shota Baba = شوتا بابا
+Baba = بابا
+Nagasugai = ناغاسوغاي
+Fukuoka = فوكوأوكا
+Tsukimino = تسوكيمينو
+Sapporo = سابورو
+Kineicho = كينيتشو
+Nagoya = ناغويا
+Hokkaido = هوكايدو
+
+[game yakuza6]
+title: Yakuza 6: The Song of Life
+title_ar: ياكوزا 6: أغنية الحياة
+series: Yakuza
+year: 2016
+settle: 280
+note: كيريو وهاروتو في أونوميتشي بهيروشيما.
+
+Yuta Usami = يوتا أوسامي
+Yuta = يوتا
+Usami = أوسامي
+Toru Hirose = تورو هيروسي
+Hirose Family = عائلة هيروسي
+Hirose = هيروسي
+Tsuyoshi Nagumo = تسويوشي ناغومو
+Nagumo = ناغومو
+Tsuneo Iwami = تسونيو إيوامي
+Iwami Shipbuilding = شركة إيوامي لبناء السفن
+Iwami = إيوامي
+Jingaicho = جينغايتشو
+Onomichi = أونوميتشي
+
+[game lad7]
+title: Yakuza: Like a Dragon
+title_ar: ياكوزا: لايك آ دراغون
+series: Yakuza
+year: 2020
+settle: 280
+note: إيتشيبان كاسوغا وفريقه في يوكوهاما.
+
+Hamako = هاماكو ♀
+Jo Sawashiro = جو ساواشيرو
+Sawashiro = ساواشيرو
+
+[game lad-gaiden]
+title: Like a Dragon Gaiden: The Man Who Erased His Name
+title_ar: لايك آ دراغون غايدن: الرجل الذي محا اسمه
+series: Yakuza
+year: 2023
+settle: 280
+note: كيريو باسم «جوريو» بين ياكوزا 6 والجزء الثامن.
+
+Joryu = جوريو
+Daidoji Faction = طائفة دايدوجي
+Daidoji = دايدوجي
+Masaru Hanawa = ماسارو هاناوا
+Hanawa = هاناوا
+Akame = أكامي ♀
+Tsuruno = تسورونو
+Kazuki Shishido = كازوكي شيشيدو
+Shishido = شيشيدو
+Homare Nishitani = هوماري نيشيتاني
+Nishitani = نيشيتاني
+Castle = القلعة
+
+[game lad8]
+title: Like a Dragon: Infinite Wealth
+title_ar: لايك آ دراغون: إنفينيت ويلث
+series: Yakuza
+year: 2024
+settle: 280
+note: إيتشيبان وكيريو في هاواي.
+
+Chitose Fujinomiya = تشيتوسي فوجينوميا ♀
+Chitose = تشيتوسي ♀
+Fujinomiya = فوجينوميا ♀
+Tomizawa = توميزاوا
+Eiji Dwight Ebina = إيجي دوايت إيبينا
+Ebina = إيبينا
+Masataka Yamai = ماساتاكا ياماي
+Yamai = ياماي
+Bryce Fairchild = برايس فيرتشايلد
+Bryce = برايس
+Fairchild = فيرتشايلد
+Akane = أكاني ♀
+Kume = كومي
+Palekana = باليكانا
+Barracudas = الباراكودا
+Barracuda = باراكودا
+Dondoko Island = جزيرة دوندوكو
+
+[game lad-pirate]
+title: Like a Dragon: Pirate Yakuza in Hawaii
+title_ar: لايك آ دراغون: قرصان الياكوزا في هاواي
+series: Yakuza
+year: 2025
+settle: 280
+note: ماجيما قرصان، مع نوا وطاقم سفينة «غورومارو».
+
+Noah Rich = نوا ريتش
+Noah = نوا
+Jason Rich = جيسون ريتش
+Rich Island = جزيرة ريتش
+Masaru Fujita = ماسارو فوجيتا
+Masaru = ماسارو
+Fujita = فوجيتا
+Michele = ميشيل ♀
+Raymond Law = رايموند لو
+Raymond = رايموند
+Pirate Lords = أسياد القراصنة
+Teruhiko Shigata = تيروهيكو شيغاتا
+Shigata = شيغاتا
+Rodrigez = رودريغيز
+Mortimer = مورتيمر
+Madlantis = مادلانتيس
+Goromaru = غورومارو
+Minami = مينامي
+Nishida = نيشيدا
+
+[shared]
+Kazuma Kiryu = كازوما كيريو @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Kiryu Kazuma = كيريو كازوما @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Kiryu-chan = كيريو-تشان @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad8
+Kiryu-san = كيريو-سان @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Kiryu = كيريو @ all
+Kazuma = كازوما @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Dragon of Dojima = تنين دوجيما @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Goro Majima = غورو ماجيما @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad8 lad-pirate
+Majima-san = ماجيما-سان @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad8 lad-pirate
+Majima = ماجيما @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad8 lad-pirate
+Goro = غورو @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad8 lad-pirate
+Mad Dog of Shimano = كلب شيمانو المسعور @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad-pirate
+Mad Dog = الكلب المسعور @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad-pirate
+Majima Family = عائلة ماجيما @ yakuza-kiwami yakuza-kiwami2
+Akira Nishikiyama = أكيرا نيشيكياما @ yakuza0 yakuza-kiwami yakuza-kiwami2
+Nishikiyama = نيشيكياما @ yakuza0 yakuza-kiwami yakuza-kiwami2
+Nishiki = نيشيكي @ yakuza0 yakuza-kiwami yakuza-kiwami2
+Sohei Dojima = سوهي دوجيما @ yakuza0 yakuza-kiwami
+Dojima Family = عائلة دوجيما @ yakuza0 yakuza-kiwami yakuza-kiwami2
+Yayoi Dojima = يايوي دوجيما ♀ @ yakuza-kiwami yakuza-kiwami2
+Yayoi = يايوي ♀ @ yakuza-kiwami yakuza-kiwami2
+Daigo Dojima = دايغو دوجيما @ yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Daigo = دايغو @ yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Dojima = دوجيما @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Shintaro Kazama = شينتارو كازاما @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3
+Kazama = كازاما @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3
+Osamu Kashiwagi = أوسامو كاشيواغي @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4
+Kashiwagi = كاشيواغي @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4
+Masaru Sera = ماسارو سيرا @ yakuza0 yakuza-kiwami
+Sera = سيرا @ yakuza0 yakuza-kiwami
+Futoshi Shimano = فوتوشي شيمانو @ yakuza0 yakuza-kiwami yakuza4
+Shimano = شيمانو @ yakuza0 yakuza-kiwami yakuza4
+Makoto Date = ماكوتو داتي @ yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6
+Date = داتي @ yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6
+Makoto = ماكوتو @ yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6
+Haruka Sawamura = هاروكا ساوامورا ♀ @ yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad8
+Haruka = هاروكا ♀ @ yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad-gaiden lad8
+Sawamura = ساوامورا ♀ @ yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6
+Haruto = هاروتو @ yakuza6 lad8
+Ryuji Goda = ريوجي غودا @ yakuza-kiwami2 yakuza5
+Ryuji = ريوجي @ yakuza-kiwami2 yakuza5
+Goda = غودا @ yakuza-kiwami2 yakuza5
+Dragon of Kansai = تنين كانساي @ yakuza-kiwami2 yakuza5
+Goh Hamazaki = غو هامازاكي @ yakuza3 yakuza4
+Hamazaki = هامازاكي @ yakuza3 yakuza4
+Taiga Saejima = تايغا سايجيما @ yakuza4 yakuza5 yakuza6 lad7 lad8 lad-pirate
+Saejima = سايجيما @ yakuza4 yakuza5 yakuza6 lad7 lad8 lad-pirate
+Shun Akiyama = شون أكياما @ yakuza4 yakuza5 yakuza6
+Akiyama = أكياما @ yakuza4 yakuza5 yakuza6
+Hana = هانا ♀ @ yakuza4 yakuza5 yakuza6
+Sky Finance = سكاي فاينانس @ yakuza4 yakuza5 yakuza6
+Katsumi Watase = كاتسومي واتاسي @ yakuza5 lad-gaiden lad8
+Watase = واتاسي @ yakuza5 lad-gaiden lad8
+Joon-gi Han = جون-غي هان @ yakuza6 lad7 lad8
+Han Joon-gi = هان جون-غي @ yakuza6 lad7 lad8
+Joon-gi = جون-غي @ yakuza6 lad7 lad8
+Kazuki = كازوكي @ yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6
+Stardust = ستارداست @ yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6
+Serena = سيرينا @ yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6
+Millennium Tower = برج الألفية @ yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7
+Morning Glory = مورنينغ غلوري @ yakuza3 yakuza4 yakuza5 yakuza6 lad-gaiden lad8
+Okinawa = أوكيناوا @ yakuza3 yakuza4 yakuza5 yakuza6 lad-gaiden lad8
+Hiroshima = هيروشيما @ yakuza6
+Tojo Clan = عشيرة توجو @ all
+Tojo = توجو @ all
+Omi Alliance = تحالف أومي @ all
+Omi = أومي @ all
+Kamurocho = كاموروتشو @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Sotenbori = سوتينبوري @ yakuza0 yakuza-kiwami2 yakuza5 lad-gaiden
+Osaka = أوساكا @ yakuza0 yakuza-kiwami2 yakuza5 lad-gaiden
+Ichiban Kasuga = إيتشيبان كاسوغا @ lad7 lad-gaiden lad8
+Kasuga Ichiban = كاسوغا إيتشيبان @ lad7 lad8
+Ichiban = إيتشيبان @ lad7 lad-gaiden lad8
+Kasuga = كاسوغا @ lad7 lad8
+Ichi = إيتشي @ lad7 lad8
+Yu Nanba = يو نانبا @ lad7 lad8
+Nanba = نانبا @ lad7 lad8
+Koichi Adachi = كويتشي أداتشي @ lad7 lad8
+Adachi = أداتشي @ lad7 lad8
+Saeko Mukoda = سايكو موكودا ♀ @ lad7 lad8
+Saeko = سايكو ♀ @ lad7 lad8
+Mukoda = موكودا ♀ @ lad7 lad8
+Zhao Tianyou = جاو تيانيو @ lad7 lad8
+Zhao = جاو @ lad7 lad8
+Eri Kamataki = إيري كاماتاكي ♀ @ lad7 lad8
+Eri = إيري ♀ @ lad7 lad8
+Seonhee = سونهي ♀ @ lad7 lad8
+Masumi Arakawa = ماسومي أراكاوا @ lad7 lad8
+Masato Arakawa = ماساتو أراكاوا @ lad7 lad8
+Masato = ماساتو @ lad7 lad8
+Arakawa Family = عائلة أراكاوا @ lad7 lad8
+Arakawa = أراكاوا @ lad7 lad8
+Ryo Aoki = ريو آوكي @ lad7 lad8
+Aoki = آوكي @ lad7 lad8
+Yokohama Liumang = ليومانغ يوكوهاما @ lad7 lad8
+Liumang = ليومانغ @ lad7 lad8
+Yokohama = يوكوهاما @ lad7 lad8
+Isezaki Ijincho = إيسيزاكي إيجينتشو @ lad7 lad8
+Ijincho = إيجينتشو @ lad7 lad8
+Geomijul = غيوميجول @ lad7 lad8
+Seiryu Clan = عشيرة سيريو @ lad7 lad8
+Bleach Japan = بليتش جابان @ lad7 lad8
+Hawaii = هاواي @ lad8 lad-pirate
+Honolulu = هونولولو @ lad8 lad-pirate

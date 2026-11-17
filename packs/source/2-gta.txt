@@ -1,0 +1,373 @@
+# Grand Theft Auto: San Andreas, IV, V and VI.
+# Format: see laptop/launcher/build_packs.py. Names only, never lines from the game.
+
+[game gta-sa]
+title: Grand Theft Auto: San Andreas
+title_ar: جي تي إيه: سان أندرياس
+series: Grand Theft Auto
+year: 2004
+note: سي جي وعائلة جونسون، عصابات شارع غروف، والمدن الثلاث.
+
+Carl Johnson = كارل جونسون
+Carl = كارل
+CJ = سي جي
+Sean Johnson = شون جونسون
+Sweet = سويت
+Kendl = كيندل ♀
+Brian Johnson = براين جونسون
+Beverly Johnson = بيفرلي جونسون ♀
+Johnson = جونسون
+Big Smoke = بيغ سموك
+Smoke = سموك
+Ryder = رايدر
+OG Loc = أو جي لوك
+Officer Tenpenny = الضابط تينبيني
+Tenpenny = تينبيني
+Pulaski = بولاسكي
+Hernandez = هيرنانديز
+Cesar Vialpando = سيزار فيالباندو
+Cesar = سيزار
+Catalina = كاتالينا ♀
+The Truth = ذا تروث
+Wu Zi Mu = وو زي مو
+Woozie = ووزي
+Ran Fa Li = ران فا لي
+Mike Toreno = مايك تورينو
+Toreno = تورينو
+Zero = زيرو
+Jizzy B = جيزي بي
+Jizzy = جيزي
+T-Bone Mendez = تي بون منديز
+T-Bone = تي بون
+Ken Rosenberg = كين روزنبرغ
+Rosenberg = روزنبرغ
+Salvatore Leone = سالفاتوري ليوني
+Salvatore = سالفاتوري
+Maria = ماريا ♀
+Madd Dogg = ماد دوغ
+Kent Paul = كينت بول
+Maccer = ماكر
+Big Bear = بيغ بير
+B Dup = بي داب
+Emmet = إيميت
+Denise = دينيس ♀
+Millie = ميلي ♀
+Barbara = باربرا ♀
+Katie = كاتي ♀
+Helena = هيلينا ♀
+Michelle = ميشيل ♀
+Jethro = جيثرو
+Dwaine = دواين
+Claude = كلود
+Grove Street Families = عائلات شارع غروف
+Grove = غروف
+Los Santos Vagos = فاغوس لوس سانتوس
+Varrios Los Aztecas = فاريوس لوس أزتيكاس
+Da Nang Boys = فتيان دا نانغ
+Loco Syndicate = منظمة لوكو
+San Fierro Rifa = ريفا سان فييرو
+Rifa = الريفا
+Leone Family = عائلة ليوني
+Leone = ليوني
+Sindacco = سينداكو
+Forelli = فوريلي
+C.R.A.S.H. = كراش
+CRASH = كراش
+San Andreas = سان أندرياس
+San Fierro = سان فييرو
+Las Venturas = لاس فينتوراس
+Ganton = غانتون
+Idlewood = آيدلوود
+Glen Park = غلين بارك
+Jefferson = جيفرسون
+Willowfield = ويلوفيلد
+El Corona = إل كورونا
+Little Mexico = ليتل مكسيكو
+Doherty = دوهيرتي
+Red County = ريد كاونتي
+Flint County = فلينت كاونتي
+Bone County = بون كاونتي
+Tierra Robada = تييرا روبادا
+Angel Pine = أنجل باين
+Palomino Creek = بالومينو كريك
+Dillimore = ديليمور
+Montgomery = مونتغمري
+Blueberry = بلوبيري
+Fort Carson = فورت كارسون
+Las Barrancas = لاس بارانكاس
+El Quebrados = إل كيبرادوس
+Verdant Meadows = فيردانت ميدوز
+Area 69 = المنطقة 69
+Four Dragons = التنانين الأربعة
+Caligula's = كاليغولا
+
+[game gta4]
+title: Grand Theft Auto IV
+title_ar: جي تي إيه 4
+series: Grand Theft Auto
+year: 2008
+note: نيكو بيليك وليبرتي سيتي، مع شخصيات القصتين الإضافيتين.
+
+Niko Bellic = نيكو بيليك
+Niko = نيكو
+Roman Bellic = رومان بيليك
+Roman = رومان
+Bellic = بيليك
+Mallorie = مالوري ♀
+Michelle = ميشيل ♀
+Karen = كارين ♀
+Little Jacob = ليتل جيكوب
+Jacob = جيكوب
+Dwayne Forge = دواين فورج
+Dwayne = دواين
+Brucie Kibbutz = بروسي كيبوتز
+Brucie = بروسي
+Playboy X = بلاي بوي إكس
+Elizabeta Torres = إليزابيتا توريس ♀
+Elizabeta = إليزابيتا ♀
+Manny Escuela = ماني إسكويلا
+Manny = ماني
+Vlad = فلاد
+Mikhail Faustin = ميخائيل فاوستين
+Faustin = فاوستين
+Dimitri Rascalov = ديميتري راسكالوف
+Dimitri = ديميتري
+Rascalov = راسكالوف
+Kate McReary = كيت ماكريري ♀
+Kate = كيت ♀
+Francis McReary = فرانسيس ماكريري
+Derrick McReary = ديريك ماكريري
+Gerry McReary = جيري ماكريري
+McReary = ماكريري
+Ray Boccino = راي بوكينو
+Boccino = بوكينو
+Jimmy Pegorino = جيمي بيغورينو
+Pegorino = بيغورينو
+Phil Bell = فيل بيل
+Gracie Ancelotti = غريسي أنشيلوتي ♀
+Gracie = غريسي ♀
+Ancelotti = أنشيلوتي
+Bernie Crane = بيرني كرين
+Bernie = بيرني
+Florian Cravic = فلوريان كرافيتش
+Darko Brevic = داركو بريفيتش
+Darko = داركو
+Brevic = بريفيتش
+U.L. Paper = يو إل بيبر
+Ray Bulgarin = راي بولغارين
+Bulgarin = بولغارين
+Lenny Petrovic = ليني بيتروفيتش
+Johnny Klebitz = جوني كليبيتز
+Klebitz = كليبيتز
+Luis Lopez = لويس لوبيز
+Gay Tony = غاي توني
+Tony Prince = توني برينس
+Yusuf Amir = يوسف أمير
+Badman = بادمان
+Gambetti = غامبيتي
+Pavano = بافانو
+Lupisella = لوبيزيلا
+Messina = ميسينا
+Angels of Death = ملائكة الموت
+LCPD = شرطة ليبرتي سيتي
+NOOSE = نوز
+Broker = بروكر
+Dukes = ديوكس
+Bohan = بوهان
+Algonquin = ألغونكوين
+Alderney = ألديرني
+Hove Beach = هوف بيتش
+Firefly Island = جزيرة فايرفلاي
+Middle Park = ميدل بارك
+Star Junction = ستار جانكشن
+Hatton Gardens = هاتون غاردنز
+Westdyke = ويستدايك
+Acter = آكتر
+Happiness Island = جزيرة السعادة
+Statue of Happiness = تمثال السعادة
+Charge Island = جزيرة تشارج
+Colony Island = جزيرة كولوني
+Port Tudor = بورت تيودور
+Schottler = شوتلر
+Steinway = ستاينواي
+
+[game gta5]
+title: Grand Theft Auto V
+title_ar: جي تي إيه 5
+series: Grand Theft Auto
+year: 2013
+note: مايكل وفرانكلين وتريفور، لوس سانتوس ومقاطعة بلين، والعصابات والوكالات.
+
+Michael De Santa = مايكل دي سانتا
+Michael Townley = مايكل تاونلي
+Michael = مايكل
+De Santa = دي سانتا
+Townley = تاونلي
+Franklin Clinton = فرانكلين كلينتون
+Franklin = فرانكلين
+Clinton = كلينتون
+Trevor Philips = تريفور فيليبس
+Trevor = تريفور
+Philips = فيليبس
+Lamar Davis = لامار ديفيس
+Lamar = لامار
+Davis = ديفيس
+Lester Crest = ليستر كريست
+Lester = ليستر
+Amanda = أماندا ♀
+Tracey = تريسي ♀
+Jimmy = جيمي
+Dave Norton = ديف نورتون
+Norton = نورتون
+Steve Haines = ستيف هينز
+Haines = هينز
+Devin Weston = ديفن ويستون
+Devin = ديفن
+Weston = ويستون
+Martin Madrazo = مارتن مادرازو
+Madrazo = مادرازو
+Patricia = باتريشيا ♀
+Simeon Yetarian = سيميون يتاريان
+Simeon = سيميون
+Wade = وايد
+Ron = رون
+Floyd = فلويد
+Debra = ديبرا ♀
+Chop = تشوب
+Stretch = ستريتش
+Tanisha = تانيشا ♀
+Denise = دينيس ♀
+Solomon Richards = سولومون ريتشاردز
+Solomon = سولومون
+Lazlow = لازلو
+Molly Schultz = مولي شولتز ♀
+Molly = مولي ♀
+Wei Cheng = وي تشينغ
+Tao Cheng = تاو تشينغ
+Cheng = تشينغ
+Tao = تاو
+Brad Snider = براد سنايدر
+Brad = براد
+Paige Harris = بيج هاريس ♀
+Paige = بيج ♀
+Rickie Lukens = ريكي لوكنز
+Rickie = ريكي
+Karim Denz = كريم دنز
+Taliana Martinez = تاليانا مارتينيز ♀
+Taliana = تاليانا ♀
+Gustavo Mota = غوستافو موتا
+Ortega = أورتيغا
+Cletus = كليتوس
+Maude = مود ♀
+Mary-Ann = ماري آن ♀
+Nigel = نايجل
+Beverly = بيفرلي
+Josh Bernstein = جوش بيرنستين
+Josh = جوش
+Dom Beasley = دوم بيزلي
+Barry = باري
+Omega = أوميغا
+Jay Norris = جاي نوريس
+Fabien LaRouche = فابيان لاروش
+Fabien = فابيان
+Rocco Pelosi = روكو بيلوسي
+Rocco = روكو
+Abigail Mathers = أبيغيل ماذرز ♀
+Merryweather = ميريويذر
+FIB = إف آي بي
+IAA = آي إيه إيه
+LSPD = شرطة لوس سانتوس
+Families = العائلات
+O'Neils = آل أونيل
+Epsilon Program = برنامج إبسيلون
+Epsilon = إبسيلون
+Altruist Cult = طائفة الإيثاريين
+Altruists = الإيثاريون
+Blaine County = مقاطعة بلين
+Blaine = بلين
+Sandy Shores = ساندي شورز
+Paleto Bay = باليتو باي
+Paleto = باليتو
+Grapeseed = غريبسيد
+Harmony = هارموني
+Vinewood Hills = تلال فاينوود
+Rockford Hills = روكفورد هيلز
+Vespucci Beach = شاطئ فيسبوتشي
+Vespucci = فيسبوتشي
+Del Perro = ديل بيرو
+Strawberry = ستروبيري
+Chamberlain Hills = تشامبرلين هيلز
+Forum Drive = فوروم درايف
+Mirror Park = ميرور بارك
+La Mesa = لا ميسا
+Little Seoul = ليتل سول
+Chumash = تشوماش
+Mount Chiliad = جبل تشيلياد
+Chiliad = تشيلياد
+Alamo Sea = بحر ألامو
+Fort Zancudo = فورت زانكودو
+Zancudo = زانكودو
+Ludendorff = لودندورف
+North Yankton = نورث يانكتون
+Cayo Perico = كايو بيريكو
+Lifeinvader = لايف إنفيدر
+Maze Bank = ميز بانك
+Pacific Standard = باسيفيك ستاندرد
+Union Depository = يونيون ديبوزيتوري
+Bolingbroke = بولينغبروك
+Humane Labs = مختبرات هيومين
+Weazel News = ويزل نيوز
+
+[game gta6]
+title: Grand Theft Auto VI
+title_ar: جي تي إيه 6
+series: Grand Theft Auto
+year: 2026
+note: قائمة أولى من الأسماء اللي أعلنتها روكستار قبل الإصدار. أضف الباقي من «قاموس الأسماء» وأنت تلعب.
+
+Jason Duval = جيسون دوفال
+Jason = جيسون
+Duval = دوفال
+Lucia Caminos = لوسيا كامينوس ♀
+Lucia = لوسيا ♀
+Caminos = كامينوس ♀
+Cal Hampton = كال هامبتون
+Cal = كال
+Hampton = هامبتون
+Boobie Ike = بوبي آيك
+Boobie = بوبي
+Dre'Quan Priest = دريكوان بريست
+Dre'Quan = دريكوان
+Real Dimez = ريل دايمز
+Bae-Luxe = باي لوكس ♀
+Roxy = روكسي ♀
+Raul Bautista = راؤول باوتيستا
+Raul = راؤول
+Bautista = باوتيستا
+Brian Heder = براين هيدر
+Brian = براين
+Heder = هيدر
+Leonida Keys = جزر ليونيدا
+Leonida = ليونيدا
+Grassrivers = غراس ريفرز
+Port Gellhorn = بورت جيلهورن
+Ambrosia = أمبروسيا
+Mount Kalaga = جبل كالاغا
+Kalaga = كالاغا
+Vice Beach = فايس بيتش
+
+[shared]
+Los Santos = لوس سانتوس @ gta-sa gta5
+Vinewood = فاينوود @ gta-sa gta5
+Grove Street = شارع غروف @ gta-sa gta5
+Ballas = البالاس @ gta-sa gta5
+Vagos = الفاغوس @ gta-sa gta5
+Aztecas = الأزتيكاس @ gta-sa gta5
+Triads = الترياد @ gta-sa gta4 gta5
+Mount Chiliad = جبل تشيلياد @ gta-sa
+Liberty City = ليبرتي سيتي @ gta-sa gta4 gta5
+Vice City = فايس سيتي @ gta-sa gta4 gta5 gta6
+Packie McReary = باكي ماكريري @ gta4 gta5
+Packie = باكي @ gta4 gta5
+Lost MC = نادي لوست @ gta4 gta5
+FIB = إف آي بي @ gta4

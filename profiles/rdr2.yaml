@@ -1,11 +1,10 @@
 title: Red Dead Redemption 2
-# Red Dead Redemption 2: how names are written in Arabic.
 style: msa
-settle_ms: 30      # no typewriter text in this game: confirm a line after one more frame
+settle_ms: 30
 glossary:
   Arthur: آرثر
   Morgan: مورغان
-  Dutch: دتش
+  Dutch: داتش
   Micah: مايكا
   Hosea: هوزيا
   Pearson: بيرسون
@@ -20,10 +19,174 @@ glossary:
   Javier: خافيير
   Charles: تشارلز
   Lenny: ليني
-  Sadie: سيدي
+  Sadie: سايدي
   Strauss: شتراوس
   Swanson: سوانسون
   Reverend: القس
   Trelawny: تريلوني
   Valentine: فالنتاين
   Blackwater: بلاكووتر
+  Arthur Morgan: آرثر مورغان
+  Hosea Matthews: هوزيا ماثيوز
+  Matthews: ماثيوز
+  Abigail Roberts: أبيغيل روبرتس
+  Micah Bell: مايكا بيل
+  Charles Smith: تشارلز سميث
+  Lenny Summers: ليني سمرز
+  Sean MacGuire: شون ماكغواير
+  Sean: شون
+  MacGuire: ماكغواير
+  Kieran Duffy: كيران دافي
+  Kieran: كيران
+  Duffy: دافي
+  Sadie Adler: سايدي آدلر
+  Mrs. Adler: السيدة آدلر
+  Adler: آدلر
+  Susan Grimshaw: سوزان غريمشو
+  Miss Grimshaw: الآنسة غريمشو
+  Mary-Beth Gaskill: ماري بيث غاسكيل
+  Tilly Jackson: تيلي جاكسون
+  Karen Jones: كارين جونز
+  Molly O'Shea: مولي أوشي
+  Miss O'Shea: الآنسة أوشي
+  Molly: مولي
+  Simon Pearson: سايمون بيرسون
+  Leopold Strauss: ليوبولد شتراوس
+  Orville Swanson: أورفيل سوانسون
+  Reverend Swanson: القس سوانسون
+  Josiah Trelawny: جوزايا تريلوني
+  Josiah: جوزايا
+  Hamish Sinclair: هاميش سنكلير
+  Hamish: هاميش
+  Rains Fall: رينز فول
+  Eagle Flies: إيغل فلايز
+  Charlotte Balfour: شارلوت بلفور
+  Charlotte: شارلوت
+  Mary Linton: ماري لينتون
+  Thomas Downes: توماس داونز
+  Edith Downes: إديث داونز
+  Edith: إديث
+  Downes: داونز
+  Archie: آرتشي
+  Eliza: إليزا
+  Isaac: آيزك
+  Jim Milton: جيم ميلتون
+  Colm O'Driscoll: كولم أودريسكول
+  Colm: كولم
+  O'Driscolls: الأودريسكول
+  O'Driscoll: أودريسكول
+  Andrew Milton: أندرو ميلتون
+  Agent Milton: العميل ميلتون
+  Milton: ميلتون
+  Agent Ross: العميل روس
+  Pinkertons: البينكرتون
+  Pinkerton: بينكرتون
+  Leviticus Cornwall: ليفيتيكوس كورنوول
+  Cornwall: كورنوول
+  Angelo Bronte: أنجيلو برونتي
+  Bronte: برونتي
+  Alberto Fussar: ألبرتو فوسار
+  Fussar: فوسار
+  Catherine Braithwaite: كاثرين بريثويت
+  Penelope Braithwaite: بينيلوبي بريثويت
+  Penelope: بينيلوبي
+  Braithwaites: آل بريثويت
+  Braithwaite: بريثويت
+  Tavish Gray: تافيش غراي
+  Leigh Gray: لي غراي
+  Sheriff Gray: الشريف غراي
+  Beau Gray: بو غراي
+  Beau: بو
+  Grays: آل غراي
+  Captain Monroe: الكابتن مونرو
+  Monroe: مونرو
+  Colonel Favours: الكولونيل فيفرز
+  Favours: فيفرز
+  Lemoyne Raiders: غزاة ليموين
+  Murfree Brood: عشيرة مورفري
+  Murfrees: آل مورفري
+  Skinner Brothers: الإخوة سكينر
+  Night Folk: قوم الليل
+  Laramie Gang: عصابة لارامي
+  Wapiti: وابيتي
+  Saint Denis: سانت دينيس
+  Rhodes: رودز
+  Strawberry: ستروبيري
+  Annesburg: آنزبيرغ
+  Van Horn: فان هورن
+  Emerald Ranch: مزرعة إميرالد
+  Colter: كولتر
+  Horseshoe Overlook: هورس شو أوفرلوك
+  Clemens Point: كليمنز بوينت
+  Shady Belle: شيدي بيل
+  Beaver Hollow: بيفر هولو
+  Lakay: لاكاي
+  Guarma: غوارما
+  Tahiti: تاهيتي
+  New Hanover: نيو هانوفر
+  Lemoyne: ليموين
+  Ambarino: أمبارينو
+  Heartlands: الهارتلاندز
+  Bayou Nwa: بايو نوا
+  Flatneck Station: محطة فلاتنيك
+  Wallace Station: محطة والاس
+  Riggs Station: محطة ريغز
+  Big Valley: بيغ فالي
+  Grizzlies: الغريزليز
+  Butcher Creek: بوتشر كريك
+  Caliga Hall: كاليغا هول
+  Braithwaite Manor: قصر بريثويت
+  John Marston: جون مارستن
+  John: جون
+  Abigail Marston: أبيغيل مارستن
+  Jack Marston: جاك مارستن
+  Jack: جاك
+  Uncle: العم
+  Dutch van der Linde: داتش فان دير ليند
+  van der Linde: فان دير ليند
+  Bill Williamson: بيل ويليامسون
+  Bill: بيل
+  Williamson: ويليامسون
+  Javier Escuella: خافيير إسكويلا
+  Escuella: إسكويلا
+  Edgar Ross: إدغار روس
+  Ross: روس
+  Dead Eye: عين الموت
+  Armadillo: أرماديلو
+  Tumbleweed: تامبلويد
+  Thieves' Landing: ثيفز لاندينغ
+  Beecher's Hope: بيتشرز هوب
+  West Elizabeth: ويست إليزابيث
+  New Austin: نيو أوستن
+  Great Plains: السهول الكبرى
+female:
+- Abigail Roberts
+- Sadie Adler
+- Sadie
+- Mrs. Adler
+- Adler
+- Susan Grimshaw
+- Susan
+- Miss Grimshaw
+- Grimshaw
+- Mary-Beth Gaskill
+- Mary-Beth
+- Mary Beth
+- Tilly Jackson
+- Tilly
+- Karen Jones
+- Karen
+- Molly O'Shea
+- Miss O'Shea
+- Molly
+- Charlotte Balfour
+- Charlotte
+- Mary Linton
+- Edith Downes
+- Edith
+- Eliza
+- Catherine Braithwaite
+- Penelope Braithwaite
+- Penelope
+- Abigail Marston
+- Abigail

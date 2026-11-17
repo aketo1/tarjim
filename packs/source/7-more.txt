@@ -1,0 +1,345 @@
+# Popular games with no Arabic on PS5 (checked November 2026):
+# Baldur's Gate 3, Final Fantasy VII Remake / Rebirth, Kingdom Come: Deliverance II,
+# Mafia: The Old Country, Persona 5 Royal.
+# Format: see laptop/launcher/build_packs.py. Names only, never lines from the game.
+
+[game bg3]
+title: Baldur's Gate 3
+title_ar: بالدورز غيت 3
+series: Baldur's Gate
+year: 2023
+note: الرفاق، الآلهة، والأماكن. لعبة كلامها كثير، فالقاموس يفرق فيها كثير.
+
+Astarion = أستاريون
+Shadowheart = شادوهارت ♀
+Lae'zel = لايزيل ♀
+Gale = غيل
+Wyll = ويل
+Karlach = كارلاك ♀
+Halsin = هالسين
+Minthara = مينثارا ♀
+Minsc = مينسك
+Boo = بو
+Jaheira = جاهيرا ♀
+Withers = ويذرز
+Jergal = جيرغال
+Emperor = الإمبراطور
+Orpheus = أورفيوس
+Vlaakith = فلاكيث ♀
+Ketheric Thorm = كيثريك ثورم
+Ketheric = كيثريك
+Thorm = ثورم
+Enver Gortash = إنفر غورتاش
+Gortash = غورتاش
+Orin the Red = أورين الحمراء ♀
+Orin = أورين ♀
+Bhaal = بال
+Bane = بين
+Myrkul = ميركول
+Shar = شار ♀
+Selûne = سيلون ♀
+Selune = سيلون ♀
+Mystra = ميسترا ♀
+Raphael = رافائيل
+Mizora = ميزورا ♀
+Zariel = زارييل ♀
+Zevlor = زيفلور
+Aradin = أرادين
+Kagha = كاغا ♀
+Nettie = نيتي ♀
+Dammon = دامون
+Volo = فولو
+Alfira = ألفيرا ♀
+Dame Aylin = السيدة آيلين ♀
+Aylin = آيلين ♀
+Nightsong = نايتسونغ ♀
+Isobel = إيزوبيل ♀
+Yurgir = يورغير
+Ansur = أنسور
+Cazador = كازادور
+Florrick = فلوريك ♀
+Ulder Ravengard = أولدر رافنغارد
+Duke Ravengard = الدوق رافنغارد
+Ravengard = رافنغارد
+Wulbren = وولبرين
+Lorroakan = لوروكان
+Elminster = إلمنستر
+Tav = تاف
+Dark Urge = الدافع المظلم
+Absolute = المطلق
+Elder Brain = الدماغ الأعظم
+mind flayers = المايند فلايرز
+mind flayer = مايند فلاير
+illithid = إليثيد
+githyanki = غيثيانكي
+tieflings = التيفلينغ
+tiefling = تيفلينغ
+drow = درو
+Baldur's Gate = بالدورز غيت
+Moonrise Towers = أبراج مونرايز
+Moonrise = مونرايز
+Shadow-Cursed Lands = الأراضي الملعونة بالظل
+Underdark = الأندرداك
+Grymforge = غريمفورج
+Last Light Inn = نُزل الضوء الأخير
+Emerald Grove = البستان الزمردي
+Blighted Village = القرية المنكوبة
+Rivington = ريفينغتون
+Wyrm's Rock = صخرة الوِرم
+Lower City = المدينة السفلى
+Upper City = المدينة العليا
+Elfsong Tavern = حانة إلفسونغ
+Sword Coast = ساحل السيوف
+Faerûn = فيرون
+Faerun = فيرون
+Avernus = أفيرنوس
+Nine Hells = الجحيمات التسعة
+Waterdeep = ووترديب
+House of Hope = بيت الأمل
+Flaming Fist = القبضة المشتعلة
+Zhentarim = الزينتاريم
+Harpers = الهاربرز
+Iron Throne = العرش الحديدي
+Steel Watch = الحرس الفولاذي
+
+[game ff7r]
+title: Final Fantasy VII Remake / Rebirth
+title_ar: فاينل فانتسي 7 ريميك وريبيرث
+series: Final Fantasy
+year: 2024
+note: كلاود ورفاقه، شينرا وأفالانش، وأماكن ميدغار والعالم.
+
+Cloud Strife = كلاود سترايف
+Cloud = كلاود
+Strife = سترايف
+Tifa Lockhart = تيفا لوكهارت ♀
+Tifa = تيفا ♀
+Aerith Gainsborough = أيريث غينزبورو ♀
+Aerith = أيريث ♀
+Barret Wallace = باريت والاس
+Barret = باريت
+Red XIII = ريد 13
+Nanaki = ناناكي
+Yuffie Kisaragi = يوفي كيساراغي ♀
+Yuffie = يوفي ♀
+Cait Sith = كيت سيث
+Cid Highwind = سيد هايويند
+Cid = سيد
+Vincent Valentine = فينسنت فالنتاين
+Sephiroth = سيفيروث
+Zack Fair = زاك فير
+Zack = زاك
+Jessie = جيسي ♀
+Biggs = بيغز
+Wedge = ويدج
+Marlene = مارلين ♀
+Elmyra = إلميرا ♀
+Rufus Shinra = روفوس شينرا
+Rufus = روفوس
+President Shinra = الرئيس شينرا
+Shinra = شينرا
+Heidegger = هايدغر
+Scarlet = سكارليت ♀
+Hojo = هوجو
+Reeve = ريف
+Palmer = بالمر
+Reno = رينو
+Rude = رود
+Tseng = تسنغ
+Elena = إيلينا ♀
+Turks = التركس
+Avalanche = أفالانش
+SOLDIER = سولجر
+Jenova = جينوفا ♀
+Lifestream = تيار الحياة
+mako = ماكو
+materia = ماتيريا
+Midgar = ميدغار
+Sector 7 = القطاع 7
+Wall Market = وول ماركت
+Don Corneo = دون كورنيو
+Corneo = كورنيو
+Andrea Rhodea = أندريا رودييا
+Madam M = مدام إم ♀
+Chadley = تشادلي
+Kyrie = كيري ♀
+Leslie = ليزلي
+Johnny = جوني
+Kalm = كالم
+Junon = جونون
+Costa del Sol = كوستا ديل سول
+Gold Saucer = غولد سوسر
+Cosmo Canyon = كوزمو كانيون
+Gongaga = غونغاغا
+Nibelheim = نيبلهايم
+Cetra = السيترا
+Ancients = القدماء
+Dyne = داين
+Bugenhagen = بوغنهاغن
+Dio = ديو
+Roche = روش
+Whispers = الهمسات
+Planet = الكوكب
+Promised Land = الأرض الموعودة
+chocobos = الشوكوبو
+chocobo = شوكوبو
+moogle = موغل
+
+[game kcd2]
+title: Kingdom Come: Deliverance II
+title_ar: كينغدم كم: ديليفرنس 2
+series: Kingdom Come
+year: 2025
+note: هنري وهانز كابون في بوهيميا: تروسكي وكوتنبرغ.
+
+Henry of Skalitz = هنري من سكاليتز
+Henry = هنري
+Hans Capon = هانز كابون
+Hans = هانز
+Capon = كابون
+Sir Radzig Kobyla = السير رادزيغ كوبيلا
+Radzig = رادزيغ
+Kobyla = كوبيلا
+Jan Žižka = يان جيجكا
+Jan Zizka = يان جيجكا
+Žižka = جيجكا
+Zizka = جيجكا
+Istvan Toth = إشتفان توت
+Istvan = إشتفان
+Toth = توت
+Erik = إريك
+Eric = إريك
+Thomas of Trosky = توماس من تروسكي
+Katherine = كاثرين ♀
+Otto von Bergow = أوتو فون بيرغو
+Bergow = بيرغو
+Father Godwin = الأب غودوين
+Godwin = غودوين
+Konrad Kyeser = كونراد كيزر
+Kyeser = كيزر
+Mutt = مَت
+Sigismund = سيغيسموند
+King Wenceslas = الملك فاتسلاف
+Wenceslas = فاتسلاف
+Bohemia = بوهيميا
+Skalitz = سكاليتز
+Rattay = راتاي
+Trosky = تروسكي
+Kuttenberg = كوتنبرغ
+Cumans = الكومان
+Prague = براغ
+
+[game mafia-toc]
+title: Mafia: The Old Country
+title_ar: مافيا: ذا أولد كنتري
+series: Mafia
+year: 2025
+note: إنزو فافارا وعائلة توريسي في صقلية.
+
+Enzo Favara = إنزو فافارا
+Enzo = إنزو
+Favara = فافارا
+Gaetano = غايتانو
+Don Bernardo Torrisi = دون برناردو توريسي
+Bernardo Torrisi = برناردو توريسي
+Don Torrisi = دون توريسي
+Bernardo = برناردو
+Isabella Torrisi = إيزابيلا توريسي ♀
+Isabella = إيزابيلا ♀
+Torrisi Family = عائلة توريسي
+Torrisi = توريسي
+Cesare Massaro = تشيزاري ماسارو
+Cesare = تشيزاري
+Massaro = ماسارو
+Luca Trapani = لوكا تراباني
+Luca = لوكا
+Trapani = تراباني
+Augustino Russo = أوغستينو روسو
+Tino Russo = تينو روسو
+Tino = تينو
+Russo = روسو
+Don Ruggero Spadaro = دون روجيرو سبادارو
+Don Spadaro = دون سبادارو
+Ruggero = روجيرو
+Spadaro = سبادارو
+Sicily = صقلية
+San Celeste = سان تشيليستي
+
+[game p5r]
+title: Persona 5 Royal
+title_ar: برسونا 5 رويال
+series: Persona
+year: 2020
+settle: 280
+note: لصوص الأشباح وأسماؤهم الحركية، وطوكيو. النص ينكتب حرف حرف، فالقائمة تبدأ بخيار «اللعبة تكتب النص».
+
+Ren Amamiya = رين أماميا
+Amamiya = أماميا
+Ren = رين
+Joker = جوكر
+Morgana = مورغانا
+Mona = مونا
+Ryuji Sakamoto = ريوجي ساكاموتو
+Ryuji = ريوجي
+Sakamoto = ساكاموتو
+Skull = سكَل
+Ann Takamaki = آن تاكاماكي ♀
+Ann = آن ♀
+Takamaki = تاكاماكي ♀
+Panther = بانثر ♀
+Yusuke Kitagawa = يوسكي كيتاغاوا
+Yusuke = يوسكي
+Kitagawa = كيتاغاوا
+Fox = فوكس
+Makoto Niijima = ماكوتو نييجيما ♀
+Makoto = ماكوتو ♀
+Sae Niijima = ساي نييجيما ♀
+Sae = ساي ♀
+Niijima = نييجيما ♀
+Futaba Sakura = فوتابا ساكورا ♀
+Futaba = فوتابا ♀
+Oracle = أوراكل ♀
+Sojiro Sakura = سوجيرو ساكورا
+Sojiro = سوجيرو
+Sakura = ساكورا
+Haru Okumura = هارو أوكومورا ♀
+Haru = هارو ♀
+Okumura = أوكومورا
+Noir = نوار ♀
+Goro Akechi = غورو أكيتشي
+Akechi = أكيتشي
+Crow = كرو
+Kasumi Yoshizawa = كاسومي يوشيزاوا ♀
+Kasumi = كاسومي ♀
+Sumire = سوميري ♀
+Yoshizawa = يوشيزاوا ♀
+Violet = فايوليت ♀
+Takuto Maruki = تاكوتو ماروكي
+Maruki = ماروكي
+Kamoshida = كاموشيدا
+Madarame = مادارامي
+Kaneshiro = كانيشيرو
+Masayoshi Shido = ماسايوشي شيدو
+Shido = شيدو
+Igor = إيغور
+Lavenza = لافنزا ♀
+Caroline = كارولين ♀
+Justine = جستين ♀
+Velvet Room = الغرفة المخملية
+Phantom Thieves = لصوص الأشباح
+Metaverse = الميتافيرس
+Mementos = مومينتوس
+Shujin Academy = أكاديمية شوجين
+Shujin = شوجين
+Leblanc = لوبلان
+Yongen-Jaya = يونغين جايا
+Shibuya = شيبويا
+Iwai = إيواي
+Ohya = أويا ♀
+Kawakami = كاواكامي ♀
+Takemi = تاكيمي ♀
+Mishima = ميشيما
+Hifumi = هيفومي ♀
+Chihaya = تشيهايا ♀
+Yoshida = يوشيدا
+Shinya = شينيا

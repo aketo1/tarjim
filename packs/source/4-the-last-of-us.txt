@@ -1,0 +1,101 @@
+# The Last of Us Part I and Part II.
+# Format: see laptop/launcher/build_packs.py. Names only, never lines from the game.
+# Words for the infected are written in small letters, so they are found in any case.
+
+[game tlou1]
+title: The Last of Us Part I
+title_ar: ذا لاست أوف أس: الجزء الأول
+series: The Last of Us
+year: 2022
+note: جويل وإيلي من بوسطن إلى سولت ليك سيتي، مع قصة «ليفت بيهايند».
+
+Tess = تيس ♀
+Marlene = مارلين ♀
+Bill = بيل
+Frank = فرانك
+Henry = هنري
+Sam = سام
+Sarah = سارة ♀
+Riley Abel = رايلي أبيل ♀
+Riley = رايلي ♀
+David = ديفيد
+James = جيمس
+Robert = روبرت
+Ish = إيش
+Winston = وينستون
+Boston = بوسطن
+Pittsburgh = بيتسبرغ
+Lincoln = لينكولن
+Austin = أوستن
+Salt Lake City = سولت ليك سيتي
+University of Eastern Colorado = جامعة شرق كولورادو
+Colorado = كولورادو
+Wyoming = وايومنغ
+Silver Lake = سيلفر ليك
+Tommy's Dam = سد تومي
+St. Mary's Hospital = مستشفى سانت ماري
+Quarantine Zone = منطقة الحجر
+
+[game tlou2]
+title: The Last of Us Part II
+title_ar: ذا لاست أوف أس: الجزء الثاني
+series: The Last of Us
+year: 2020
+note: إيلي وآبي، جاكسون وسياتل، والذئاب والسيرافيين.
+
+Dina = دينا ♀
+Jesse = جيسي
+Abby Anderson = آبي أندرسون ♀
+Abby = آبي ♀
+Lev = ليف
+Yara = يارا ♀
+Owen = أوين
+Mel = ميل ♀
+Manny = ماني
+Nora = نورا ♀
+Jordan = جوردان
+Leah = ليا ♀
+Isaac Dixon = آيزك ديكسون
+Isaac = آيزك
+Seth = سيث
+Eugene = يوجين
+Gail = غيل ♀
+Cat = كات ♀
+JJ = جيه جيه
+Lily = ليلي ♀
+Emily = إميلي ♀
+Alice = أليس ♀
+Jerry Anderson = جيري أندرسون
+Washington Liberation Front = جبهة تحرير واشنطن
+WLF = جبهة تحرير واشنطن
+Wolves = الذئاب
+Seraphites = السيرافيون
+Seraphite = سيرافي
+Scars = السكارز
+Rattlers = الراتلرز
+Seattle = سياتل
+Santa Barbara = سانتا باربرا
+Catalina Island = جزيرة كاتالينا
+Capitol Hill = كابيتول هيل
+Hillcrest = هيلكرست
+Aquarium = الأكواريوم
+shamblers = الشامبلرز
+shambler = شامبلر
+
+[shared]
+Joel Miller = جويل ميلر @ tlou1 tlou2
+Joel = جويل @ tlou1 tlou2
+Ellie Williams = إيلي ويليامز ♀ @ tlou1 tlou2
+Ellie = إيلي ♀ @ tlou1 tlou2
+Tommy = تومي @ tlou1 tlou2
+Maria = ماريا ♀ @ tlou1 tlou2
+Jackson = جاكسون @ tlou1 tlou2
+Fireflies = اليراعات @ tlou1 tlou2
+Firefly = يراعة @ tlou1 tlou2
+FEDRA = فيدرا @ tlou1 tlou2
+QZ = منطقة الحجر @ tlou1 tlou2
+clickers = الكليكرز @ tlou1 tlou2
+clicker = كليكر @ tlou1 tlou2
+bloaters = البلوترز @ tlou1 tlou2
+bloater = بلوتر @ tlou1 tlou2
+cordyceps = الكورديسيبس @ tlou1 tlou2

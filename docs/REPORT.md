@@ -612,3 +612,91 @@ Measured on the 395 distinct lines in `out/sessions/`:
   - Women's names in the glossary must be marked by hand.
   - No update check: a new version means downloading the installer again.
   - `README-AR.md` from the original brief was replaced by `README.md`.
+
+## 17. Game files, the game library, and faster names (added 2026-11-17)
+
+### What changed for the user
+
+- **Game files.** In «المظهر» ‹ «قاموس الأسماء», «صدّر ملف» saves the game as
+  one JSON file (`<title> - tarjim.json`): its names (women's marked), every
+  line the player rewrote, and its reading area and timing. «استورد ملف» takes
+  such a file from anyone, shows what is in it, and asks which game it goes
+  into. New names and lines are added; whatever the player already wrote stays.
+  The phone app reads and writes the same files (its report, section 11).
+- **The game library** («مكتبة الألعاب», on the home screen and in «المظهر»):
+  28 ready name lists for popular games with no Arabic, added with one click.
+  A game already added shows how many names an update would add.
+- **Red Dead Redemption 2's list** went from 24 names to 157: the gang,
+  towns, rival gangs, the epilogue, women marked. "Sadie" is now «سايدي»
+  (was «سيدي», which reads as "my master") and "Dutch" «داتش» (was «دتش»).
+  The user's own `profiles/rdr2.yaml` was updated with it (133 added, 2 changed).
+- **A search box and a count** in the names list once a game has 12 or more names.
+
+### Files
+
+| File | What it holds |
+| --- | --- |
+| `laptop/tarjim/packs.py` | The format, checks, `merge` (into a profile), `export`, the library |
+| `packs/<id>.json` | The library, generated: do not edit by hand |
+| `packs/source/*.txt` | The library's sources, one line per name (`Sadie = سايدي ♀ ~ سيدي`) |
+| `laptop/launcher/build_packs.py` | Builds `packs/*.json` and the phone app's `assets/packs/` from the sources |
+| `laptop/tests/test_packs.py` | Format, merge rules, round trip, routes, and a check of the whole library |
+
+Routes: `GET /api/packs`, `GET /api/pack/export?name=`, `POST /api/packs/add`
+`{id}`, `POST /api/pack/import` `{pack, into}` (bodies up to 8 MB for this
+route only). The installer now carries `packs/` (without `source/`).
+
+**The format** (`"tarjim": "tarjim-game", "version": 1`): `id`, `title`,
+optional `title_ar`, `series`, `year`, `note`, `order`; `names` as
+`{en, ar, f?, was?}`; `fixes` as `{en, ar}`; `settings` with `settle_ms`,
+`read_scale`, `region`. `was` lists spellings an older file used: a name the
+player still has in such a spelling is updated, any other spelling of theirs is
+kept. A file from a newer format version is refused with a message.
+
+**Library rules.** Names only, never lines from a game (a test checks every
+file: no `fixes`, no Latin letters in the Arabic, no duplicates). Games are
+listed in the order of the source file names (`1-red-dead.txt`, `2-gta.txt`,
+...), the player's own games first. Which games have no Arabic was checked on
+2026-11-17 against store pages and news: GTA VI (13 languages, no Arabic, out
+2026-11-19), Silent Hill 2, The Last of Us Part I and II, Baldur's Gate 3,
+Final Fantasy VII Rebirth, Mafia: The Old Country and Kingdom Come:
+Deliverance II have none. Elden Ring and Clair Obscur got Arabic in updates,
+so they are not in the library. GTA VI's list holds only what Rockstar had
+announced. The Yakuza games and Persona 5 Royal start with the typewriter
+timing (their talk boxes type letter by letter).
+
+### Names: faster and stricter (both programs)
+
+- **First start of a game with many names.** Every glossary name is tried
+  against the engine once (`NameGuard`), and that used to run before the TV
+  and console connection. Measured with 60 names, opus-big, this laptop:
+  13.4 s before (224 ms per name), 3.8 s after (64 ms per name). The names are
+  now tried 4 at a time in one batch (`translate_many` on both engines), and
+  in the background while the session connects; a line that needs a name
+  before its turn tries that name on the spot. Results are remembered, so
+  only the first start of a game pays this.
+- **A name inside a longer one** ("Sadie" in "Sadie Adler") is no longer
+  counted on its own. Before, both took a stand-in, the shorter one's stand-in
+  never appeared in the output, and the whole line fell back to a plain
+  translation with the names wrong.
+- **Capitals matter.** A name written with a capital is matched only with that
+  capital or all in capitals: "Chop" (GTA V's dog) is no longer found in "chop
+  the wood", nor "Families" in "our families". A name written in small letters
+  ("van der Linde", "clickers") is found in any case. Straight and curly
+  apostrophes count as the same. The patterns are compiled once per list.
+- **Line fixes in bulk** are written in one transaction (3,000 lines took more
+  than 5 s one by one; now well under a second in the tests).
+
+### Verified, and not
+
+**Verified:** 129 tests pass (11 new). In Chrome, on a throw-away copy of the
+profiles: the library lists 28 games in order, adding GTA V creates the game
+with 131 names and selects it, the search finds games in Arabic and English,
+importing an edited GTA V file adds the new name and two lines and keeps the
+rest, a non-Tarjim file is refused, and the names search works. Screenshots:
+`python launcher/shots.py library library-phone names`.
+**Not verified:** none of this ran during a live game; the new names lists
+were not tried against real subtitles; the 28 lists were written from what is
+known about each game, not checked against the games' own text. Exporting was
+checked through its route, not by clicking the button (that writes to the
+Downloads folder).

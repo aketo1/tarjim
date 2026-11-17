@@ -62,7 +62,8 @@ class Cache:
     """Keyed by profile, normalised English, engine and style. Thread-safe."""
 
     def __init__(self, path: Path | str | None = None) -> None:
-        self.path = Path(path) if path else CACHE_FILE
+        # Looked up now, not at import, so a test that moves the home folder moves the cache too.
+        self.path = Path(path) if path else paths.HOME_DIR / CACHE_FILE.name
         if str(self.path) != ":memory:":
             self.path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
@@ -95,6 +96,22 @@ class Cache:
             else:
                 self._db.execute("DELETE FROM fix WHERE profile=? AND en=?", (profile, en))
             self._db.commit()
+
+    def add_fixes(self, profile: str, rows: list[tuple[str, str]]) -> int:
+        """Many lines at once, in one write; a line that already has the user's wording keeps it.
+        Returns how many were added."""
+        with self._lock:
+            before = self._db.total_changes
+            self._db.executemany("INSERT OR IGNORE INTO fix VALUES (?,?,?,?)",
+                                 [(profile, en, ar, time.time()) for en, ar in rows if en and ar])
+            self._db.commit()
+            return self._db.total_changes - before
+
+    def fixes(self, profile: str) -> list[tuple[str, str]]:
+        """Every line the user rewrote for this game, oldest first."""
+        with self._lock:
+            rows = self._db.execute("SELECT en, ar FROM fix WHERE profile=? ORDER BY ts", (profile,)).fetchall()
+        return [(en, ar) for en, ar in rows]
 
     def get_name(self, engine: str, en: str) -> tuple[str, str] | None:
         with self._lock:
@@ -186,14 +203,19 @@ class NllbTranslator:
         self._tr = ctranslate2.Translator(str(d), device="cpu", compute_type="int8", intra_threads=_threads())
 
     def translate(self, text: str, context: list[tuple[str, str]] | None = None) -> str:
-        parts = split_sentences(text)
-        src = [["eng_Latn"] + self._sp.encode(p, out_type=str) + ["</s>"] for p in parts]
+        return self.translate_many([text])[0]
+
+    def translate_many(self, texts: list[str]) -> list[str]:
+        """Several texts in one batch: much faster per text than one call each."""
+        parts = [split_sentences(t) for t in texts]
+        flat = [p for ps in parts for p in ps]
+        src = [["eng_Latn"] + self._sp.encode(p, out_type=str) + ["</s>"] for p in flat]
         res = self._tr.translate_batch(
             src, target_prefix=[["arb_Arab"]] * len(src), beam_size=2, max_decoding_length=128,
-            repetition_penalty=1.1,
+            repetition_penalty=1.1, max_batch_size=16,
         )
         # hypotheses[0][0] is the language token
-        return join_sentences(parts, [self._sp.decode(r.hypotheses[0][1:]) for r in res])
+        return _rejoin(parts, [self._sp.decode(r.hypotheses[0][1:]) for r in res])
 
 
 class OpusTranslator:
@@ -213,10 +235,25 @@ class OpusTranslator:
         self._tr = ctranslate2.Translator(str(d), device="cpu", compute_type="int8", intra_threads=_threads())
 
     def translate(self, text: str, context: list[tuple[str, str]] | None = None) -> str:
-        parts = split_sentences(text)
-        src = [[">>ara<<"] + self._src.encode(p, out_type=str) + ["</s>"] for p in parts]
-        res = self._tr.translate_batch(src, beam_size=2, max_decoding_length=128, repetition_penalty=1.1)
-        return join_sentences(parts, [self._tgt.decode(r.hypotheses[0]) for r in res])
+        return self.translate_many([text])[0]
+
+    def translate_many(self, texts: list[str]) -> list[str]:
+        """Several texts in one batch: much faster per text than one call each."""
+        parts = [split_sentences(t) for t in texts]
+        flat = [p for ps in parts for p in ps]
+        src = [[">>ara<<"] + self._src.encode(p, out_type=str) + ["</s>"] for p in flat]
+        res = self._tr.translate_batch(src, beam_size=2, max_decoding_length=128, repetition_penalty=1.1,
+                                       max_batch_size=16)
+        return _rejoin(parts, [self._tgt.decode(r.hypotheses[0]) for r in res])
+
+
+def _rejoin(parts: list[list[str]], flat_out: list[str]) -> list[str]:
+    """Split a flat list of sentence translations back into one string per input text."""
+    out, i = [], 0
+    for ps in parts:
+        out.append(join_sentences(ps, flat_out[i:i + len(ps)]))
+        i += len(ps)
+    return out
 
 
 ENGINES = {"nllb-600m": NllbTranslator, "opus-big": OpusTranslator}
@@ -319,9 +356,73 @@ class NameGuard:
                 return "proxy", ""
         return ("variant", common.pop()) if common and len(common) == 1 else ("proxy", "")
 
+    def _decide(self, outs: list[str]) -> tuple[str, str]:
+        """The same verdict as `_probe`, from translations made in a batch."""
+        common: set[str] | None = None
+        for probe, out in zip(_PROBES, outs):
+            own = _words(out) - _words(self._proxy_out[probe])
+            common = own if common is None else common & own
+            if not common:
+                return "proxy", ""
+        return ("variant", common.pop()) if common and len(common) == 1 else ("proxy", "")
+
+    def prepare(self, names: list[tuple[str, str]], per_batch: int = 4, stop=None) -> None:
+        """Try every name not tried before, a few names per batch.
+
+        One batch is several times faster than the same sentences one by one, and a small
+        batch keeps a live line that arrives meanwhile from waiting long behind it.
+        `stop` (optional) is asked between batches whether to give up.
+        """
+        if stop is not None and stop():
+            return
+        many = getattr(self.engine, "translate_many", None)
+        todo = [en for en, ar in names if en and (en, ar) not in self._memo
+                and self.cache.get_name(self.engine.name, en) is None]
+        if many is not None and todo:
+            proxy_en = PROXIES[0][0]
+            missing = [p for p in _PROBES if p not in self._proxy_out]
+            if missing:
+                for probe, out in zip(missing, many([p.format(proxy_en) for p in missing])):
+                    self._proxy_out[probe] = out
+            for i in range(0, len(todo), per_batch):
+                if stop is not None and stop():
+                    return
+                chunk = todo[i:i + per_batch]
+                outs = many([p.format(en) for en in chunk for p in _PROBES])
+                for j, en in enumerate(chunk):
+                    if self.cache.get_name(self.engine.name, en) is None:  # a live line may have tried it meanwhile
+                        got = outs[j * len(_PROBES):(j + 1) * len(_PROBES)]
+                        self.cache.put_name(self.engine.name, en, *self._decide(got))
+        for en, ar in names:
+            if stop is not None and stop():
+                return
+            if en and ar:
+                self.mode(en, ar)  # from the cache now; engines without batches try one by one here
+
 
 def _name_rx(en: str) -> re.Pattern:
     return re.compile(rf"(?<![A-Za-z]){re.escape(en)}(?![A-Za-z])", flags=re.IGNORECASE)
+
+
+def _literal(text: str) -> str:
+    """A regex for this text where straight and curly apostrophes count as the same."""
+    return "".join("['’]" if ch in "'’" else re.escape(ch) for ch in text)
+
+
+def name_pattern(en: str) -> re.Pattern:
+    """How a glossary name is found in a line.
+
+    A name that starts with a capital ("Chop", "Families") must appear with that
+    capital, or all in capitals ("CHOP"), so the same word in small letters ("chop the
+    wood", "our families") is left to the translator. A name written in small letters
+    ("van der Linde", "clicker") is found in any case.
+    """
+    first = next((c for c in en if c.isalpha()), "")
+    if first.isupper():
+        exact, upper = _literal(en), _literal(en.upper())
+        body = exact if exact == upper else f"(?:{exact}|{upper})"
+        return re.compile(rf"(?<![A-Za-z]){body}(?![A-Za-z])")
+    return re.compile(rf"(?<![A-Za-z]){_literal(en)}(?![A-Za-z])", flags=re.IGNORECASE)
 
 
 class CachedTranslator:
@@ -333,19 +434,41 @@ class CachedTranslator:
         self.cache = cache
         self.profile = profile
         self.style = style
+        self._patterns: list[tuple[str, str, re.Pattern]] = []
         self.glossary = glossary or {}
         self.female = set(female or ())  # glossary names that belong to women
         self.names = NameGuard(engine, cache)
         self.history: list[tuple[str, str]] = []
 
-    def prepare_names(self) -> None:
+    @property
+    def glossary(self) -> dict[str, str]:
+        return self._glossary
+
+    @glossary.setter
+    def glossary(self, value: dict[str, str]) -> None:
+        # Compiled once per list, longest first ("Mary Beth" before "Mary"): a game list
+        # can have hundreds of names, and every line is checked against all of them.
+        g = {str(k): str(v) for k, v in (value or {}).items()}
+        self._glossary = g
+        self._patterns = sorted(((en, ar, name_pattern(en)) for en, ar in g.items() if en and ar),
+                                key=lambda t: -len(t[0]))
+
+    def prepare_names(self, stop=None) -> None:
         """Try every glossary name once now, so the first line with a name is not slowed down."""
-        for en, ar in list(self.glossary.items()):
-            self.names.mode(en, ar)
+        self.names.prepare(list(self.glossary.items()), stop=stop)
 
     def _matched(self, key: str) -> list[tuple[str, str]]:
-        found = [(en, ar) for en, ar in self.glossary.items() if en and ar and _name_rx(en).search(key)]
-        return sorted(found, key=lambda pair: -len(pair[0]))  # "Mary Beth" before "Mary"
+        """The glossary names in this line, longest first. A name found only inside a longer
+        one ("Arthur" inside "Arthur Morgan") is part of that one and does not count."""
+        found, masked = [], key
+        for en, ar, pattern in self._patterns:
+            spans = [m.span() for m in pattern.finditer(masked)]
+            if not spans:
+                continue
+            found.append((en, ar))
+            for a, b in spans:
+                masked = masked[:a] + "\0" * (b - a) + masked[b:]
+        return found
 
     def _engine_key(self, matched: list[tuple[str, str]]) -> str:
         """Lines with glossary names are cached per spelling, so editing a name takes effect at once."""
@@ -359,6 +482,7 @@ class CachedTranslator:
 
     def _translate_with_names(self, key: str, matched: list[tuple[str, str]]) -> str:
         modes = {en: self.names.mode(en, ar) for en, ar in matched}
+        patterns = {en: pattern for en, _ar, pattern in self._patterns}
         free = [p for p in PROXIES if not _name_rx(p[0]).search(key)]
         free_f = [p for p in PROXIES_FEMALE if not _name_rx(p[0]).search(key)]
         swaps: list[tuple[str, str]] = []  # (stand-in Arabic, agreed Arabic)
@@ -367,8 +491,11 @@ class CachedTranslator:
             pool = free_f if en in self.female else free
             # A woman's name always goes through a stand-in: the engine then gets her verbs right.
             if (modes[en][0] == "proxy" or en in self.female) and pool:
+                pattern = patterns.get(en) or name_pattern(en)
+                if not pattern.search(source):
+                    continue  # it sat inside a longer name that already has its stand-in
                 proxy_en, proxy_ar = pool.pop(0)
-                source = _name_rx(en).sub(proxy_en, source)
+                source = pattern.sub(proxy_en, source)
                 swaps.append((proxy_ar, ar))
         raw = self.engine.translate(source, self.history[-4:])
         if swaps and all(proxy_ar in raw for proxy_ar, _ in swaps):

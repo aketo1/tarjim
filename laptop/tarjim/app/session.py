@@ -176,9 +176,9 @@ class LiveSession:
         return True
 
     @staticmethod
-    def _prepare_names(translator) -> None:
+    def _prepare_names(translator, stop=None) -> None:
         try:
-            translator.prepare_names()
+            translator.prepare_names(stop=stop)
         except Exception:
             pass  # a name that could not be tried is simply translated the plain way
 
@@ -230,7 +230,11 @@ class LiveSession:
             translator = CachedTranslator(self._engines[name], Cache(), profile=profile,
                                           style=str(prof.get("style", "msa")), glossary=glossary,
                                           female={str(n) for n in (prof.get("female") or [])})
-            translator.prepare_names()  # first time for a game: a few seconds; afterwards remembered
+            # A game's names are tried against the engine the first time (remembered afterwards).
+            # That runs beside the TV and console connection instead of before it: with a
+            # big game list it used to hold the start for many seconds.
+            threading.Thread(target=self._prepare_names, args=(translator, self._stop.is_set),
+                             name="tarjim-names", daemon=True).start()
             if self._stop.is_set():
                 return
 
