@@ -198,3 +198,17 @@ Non-obvious choices and the evidence behind them. Newest last.
 - **A rule is judged on sentences written after it.** Antigravity scored 100/100 on its own
   set but improved 2 of 22 new sentences; after the fixes, a set written last: 4 better,
   1 worse, 15 the same.
+
+## Game words (2026-11-18)
+
+- **Plain English before the model, not glossary entries.** A glossary entry is replaced
+  by a person's stand-in name ("Edward"), which suits names but not a thing or a verb
+  ("Buy some Edward"). Words like "fence", "case", "lose the law" are rewritten into the
+  English the model already translates well.
+- **Per series where a word means something else elsewhere**: "the law" is the police in a
+  western but not in a courtroom; "the fence" is a dealer only when the line is about
+  selling; "patriarch" and the honorifics only in Yakuza.
+- **"-san" stays.** Without it the model took "Majima" for a woman («ماجيما تريد»).
+- **Verbal noun → command only when the English opens with that verb** and the next word is
+  not "is", "was", "of"...: "Escape is impossible" keeps «الهروب».
+- **Dropped after trying:** "pelt → fur" and "skin X → remove the skin from X" (worse grammar).

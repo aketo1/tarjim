@@ -11,7 +11,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Protocol
 
-from . import gender, paths
+from . import gender, paths, terms
 
 MODELS_DIR = paths.REPO / "models"
 CACHE_FILE = paths.HOME_DIR / "translations.sqlite"
@@ -1229,20 +1229,27 @@ def _swap_proxy(raw: str, swaps: list[tuple[str, str]]) -> tuple[str, bool]:
             raw = raw.replace(proxy_ar, ar)
         elif alt in raw:
             raw = raw.replace(alt, ar)
+        elif proxy_ar.startswith("ال") and ar.startswith("ال") and re.search(
+                rf"(?<![ء-ي]){re.escape(proxy_ar[2:])}(?![ء-ي])", raw):
+            # a group stand-in written without «ال» ("there are soldiers" → «هناك جنود»): the
+            # group's name without it too («هناك رانرز»)
+            raw = re.sub(rf"(?<![ء-ي]){re.escape(proxy_ar[2:])}(?![ء-ي])", lambda _m: ar[2:], raw)
         else:
             all_found = False
     return raw, all_found
 
 
-RULES = "r3"  # raise when the rules around the engine change, so the cache does not serve old output
+RULES = "r4"  # raise when the rules around the engine change, so the cache does not serve old output
 
 
 class CachedTranslator:
     """The user's own fix first, then the cache, then the engine; always returns cleaned Arabic."""
 
     def __init__(self, engine: Translator, cache: Cache, profile: str = "default", style: str = "msa",
-                 glossary: dict[str, str] | None = None, female: set[str] | None = None) -> None:
+                 glossary: dict[str, str] | None = None, female: set[str] | None = None,
+                 series: str = "") -> None:
         self.engine = engine
+        self.series = series  # the game's series, for its own words (terms.py)
         self.cache = cache
         self.profile = profile
         self.style = style
@@ -1368,6 +1375,7 @@ class CachedTranslator:
                 swapped2, ok2 = _swap_proxy(raw2, retry_swaps)
                 if ok2:
                     raw = apply_glossary(swapped2, key, dict(matched))
+        raw = terms.commands_not_nouns(raw, key)
         raw = _PLURAL_GROUP_VERB.sub(r"\1 \2وا", raw)
         raw = _PLURAL_GROUP_PRESENT.sub(lambda m: f"{m.group(1)} {m.group(2)}ي{m.group(3)}ون", raw)
         if "mill" in key.lower() and "المصنع" in raw:
@@ -1393,12 +1401,14 @@ class CachedTranslator:
         hit = self.cache.get(self.profile, key, engine_key, self.style)
         if hit is not None:
             return hit, True, (time.perf_counter() - t0) * 1000.0
+        src = terms.rewrite(key, self.series)  # game words in plain English
         if matched:
-            raw = self._translate_with_names(key, matched)
+            raw = self._translate_with_names(src, matched)
         else:
-            raw = self.engine.translate(key, self.history[-4:])
+            raw = terms.commands_not_nouns(self.engine.translate(src, self.history[-4:]), src)
             if not _FEMALE_EN_WORD.search(key):
                 raw = _masculinize_default(raw)
+        raw = terms.fix_arabic(raw, src, self.series)
         if "(" not in key:
             raw = raw.replace("(", "").replace(")", "")  # the engine brackets names on its own
         if '"' not in key:

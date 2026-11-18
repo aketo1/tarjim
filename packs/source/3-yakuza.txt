@@ -353,3 +353,31 @@ Seiryu Clan = عشيرة سيريو @ lad7 lad8
 Bleach Japan = بليتش جابان @ lad7 lad8
 Hawaii = هاواي @ lad8 lad-pirate
 Honolulu = هونولولو @ lad8 lad-pirate
+
+# Regions, towns, rivers, gangs and the games' own words (added 2026-11-18).
+[shared]
+Tenkaichi Street = شارع تينكايتشي @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Theater Square = ساحة المسرح @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Pink Street = الشارع الوردي @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Shichifuku Street = شارع شيتشيفوكو @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Champion District = حي تشامبيون @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Nakamichi Street = شارع ناكاميتشي @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Taihei Boulevard = جادة تايهي @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Showa Street = شارع شووا @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Millennium Tower = برج الألفية @ yakuza0 lad-gaiden lad8
+Tokyo = طوكيو @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Osaka = أوساكا @ yakuza-kiwami yakuza3 yakuza4 yakuza6 lad7 lad8
+Dojima Family = عائلة دوجيما @ yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Majima Family = عائلة ماجيما @ yakuza0 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Kazama Family = عائلة كازاما @ yakuza0 yakuza-kiwami yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Nishikiyama Family = عائلة نيشيكي ياما @ yakuza0 yakuza-kiwami2 yakuza3 yakuza4 yakuza5 yakuza6 lad7 lad-gaiden lad8
+Shimano Family = عائلة شيمانو @ yakuza0 yakuza-kiwami yakuza-kiwami2
+Purgatory = المطهر @ yakuza0 yakuza-kiwami yakuza-kiwami2
+Sunflower = صن فلاور @ yakuza0 yakuza-kiwami yakuza-kiwami2
+Ryukyu = ريوكيو @ yakuza4 yakuza5 yakuza6
+Susukino = سوسوكينو @ yakuza5
+Hamakita Park = حديقة هاماكيتا @ lad7 lad8
+Daidoji = دايدوجي @ lad8
+Oahu = أواهو @ lad8 lad-pirate
+Aloha Beach = شاطئ ألوها @ lad8
+Nele Island = جزيرة نيلي @ lad-pirate

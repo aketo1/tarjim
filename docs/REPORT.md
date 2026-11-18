@@ -349,9 +349,9 @@ live run, then tuning from the user's feedback. The findings that cost time:
   `laptop/tarjim/app/web`, then run `launcher/sync_phone_web.py` and rebuild
   the phone app (section 19). Keep the look's code in `look.js`, out of `app.js`.
   The games' pictures come only from `launcher/fetch_art.py` (section 19).
-- **The translation rules live twice**: `laptop/tarjim/translate.py` + `gender.py` and the
-  phone app's `TarjimEngine.kt` + `Gender.kt`. Change both, keep `test_gender.py` and
-  `GenderTest.kt` alike, and raise `RULES` in `translate.py` so the cache is not reused
+- **The translation rules live twice**: `laptop/tarjim/translate.py` + `gender.py` +
+  `terms.py` and the phone app's `TarjimEngine.kt` + `Gender.kt` + `Terms.kt`. Change both,
+  keep `test_gender.py` / `GenderTest.kt` and `test_terms.py` / `TermsTest.kt` alike, and raise `RULES` in `translate.py` so the cache is not reused
   (section 20). Judge a change on sentences written after it, not on the ones it was made for.
 - **Licences.** This is a personal, non-distributed project. It depends on
   GPL-3.0 code (`ps5-remoteplay-mcp`) and on NLLB weights that are
@@ -1023,3 +1023,89 @@ numbers above. **Not verified:** a real play session (the speed under real load 
 simulated with a decoded video), and anything on the phone: its translator is Google's on-
 device one (ML Kit), whose mistakes differ from this model's, so the shared rules were not
 measured there.
+
+## 21. Game words, more places, and version 0.4.0 (added 2026-11-18)
+
+The user asked for more than names: the words a game uses for its own things, its regions
+and places, and its verbs, translated right.
+
+### What changed for the user
+
+- **Game words go into plain English first** (`tarjim/terms.py`, new). Before the model
+  reads a line, words a game uses in its own sense are put into the English the model
+  knows: "the fence" (a dealer in stolen goods, not «السياج»), "case the bank" (scout it,
+  not «نقاضي البنك»), "lose the law / the cops / them" (escape them, not «اخسر القانون»),
+  "hogtie", "lasso", "parley", "safehouse" («المخبأ»), "wanted level" («مستوى مطاردتك»),
+  "chop shop", "loot the bodies", "fast travel", "we've got company" («لدينا زوار»),
+  "lay low", "saddle up", "gaining on us", "hit the bank" (rob it), "chores" («المهام»).
+  Every game gets these. A series also gets its own, chosen by the game's library id or,
+  for a profile made by hand, its title:
+  - Red Dead: "the law" is the police (not in "against the law", "it's the law", ...);
+    the posse («المطاردون»); the fence, when the line is about selling; the trapper; the
+    repeater.
+  - Yakuza / Like a Dragon: "-chan", "-kun", "-sama"... dropped ("Kiryu-chan" → «كيريو»);
+    aniki / nii-san (big brother), oyaji, oyabun, kyodai; patriarch («رئيس العائلة»);
+    sworn brother («أخي بالقسم», was «أخي المحلف», a juror). "-san" is kept: without it
+    the model took "Majima" for a woman («ماجيما تريد»).
+  - The Last of Us: spores «الأبواغ» (the model wrote «الجراثيم», germs).
+- **Commands, not verbal nouns.** The model often answers a command with a verbal noun:
+  "Buy some tonic" → «شراء بعض منشط», "Pay the protection money" → «دفع أموال الحماية». When
+  the English line (or the part after "Name,") opens with one of 80 command verbs and the
+  Arabic with that verb's noun, the command is written («اشتر»، «ادفع»), and so are the
+  ones joined to it by «و» ("Skin the deer and take the meat" → «اسلخ الغزلان وخذ اللحم»).
+  A line where the word is a noun ("Escape is impossible") is left alone. 22 game commands
+  were added to the gender lists, so they are right for a woman or a man too.
+- **85 more places and names** in the game library (regions, towns, rivers, gangs, game
+  words), only where a game did not have them: Red Dead 38 (Cumberland Forest, Bluewater
+  Marsh, Lagras, Flat Iron Lake, Sisika, Eagle Eye...), GTA 13, Yakuza 25 (Tenkaichi
+  Street, Theater Square, the Dojima and Majima families...), The Last of Us 9 (runners,
+  stalkers, the Hunters, the Rat King...). "Flat Iron Lake" was «بحيرة الحديد المسطحة»,
+  now «بحيرة فلات آيرون».
+- **A group's stand-in written without «ال»** ("there are soldiers in the hallway" →
+  «هناك جنود») used to count as lost, and the line fell back to a plain translation
+  ("runners" → «عدائين»). The group's name is now put there without «ال» too.
+
+### Measured
+
+- **Speed:** the game words take 0.06 ms per line (median over 155 game lines, worst
+  round 0.08 ms), against about 105 ms for the translation: no measurable change.
+- **Quality:** 27 game lines written after the rules were made (none of them used to make
+  the rules), the released engine (commit d162742 with its game lists) against this one:
+  17 better, 1 mixed, 1 worse, 8 the same. Better, for example: «دعنا نستكشف الصالون» (was
+  «لنضع قضية الصالون»), «هربنا من الشرطة قرب محطة والاس» (was «لقد فقدنا القانون»), «خذ هذه
+  الحلي إلى تاجر البضائع المسروقة» (was «إلى السياج»), «يقول ليستر أننا سنسرق البنك» (was
+  «ضربنا البنك»), «اصطد ثلاثة أرانب بالقرب من بحيرة فلات آيرون» (was «صيد ثلاثة أرانب بالقرب
+  من بحيرة الحديد المسطحة»). The worse one («ماجيما تريد») and the mixed one (the police
+  coming, then «احزمي» to a man) were fixed afterwards (now «ماجيما-سان يريد», «احزم»), so
+  those two are no longer a blind test.
+- **Tried and dropped:** "pelt → fur" and "skin the deer → remove the skin from the deer"
+  made the model's grammar worse («اصطد الغزلان مثالية للفراء»); the verbal-noun fix does
+  "skin" better («اسلخ»).
+
+Still wrong, from the model: "Runners!" → «أيها الرانرز!»; a man's name ending in "a" with
+nothing around it can still get a woman's verb («ماجيما تريد»): the game lists do not say
+which names are people and which are places, so the stand-in is not forced for them.
+
+### Version 0.4.0
+
+The installer, the TV app and the phone remote were rebuilt as 0.4.0 (TV app versionCode 3,
+phone remote 2: their icon and colours from section 18/19 are in them now) and published as
+the GitHub release `v0.4.0`.
+
+### Files
+
+| File | What it holds |
+| --- | --- |
+| `laptop/tarjim/terms.py` (new) | Game words for every game and per series; the Arabic fixes; verbal noun → command |
+| `laptop/tarjim/translate.py` | `CachedTranslator(series=...)`, the rules called around the model, a group stand-in without «ال», `RULES = "r4"` |
+| `laptop/tarjim/gender.py` | 22 game commands |
+| `laptop/tarjim/app/session.py`, `run_cli.py` | The game's series from its id or title |
+| `packs/source/1-red-dead.txt` ... `4-the-last-of-us.txt` | The new places and names (a `[shared]` block at the end of each) |
+| `laptop/tests/test_terms.py` (new) | What changes and what must stay (51 cases) |
+
+### Verified, and not
+
+**Verified:** 195 tests pass. The phone app builds with the same rules (`Terms.kt`) and its
+unit tests (`TermsTest`, `GenderTest`) pass on the computer. The installer: see the release
+notes of `v0.4.0` and below. **Not verified:** a real play session with these words, and
+anything on the phone, whose translator (ML Kit) makes other mistakes.

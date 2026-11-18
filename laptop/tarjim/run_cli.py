@@ -11,6 +11,7 @@ import numpy as np
 from PIL import Image
 
 from . import paths
+from .terms import series_of
 from .faketv import FakeTv
 from .pipeline import Pipeline, new_log_path
 from .say import fail, info, ok, step, warn
@@ -30,7 +31,8 @@ def build_translator(engine: str | None, profile: str, cache_path: str | None = 
     engine_obj = make_engine(name)
     engine_obj.translate("Hello.")  # warm-up: the first call is several times slower
     return CachedTranslator(engine_obj, Cache(cache_path), profile=profile, style=style, glossary=glossary,
-                            female={str(n) for n in (prof.get("female") or [])})
+                            female={str(n) for n in (prof.get("female") or [])},
+                            series=series_of(profile, str(prof.get("title") or "")))
 
 
 def _print_summary(pipe: Pipeline) -> None:

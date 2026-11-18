@@ -371,3 +371,19 @@ Packie McReary = باكي ماكريري @ gta4 gta5
 Packie = باكي @ gta4 gta5
 Lost MC = نادي لوست @ gta4 gta5
 FIB = إف آي بي @ gta4
+
+# Regions, towns, rivers, gangs and the games' own words (added 2026-11-18).
+[shared]
+Pillbox Hill = بيلبوكس هيل @ gta5
+Fleeca = فليكا @ gta5
+Los Santos Customs = لوس سانتوس كاستمز @ gta5
+Raton Canyon = وادي راتون @ gta5
+Grand Senora Desert = صحراء غراند سينورا @ gta5
+Senora Desert = صحراء سينورا @ gta5
+Paleto Forest = غابة باليتو @ gta5
+Great Ocean Highway = طريق المحيط الكبير @ gta5
+Vanilla Unicorn = فانيلا يونيكورن @ gta5
+Ammu-Nation = أمو نيشن @ gta-sa gta4 gta5 gta6
+Cluckin' Bell = كلاكين بيل @ gta-sa gta4 gta5 gta6
+Burger Shot = برغر شوت @ gta-sa gta4 gta5 gta6
+Triads = الثالوث @ gta6

@@ -13,6 +13,7 @@ import threading
 import time
 
 from .. import paths, say
+from ..terms import series_of
 
 
 class Hub:
@@ -231,7 +232,8 @@ class LiveSession:
             glossary = {str(k): str(v) for k, v in (prof.get("glossary") or {}).items()}
             translator = CachedTranslator(self._engines[name], Cache(), profile=profile,
                                           style=str(prof.get("style", "msa")), glossary=glossary,
-                                          female={str(n) for n in (prof.get("female") or [])})
+                                          female={str(n) for n in (prof.get("female") or [])},
+                                          series=series_of(profile, str(prof.get("title") or "")))
             # A game's names are tried against the engine the first time (remembered afterwards).
             # That runs beside the TV and console connection instead of before it: with a
             # big game list it used to hold the start for many seconds.

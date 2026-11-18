@@ -99,3 +99,15 @@ clicker = كليكر @ tlou1 tlou2
 bloaters = البلوترز @ tlou1 tlou2
 bloater = بلوتر @ tlou1 tlou2
 cordyceps = الكورديسيبس @ tlou1 tlou2
+
+# Regions, towns, rivers, gangs and the games' own words (added 2026-11-18).
+[shared]
+Bill's Town = بلدة بيل @ tlou1
+Hunters = الصيادون @ tlou1
+Kansas City = كانساس سيتي @ tlou1
+runners = الرانرز @ tlou1 tlou2
+runner = رانر @ tlou1 tlou2
+stalkers = الستوكرز @ tlou1 tlou2
+stalker = ستوكر @ tlou1 tlou2
+Rat King = ملك الجرذان @ tlou2
+FOB = القاعدة الأمامية @ tlou2
