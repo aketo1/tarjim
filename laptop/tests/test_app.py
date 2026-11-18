@@ -91,6 +91,29 @@ def test_errors_become_plain_arabic():
     assert friendly_error(RuntimeError("شي ثاني")) == "شي ثاني"
 
 
+def test_live_picture_is_as_wide_as_the_page_asks_but_never_enlarged():
+    import cv2
+    import numpy as np
+
+    from tarjim.app.session import LiveSession
+
+    live = LiveSession(Hub())
+    assert live.frame_jpeg(1920) is None  # not running
+
+    class Pipe:
+        _latest = np.full((1080, 1920, 3), 90, np.uint8)
+
+    live._pipe = Pipe()
+
+    def width(asked):
+        return cv2.imdecode(np.frombuffer(live.frame_jpeg(asked), np.uint8), cv2.IMREAD_COLOR).shape[1]
+
+    assert width(960) == 960  # older pages
+    assert width(1600) == 1600  # the window's real pixels
+    assert width(3840) == 1920  # a 4K screen: the PS5's own picture, not enlarged
+    assert width(10) == 320
+
+
 def test_hub_fans_out_and_drops_when_a_window_is_stuck():
     hub = Hub()
     a, b = hub.subscribe(), hub.subscribe()

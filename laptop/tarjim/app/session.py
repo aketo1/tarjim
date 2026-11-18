@@ -140,16 +140,23 @@ class LiveSession:
             threading.Thread(target=source.close, daemon=True).start()  # unblocks the frame loop
 
     def frame_jpeg(self, width: int = 960) -> bytes | None:
-        """The newest picture from the PS5, small, for the region editor. None when not running."""
+        """The newest picture from the PS5 as a JPEG, for the page: `width` pixels wide, but
+        never wider than the picture itself. None when not running.
+
+        The page asks for its own width in real screen pixels: a smaller picture is enlarged
+        by the screen and looks pixelated (960 was enlarged 2 times on a 1920 x 1200 laptop).
+        A whole 1080p picture takes about 3 ms to encode, outside the translation thread."""
         import cv2
 
         pipe = self._pipe
         frame = getattr(pipe, "_latest", None) if pipe is not None else None
         if frame is None:
             return None
-        h = int(round(frame.shape[0] * width / frame.shape[1]))
-        small = cv2.resize(frame, (width, h), interpolation=cv2.INTER_AREA)
-        ok, buf = cv2.imencode(".jpg", small, [cv2.IMWRITE_JPEG_QUALITY, 78])
+        width = max(320, min(int(width), frame.shape[1]))
+        if width < frame.shape[1]:
+            h = int(round(frame.shape[0] * width / frame.shape[1]))
+            frame = cv2.resize(frame, (width, h), interpolation=cv2.INTER_AREA)
+        ok, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 82])
         return buf.tobytes() if ok else None
 
     def apply_profile(self, name: str) -> bool:

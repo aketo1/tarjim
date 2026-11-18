@@ -1338,3 +1338,32 @@ apps, and asked why the TV app was not published.
 - A really clean PC: here the Visual C++ runtime is installed, so loading from the
   program's folder was checked by which file was loaded, not by its absence.
 - The TV app's new screen on the TV: the TV was off when it was to be installed.
+
+## 27. Sharper pictures (added 2026-11-18)
+
+The user said the program's picture looked bad and pixelated on Windows.
+
+These were checked on this laptop (1920 x 1200 at 125%) and were not the cause:
+- The window is DPI-aware, so its text is sharp.
+- Its icons are the exact sizes for 125% (20 and 40 px).
+- The installer is DPI-aware too.
+- The program file carries every icon size from 16 to 256.
+
+The cause was the pictures. They were smaller than the size the screen draws them at, so the screen enlarged them.
+
+| Picture | Was | Enlarged on this laptop | Now |
+| --- | --- | --- | --- |
+| The games' backgrounds | Steam's 3840 x 1240, cut down to 2560 x 827 | 1.4 times (2.5 on a 4K screen) | The full 3840 x 1240 (WebP 80), never enlarged in a window up to 1240 pixels tall |
+| GTA VI | The 1200 x 630 share picture of Rockstar's page | 1.8 times (3.3 on 4K) | Rockstar's official cover art from its wallpapers: 3840 x 2160 for the window; its 1080 x 1920 portrait, cut to 1:2 for phones (960 x 1920) and to 2:3 for the box cover |
+| Box covers | Steam's `library_600x900.jpg`, now only 300 x 450, enlarged to 600 x 900 | 2 times before the page drew it | `library_600x900_2x.jpg`, a real 600 x 900 |
+| The live PS5 picture behind the page | 960 pixels wide, JPEG 78 | 2 times | As wide as the window in real pixels (`/api/frame?w=`), at most the PS5's own 1920, JPEG 82. About 3 ms per picture, outside the translation thread |
+
+Detail was measured as the variance of the Laplacian, old against new, at the size the window shows:
+- Backgrounds: 1.9 times (median); GTA VI: 3.8 times.
+- Covers: 1.4 times.
+
+- The art is now 12 MB instead of 6.8 MB, in both the installer and the phone app.
+- `fetch_art.py --offline` cuts the pictures again from the cache alone.
+- Rockstar offers its wallpapers only as one 250 MB zip. `zip_member()` reads a single picture out of it with HTTP byte ranges.
+- Downloads, with the user's permission: Rockstar's pictures came to 5 MB and the 27 Steam covers to 4.8 MB.
+- The phone app's own live picture stays 960 x 540. It is encoded on the phone, and a bigger one was not tested there.

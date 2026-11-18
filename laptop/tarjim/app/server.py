@@ -574,7 +574,11 @@ class Handler(BaseHTTPRequestHandler):
                         profile.pop("text_color", None)
                 return self._send(200, preview_png(profile, q.get("text", "")), "image/png")
             if url.path == "/api/frame":
-                jpg = live.frame_jpeg()
+                try:  # the page's width in real screen pixels (older pages do not say)
+                    width = int(q.get("w") or 960)
+                except ValueError:
+                    width = 960
+                jpg = live.frame_jpeg(width)
                 if jpg is None:
                     return self._send(404, b"", "text/plain")
                 return self._send(200, jpg, "image/jpeg")

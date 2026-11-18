@@ -2,8 +2,11 @@
 
 Both apps show each game with its own pictures: a wide background, a tall one for phones,
 the box cover and the logo. They come from the publishers' own store art on Steam's
-image server (by Steam app id), and for GTA VI (not on Steam) from Rockstar's own page.
+image server (by Steam app id), and for GTA VI (not on Steam) Rockstar's official cover art
+from its own wallpapers.
 The art belongs to the publishers; it is only shown to the player to pick a game.
+
+With --offline only the downloads already in --cache are used (to cut the pictures again).
 
 Writes tarjim/app/web/art/<id>-{bg,tall,cover,logo}.webp and tarjim/app/web/art.js
 (where each picture's subject is, which games have a logo, and the titles to match a game
@@ -19,6 +22,7 @@ import re
 import sys
 import tempfile
 import urllib.request
+import zipfile
 from pathlib import Path
 
 from PIL import Image
@@ -28,7 +32,10 @@ REPO = LAPTOP.parent
 WEB = LAPTOP / "tarjim" / "app" / "web"
 OUT = WEB / "art"
 STEAM = "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{app}/{file}"
-ROCKSTAR_VI = "https://www.rockstargames.com/VI"
+# rockstargames.com/VI/media, "Artwork & Wallpapers": every picture in several shapes, only in one zip
+ROCKSTAR_VI_ART = "https://media-rockstargames-com.akamaized.net/VI/downloads/artwork_wallpapers/GTAVI_Artwork_Wallpapers.zip"
+GTA6_COVER = "Official_Cover_Art/Official_Cover_Art_{}.jpg"  # landscape (3840 x 2160), portrait (1080 x 1920)
+BROWSER = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36"
 
 # pack id -> (Steam app id, where the subject is across the wide picture, 0..100)
 GAMES = {
@@ -41,6 +48,7 @@ GAMES = {
     "yakuza3": (1088710, 26), "yakuza4": (1105500, 64), "yakuza5": (1105510, 55), "yakuza6": (1388590, 55),
 }
 GTA6_FOCUS = 50
+OFFLINE = False  # --offline
 
 
 def fetch(url: str, cache: Path) -> bytes:
@@ -48,9 +56,59 @@ def fetch(url: str, cache: Path) -> bytes:
     path = cache / name
     if path.exists():
         return path.read_bytes()
+    if OFFLINE:
+        raise RuntimeError(f"not in the cache (--offline): {url}")
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (tarjim art fetch)"})
     with urllib.request.urlopen(req, timeout=40) as res:
         data = res.read()
+    path.write_bytes(data)
+    return data
+
+
+class HttpFile(io.RawIOBase):
+    """A file on a web server, read with byte ranges: zipfile then takes one picture out of
+    Rockstar's 250 MB zip without downloading the rest."""
+
+    def __init__(self, url: str):
+        self.url, self.pos = url, 0
+        req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": BROWSER})
+        with urllib.request.urlopen(req, timeout=40) as res:
+            self.size = int(res.headers["Content-Length"])
+
+    def readable(self) -> bool:
+        return True
+
+    def seekable(self) -> bool:
+        return True
+
+    def tell(self) -> int:
+        return self.pos
+
+    def seek(self, offset: int, whence: int = 0) -> int:
+        self.pos = offset if whence == 0 else self.pos + offset if whence == 1 else self.size + offset
+        return self.pos
+
+    def readinto(self, b) -> int:
+        if self.pos >= self.size or not len(b):
+            return 0
+        end = min(self.size, self.pos + len(b)) - 1
+        req = urllib.request.Request(self.url, headers={"User-Agent": BROWSER, "Range": f"bytes={self.pos}-{end}"})
+        with urllib.request.urlopen(req, timeout=60) as res:
+            data = res.read()
+        b[:len(data)] = data
+        self.pos += len(data)
+        return len(data)
+
+
+def zip_member(url: str, member: str, cache: Path) -> bytes:
+    """One file out of a zip on a web server, kept in the cache like fetch()."""
+    path = cache / re.sub(r"[^A-Za-z0-9._-]+", "_", url.split("://", 1)[1] + "!" + member)[-120:]
+    if path.exists():
+        return path.read_bytes()
+    if OFFLINE:
+        raise RuntimeError(f"not in the cache (--offline): {member} in {url}")
+    with zipfile.ZipFile(io.BufferedReader(HttpFile(url), buffer_size=1 << 16)) as z:
+        data = z.read(member)
     path.write_bytes(data)
     return data
 
@@ -65,6 +123,13 @@ def save(im: Image.Image, name: str, quality: int = 74) -> int:
     path = OUT / name
     im.save(path, "WEBP", quality=quality, method=6)
     return path.stat().st_size
+
+
+def fit_width(im: Image.Image, width: int) -> Image.Image:
+    """At most `width` wide, never enlarged."""
+    if im.width <= width:
+        return im
+    return im.resize((width, round(im.height * width / im.width)), Image.LANCZOS)
 
 
 def tall_slice(hero: Image.Image, focus: float) -> Image.Image:
@@ -84,9 +149,12 @@ def logo(im: Image.Image) -> Image.Image:
 
 def steam_game(gid: str, app: int, focus: int, cache: Path) -> dict:
     hero = image(fetch(STEAM.format(app=app, file="library_hero_2x.jpg"), cache)).convert("RGB")
-    cover = image(fetch(STEAM.format(app=app, file="library_600x900.jpg"), cache)).convert("RGB")
+    # the 2x box cover: "library_600x900.jpg" is only 300 x 450 now
+    cover = image(fetch(STEAM.format(app=app, file="library_600x900_2x.jpg"), cache)).convert("RGB")
     sizes = [
-        save(hero.resize((2560, round(hero.height * 2560 / hero.width)), Image.LANCZOS), f"{gid}-bg.webp"),
+        # Steam's full 3840 x 1240: the page draws it as tall as the window (object-fit: cover).
+        # Cut down to 2560 x 827 it was enlarged 1.4 times on a 1920 x 1200 laptop, 2.5 times on 4K.
+        save(fit_width(hero, 3840), f"{gid}-bg.webp", 80),
         save(tall_slice(hero, focus), f"{gid}-tall.webp"),
         save(cover.resize((600, 900), Image.LANCZOS), f"{gid}-cover.webp", 80),
     ]
@@ -100,19 +168,23 @@ def steam_game(gid: str, app: int, focus: int, cache: Path) -> dict:
 
 
 def gta6(cache: Path) -> dict:
-    """GTA VI is not on Steam: the cover art Rockstar puts on its own page (the page's share picture)."""
-    page = fetch(ROCKSTAR_VI, cache).decode("utf-8", "replace")
-    m = re.search(r'property="og:image" content="([^"]+)"', page) or re.search(r'"og:image" content="([^"]+)"', page)
-    if not m:
-        raise RuntimeError("no share picture on Rockstar's GTA VI page")
-    art = image(fetch(m.group(1).replace("&amp;", "&"), cache)).convert("RGB")
-    w, h = art.size
-    cw = round(h * 2 / 3)  # the cover: a 2:3 cut around the logo in the middle
-    x = (w - cw) // 2
+    """GTA VI is not on Steam: Rockstar's official cover art, from its own wallpapers. The wide
+    one for the window; the portrait one, cut to 1:2 for phones and to 2:3 as the box cover. (The
+    "phone" shape is the cover as a small card on a plain background: not used.)"""
+
+    def art(shape: str) -> Image.Image:
+        return image(zip_member(ROCKSTAR_VI_ART, GTA6_COVER.format(shape), cache)).convert("RGB")
+
+    wide, tall = art("landscape"), art("portrait")
+    w, h = tall.size
+    ch = round(w * 3 / 2)
+    y = (h - ch) // 2  # the logo is in the middle
+    sw = h // 2
+    x = (w - sw) // 2  # 1:2 like the other games' phone pictures
     sizes = [
-        save(art, "gta6-bg.webp", 80),
-        save(tall_slice(art, GTA6_FOCUS), "gta6-tall.webp", 80),
-        save(art.crop((x, 0, x + cw, h)).resize((600, 900), Image.LANCZOS), "gta6-cover.webp", 80),
+        save(fit_width(wide, 3840), "gta6-bg.webp", 80),
+        save(tall.crop((x, 0, x + sw, h)), "gta6-tall.webp", 80),
+        save(tall.crop((0, y, w, y + ch)).resize((600, 900), Image.LANCZOS), "gta6-cover.webp", 80),
     ]
     return {"x": GTA6_FOCUS, "logo": False, "bytes": sum(sizes)}
 
@@ -120,7 +192,10 @@ def gta6(cache: Path) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--cache", help="keep the downloads here (default: a new temporary folder)")
+    ap.add_argument("--offline", action="store_true", help="use only the downloads already in --cache")
     args = ap.parse_args()
+    global OFFLINE
+    OFFLINE = args.offline
     cache = Path(args.cache) if args.cache else Path(tempfile.mkdtemp(prefix="tarjim-art-"))
     cache.mkdir(parents=True, exist_ok=True)
     OUT.mkdir(exist_ok=True)
