@@ -1215,7 +1215,7 @@ Saudi Arabic, with pictures and GIFs, and to say that the apps were built with t
     screenshots go to its `docs/media/`, without the laptop remote's "second screen".
   - `setup.png` is the 0.4.0 installer's real window, opened with `/D=C:\Tarjim` so no
     user folder shows, and closed without installing.
-- **A limit found on the way (not fixed):** with a subtitle much larger than usual, the cover
+- **A limit found on the way (fixed in section 24):** with a subtitle much larger than usual, the cover
   is not complete. On the banner's scenes at 1080p, with 4 lines from 3 games:
   - at 66 px the detected block started about 20 px into the line, so its first letter
     stayed;
@@ -1229,3 +1229,34 @@ Saudi Arabic, with pictures and GIFs, and to say that the apps were built with t
 **Not verified:** how the pages look on GitHub itself. They were checked with GitHub's own
 renderer (its markdown API) drawn in Chrome, where the flow diagram, drawn by GitHub's page,
 shows as text.
+
+## 24. Large subtitles covered in full, and version 0.4.1 (added 2026-11-18)
+
+The user asked for the limit of section 23 to be fixed and for a new version of both apps.
+
+- **Cause:** the detector kept only letters up to 44 px tall (1080p). In a large subtitle the
+  tall letters (h, d, k, l and the capitals) are taller, so they were left out of the line:
+  they were not covered, and at 66 px the block began after the first capital.
+- **Fix:** `DetectParams.glyph_h_max` 44 → 72 (lines up to about 90 px).
+- **Measured** on synthetic frames (the test's own generator; shadowed and outlined
+  subtitles, dark, bright and mixed scenes), share of the English still visible after the
+  cover, median of 12 lines (worst):
+
+  | Size (1080p) | Before | Now |
+  | --- | --- | --- |
+  | 40 px, 52 px | 0 % | 0 % |
+  | 58 px | 23.9 % (35.3 %) | 0.0 % (0.1 %) |
+  | 64 px | 26.9 % (41.1 %) | 0.0 % (0.0 %) |
+  | 72 px | 33.5 % (50.2 %) | 0.0 % (0.1 %) |
+
+  - Lines of 64 px found whole: 3 of 18 before, 18 of 18 now (72 px: 3 → 18).
+  - False detections on 400 frames without subtitles: 0 before, 0 now.
+  - Detection time: 3.32 ms per frame both ways (two rounds in alternating order; the first
+    single round showed 3.27 against 3.78 ms, which the second did not repeat).
+- **Tests:** `test_large_subtitles_are_found_whole_and_fully_covered` (58, 64, 72 px: every
+  letter inside the block, under 1 % of the English left). 251 tests pass.
+- **Version 0.4.1** of the laptop program carries this and the words of sections 21 and 22;
+  the TV app and the phone remote did not change (still their 0.4.0 builds). The phone app
+  is 0.4.1 too (its report, section 18).
+
+**Not verified:** a game set to large subtitles in a real session.

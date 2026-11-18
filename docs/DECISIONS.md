@@ -226,3 +226,11 @@ Non-obvious choices and the evidence behind them. Newest last.
   "a" ("Okinawa") sometimes getting a masculine adjective: people are spoken about far more
   often than places in dialogue.
 - **"Don" was not added to Mafia's list**: it would also match the start of "Don't".
+
+## Taller letters for large subtitles (2026-11-18)
+
+- **`glyph_h_max` 44 → 72 px (1080p).** At 44 the tall letters of a large subtitle were
+  dropped, and up to half of the English stayed visible beside the Arabic. At 72 nothing
+  stayed, no frame without subtitles was taken for one (0 of 400, as before), and detection
+  time did not change. The top-hat kernel (15 px) was left as it is: the strokes of a 90 px
+  line are still thinner than that.

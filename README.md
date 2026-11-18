@@ -4,7 +4,7 @@
 
 <br>
 
-[![Download](https://img.shields.io/badge/Download-v0.4.0-f4f4f5?style=for-the-badge&labelColor=111114&logo=windows&logoColor=white)](../../releases/latest)
+[![Download](https://img.shields.io/badge/Download-v0.4.1-f4f4f5?style=for-the-badge&labelColor=111114&logo=windows&logoColor=white)](../../releases/latest)
 ![PS5](https://img.shields.io/badge/PS5-Remote%20Play-f4f4f5?style=for-the-badge&labelColor=111114&logo=playstation&logoColor=white)
 ![Offline](https://img.shields.io/badge/100%25-offline-f4f4f5?style=for-the-badge&labelColor=111114)
 [![Built with AI](https://img.shields.io/badge/Built%20with-AI%20%C2%B7%20Claude-d97757?style=for-the-badge&labelColor=111114&logo=anthropic&logoColor=white)](#ai)
@@ -190,7 +190,7 @@ flowchart LR
 
 <p align="center"><img src="docs/media/setup.png" width="640" alt="برنامج تثبيت ترجِم"></p>
 
-1. افتح [صفحة الإصدارات](../../releases/latest) ونزّل **`Tarjim-Setup-0.4.0.exe`** (حوالي ٦٦٠ ميقا، فيه كل شي: البرنامج والمترجم).
+1. افتح [صفحة الإصدارات](../../releases/latest) ونزّل **`Tarjim-Setup-0.4.1.exe`** (حوالي ٦٦٠ ميقا، فيه كل شي: البرنامج والمترجم).
 2. شغّله واضغط **«ثبّت ترجِم»**. ما يحتاج صلاحيات مدير، وياخذ أقل من دقيقة.
 3. افتح ترجِم. أول مرة يمشّيك **الدليل** خطوتين، مرة وحدة بس:
    - **التلفزيون:** تكتب عنوانه، والبرنامج يثبّت تطبيقه ويفعّله.
@@ -240,7 +240,7 @@ flowchart LR
 | ١٥ نوفمبر ٢٠٢٦ | أول نسخة تشتغل: العربي يطلع على التلفزيون فوق اللعبة |
 | ١٦ نوفمبر | نسخة التثبيت، ونسخة الجوال اللي ما تحتاج لابتوب |
 | ١٧ نوفمبر | مكتبة الألعاب، والإكس بوكس (تجريبي) |
-| ١٨ نوفمبر | الشكل الجديد بصور الألعاب، عربي أوضح، ترجمة أسرع، كلمات ٢٨ لعبة، والإصدار 0.4.0 |
+| ١٨ نوفمبر | الشكل الجديد بصور الألعاب، عربي أوضح، ترجمة أسرع، كلمات ٢٨ لعبة، والإصدار 0.4.1 |
 
 <sub>كل رقم في هذي الصفحة مقاس، وكل صورة وGIF فيها مصنوعة بكود البرنامج نفسه (`laptop/launcher/make_readme_media.py`).</sub>
 

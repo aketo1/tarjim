@@ -25,7 +25,10 @@ class DetectParams:
     tophat_min: int = 45
     bright_min: int = 150
     glyph_h_min: int = 9
-    glyph_h_max: int = 44
+    # Tall enough for "large subtitles": at 44 the tall letters (h, d, L) of a 58 px line were
+    # dropped and a quarter of the English stayed visible beside the Arabic. 72 covers lines up
+    # to about 90 px at 1080p; no false detections more on 400 empty test frames.
+    glyph_h_max: int = 72
     min_glyphs_per_line: int = 4
     min_line_width: int = 60
     max_lines: int = 3

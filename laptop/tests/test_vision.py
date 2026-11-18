@@ -102,6 +102,25 @@ def test_rejected_block_is_not_retried_every_frame():
 # -- erase ---------------------------------------------------------------------
 
 
+@pytest.mark.parametrize("size", [58, 64, 72])
+def test_large_subtitles_are_found_whole_and_fully_covered(size):
+    """A game's "large subtitles": every letter is inside the block, and the cover leaves none
+    of the English visible (at the old glyph limit, a quarter of it stayed)."""
+    rng = np.random.default_rng(100 + size)
+    lines = ["Take the stolen wagon to the fence.", "Lose the law and meet us at Clemens Point.",
+             "He's a made man now, nobody touches him.", "Hold the lantern higher, I can't see a thing."]
+    for i in range(8):
+        bg = synth.background(rng, ["dark", "bright", "mixed"][i % 3])
+        frame, bbox = synth.draw_subtitle(bg.copy(), [lines[i % len(lines)]], ["shadow", "outline"][i % 2], size,
+                                          int(rng.integers(990, 1040)))
+        b = detect(frame)
+        assert b is not None and b.x0 <= bbox[0] + 2 and b.x1 >= bbox[2] - 2, (size, i)
+        text = np.abs(frame.astype(np.int16) - bg.astype(np.int16)).max(axis=2) > 60
+        erased = render.composite(frame, [render.make_fill(frame, b)])
+        still = (np.abs(erased.astype(np.int16) - bg.astype(np.int16)).max(axis=2) > 60) & text
+        assert still.sum() / text.sum() < 0.01, (size, i, still.sum() / text.sum())
+
+
 def test_erase_leaves_no_detectable_text(samples):
     text = [s for s in samples if s.text and s.style != "boxed"]
     clean = 0

@@ -93,8 +93,8 @@ def scene(gid: str, w: int = 1920, h: int = 1080) -> Image.Image:
 
 def with_english(base: Image.Image, line: str, size: int = 44) -> np.ndarray:
     """A game subtitle (white, soft shadow) at a usual size for 1080p; returned as BGR like a
-    frame from the console. (At 66 px the detector's block starts about 20 px into the line,
-    and above about 50 px the cover leaves bits of the English: see REPORT section 23.)"""
+    frame from the console. (Before REPORT section 24, at 66 px the block started 20 px into the line,
+    and from 58 px the cover left bits of the English; both fixed there.)"""
     from PIL import ImageFont
 
     img = base.copy()
