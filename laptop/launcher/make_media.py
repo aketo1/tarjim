@@ -1,4 +1,4 @@
-"""Pictures and animations for the README, made by the program's real code.
+"""The README's first animation, made by the program's real code.
 
     python launcher/make_media.py
 
@@ -6,8 +6,9 @@
                            subtitles; the real detector finds each line and the real renderer
                            replaces it with Arabic (what the TV shows)
 - docs/media/before.png, after.png   one frame of the same, side by side material
-- docs/media/tour.gif      the app's screens, from the screenshots in out/ (launcher/shots.py)
-- docs/media/*.png         copies of the screenshots the README uses
+
+The other README pictures (the banner, the screens, the phone, the library) come from
+launcher/make_readme_media.py.
 """
 
 from __future__ import annotations
@@ -86,45 +87,8 @@ def swap() -> None:
     paletted[0].save(MEDIA / "swap.gif", save_all=True, append_images=paletted[1:], duration=durations, loop=0, optimize=True)
 
 
-def tour() -> None:
-    names = ["home", "home-shelf", "home-live", "games", "look", "m-home"]
-    shots = []
-    for n in names:
-        path = OUT / f"app-{n}.png"
-        if not path.exists():
-            continue
-        img = Image.open(path).convert("RGB")
-        img = img.crop((0, 0, img.width, min(img.height, int(img.width * 0.66))))
-        canvas = Image.new("RGB", (1000, 660), (11, 11, 13))
-        img.thumbnail((1000, 660), Image.LANCZOS)
-        canvas.paste(img, ((1000 - img.width) // 2, 0))
-        shots.append(canvas)
-    if len(shots) < 2:
-        print("tour.gif skipped: run launcher/shots.py first")
-        return
-    palette = shots[1].quantize(colors=160, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
-    frames = [s.quantize(palette=palette, dither=Image.Dither.NONE) for s in shots]
-    frames[0].save(MEDIA / "tour.gif", save_all=True, append_images=frames[1:], duration=2200, loop=0, optimize=True)
-
-
-def copies() -> None:
-    wanted = {"app-home.png": "home.png", "app-home-shelf.png": "home-shelf.png", "app-home-live.png": "home-live.png",
-              "app-look.png": "look.png", "app-m-home-shelf.png": "phone-shelf.png",
-              "app-m-home.png": "phone-home.png", "app-m-screen.png": "phone-screen.png",
-              "setup-welcome.png": "setup.png", "setup-progress.png": "setup-progress.png", "setup-done.png": "setup-done.png"}
-    for src, dst in wanted.items():
-        path = OUT / src
-        if path.exists():
-            img = Image.open(path).convert("RGB")
-            if dst in ("home-live.png", "look.png"):
-                img = img.crop((0, 0, img.width, min(img.height, 1000)))
-            img.save(MEDIA / dst, optimize=True)
-
-
 if __name__ == "__main__":
     MEDIA.mkdir(parents=True, exist_ok=True)
     swap()
-    tour()
-    copies()
     for f in sorted(MEDIA.iterdir()):
         print(f"{f.name:22s} {f.stat().st_size / 1024:7.0f} KB")

@@ -1191,3 +1191,41 @@ and The Last of Us), for more about GTA VI, and for the remaining mistakes to be
 | `laptop/tests/test_terms.py` | The new words, what must stay, the fixes |
 
 **Not verified:** a play session with any of these games, and anything on the phone.
+
+## 23. The README pages of both apps (added 2026-11-18)
+
+The user asked for both GitHub pages to look better and be more interactive, in everyday
+Saudi Arabic, with pictures and GIFs, and to say that the apps were built with the help of AI.
+
+- **Both READMEs rewritten**: a banner, badges, a row of links to the sections, cards of what
+  the app does, before/after tables of the game words, the library's covers, collapsible
+  sections (the screens tour, more examples, the game list, requirements, every question,
+  the developer part), the flow diagram, and a section on how the apps were built with AI
+  (Claude through Claude Code; Gemini for one round of Arabic wording) with the four days of
+  the project. The English sentences in the tables are marked left-to-right, so their full
+  stop stays at the end.
+- **Every picture is made by the program** (`launcher/make_readme_media.py`, new;
+  `make_media.py` keeps only `swap.gif`, `before.png` and `after.png`):
+  - `hero.gif` is a TV whose screen plays four game lines from three games. Each line is
+    drawn on the game's own picture; the real detector finds it; the engine translates it
+    (with the game's names and words); the real renderer draws the Arabic. The TV shows the
+    bottom half of the frame, so the line can be read in a small picture.
+  - `tour.gif`, `phone.gif` and the screenshots come from `shots.py` on a throw-away copy of
+    the app. `library.jpg` is the library's covers. The phone app's own banner, GIF and
+    screenshots go to its `docs/media/`, without the laptop remote's "second screen".
+  - `setup.png` is the 0.4.0 installer's real window, opened with `/D=C:\Tarjim` so no
+    user folder shows, and closed without installing.
+- **A limit found on the way (not fixed):** with a subtitle much larger than usual, the cover
+  is not complete. On the banner's scenes at 1080p, with 4 lines from 3 games:
+  - at 66 px the detected block started about 20 px into the line, so its first letter
+    stayed;
+  - at 60 px the block covered the line, but bits of the English letters were left beside
+    the Arabic;
+  - at 44 px (usual subtitles) nothing was left.
+
+  A game set to very large subtitles may therefore show bits of English; a real session has
+  not been tried.
+
+**Not verified:** how the pages look on GitHub itself. They were checked with GitHub's own
+renderer (its markdown API) drawn in Chrome, where the flow diagram, drawn by GitHub's page,
+shows as text.
