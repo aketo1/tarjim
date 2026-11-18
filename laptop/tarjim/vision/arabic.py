@@ -8,6 +8,7 @@ each run with HarfBuzz and rasterise the glyphs with FreeType.
 
 from __future__ import annotations
 
+import io
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -43,7 +44,9 @@ class Font:
             raise FontError(f"font file missing: {path}")
         self.path = path
         data = path.read_bytes()
-        self.ft = freetype.Face(str(path))
+        # From memory, not by path: FreeType cannot open a path with Arabic letters on Windows
+        # (a Windows user named in Arabic installs the program under such a path).
+        self.ft = freetype.Face(io.BytesIO(data))
         self._hb_face = hb.Face(data)
         self._hb_fonts: dict[int, hb.Font] = {}
         self._size = 0

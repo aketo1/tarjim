@@ -187,3 +187,7 @@ def test_gender_hamza_and_anywhere():
     assert gender.masculinize("إذا أردت، أذهب معك.") == "إذا أردت، أذهب معك."  # "I go" stays
     assert gender.masculinize("لا تقلق بشأني اعتني بنفسك.") == "لا تقلق بشأني اعتن بنفسك."
     assert gender.feminize("لا تقلقي بشأني، اعتن بنفسك.") == "لا تقلقي بشأني، اعتني بنفسك."
+
+
+def test_stay_joined_to_and():
+    assert terms.fix_arabic("اخفض صوتك وابقى قريباً.", "Keep your voice down and stay close.") == "اخفض صوتك وابق قريباً."

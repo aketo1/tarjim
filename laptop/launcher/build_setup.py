@@ -30,7 +30,7 @@ HERE = Path(__file__).resolve().parent
 LAPTOP = HERE.parent
 REPO = LAPTOP.parent
 DIST = REPO / "dist"
-VERSION = "0.4.1"
+VERSION = "0.4.2"
 MAGIC = b"TARJIMZ1"
 
 SKIP_DIRS = {"__pycache__", "_pytest", "pytest", "test", "tests", "idlelib", "tkinter", "turtledemo", "ensurepip",
@@ -57,15 +57,44 @@ def tree(src: Path, dst: str, skip_dirs: set[str] = frozenset()):
         yield path, f"{dst}/{'/'.join(parts)}"
 
 
+# The Visual C++ runtime, put next to the program (Microsoft allows this "app-local" copy).
+# ctranslate2 (the translator) and onnxruntime (the reader) need msvcp140.dll and
+# msvcp140_1.dll, which a freshly installed Windows does not have: without them the
+# translation failed on a second PC while it worked on this one.
+VC_RUNTIME = ("msvcp140.dll", "msvcp140_1.dll", "msvcp140_2.dll", "msvcp140_atomic_wait.dll",
+              "msvcp140_codecvt_ids.dll", "vcruntime140.dll", "vcruntime140_1.dll", "concrt140.dll")
+VC_PLACES = ("", "python/", "laptop/.venv/Lib/site-packages/ctranslate2/",
+             "laptop/.venv/Lib/site-packages/onnxruntime/capi/")
+
+
+def vc_runtime():
+    system32 = Path(r"C:\Windows\System32")
+    # where each place's own files come from: a file already there is not added twice
+    origin = {"": REPO, "python/": python_home(),
+              "laptop/.venv/Lib/site-packages/ctranslate2/": LAPTOP / ".venv" / "Lib" / "site-packages" / "ctranslate2",
+              "laptop/.venv/Lib/site-packages/onnxruntime/capi/": LAPTOP / ".venv" / "Lib" / "site-packages" / "onnxruntime" / "capi"}
+    for name in VC_RUNTIME:
+        src = system32 / name
+        if not src.exists():
+            raise RuntimeError(f"{src} is missing: install the Visual C++ 2015-2022 Redistributable (x64)")
+        for place in VC_PLACES:
+            if not (origin[place] / name).exists():
+                yield src, place + name
+
+
 def payload():
     exe = REPO / "Tarjim.exe"
     if not exe.exists():
         raise RuntimeError("Tarjim.exe is missing: run launcher/build.py first")
     yield exe, "Tarjim.exe"
+    yield from vc_runtime()
     yield from tree(python_home(), "python", SKIP_DIRS | {"Scripts"})
     yield from tree(LAPTOP / "tarjim", "laptop/tarjim", {"__pycache__"})
-    yield from tree(LAPTOP / ".venv" / "Lib" / "site-packages", "laptop/.venv/Lib/site-packages",
-                    {"__pycache__", "_pytest", "pytest", "pip"})
+    for item in tree(LAPTOP / ".venv" / "Lib" / "site-packages", "laptop/.venv/Lib/site-packages",
+                     {"__pycache__", "_pytest", "pytest", "pip"}):
+        # onnxruntime's model-conversion tools are never used, and hold the deepest paths
+        if not item[1].startswith("laptop/.venv/Lib/site-packages/onnxruntime/tools/"):
+            yield item
     # What sys.executable points to. Never started; a real file keeps tools that look at it happy.
     yield python_home() / "pythonw.exe", "laptop/.venv/Scripts/pythonw.exe"
     yield from tree(REPO / "models" / "opus-mt-tc-big-en-ar-ct2", "models/opus-mt-tc-big-en-ar-ct2")

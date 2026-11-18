@@ -1260,3 +1260,81 @@ The user asked for the limit of section 23 to be fixed and for a new version of 
   is 0.4.1 too (its report, section 18).
 
 **Not verified:** a game set to large subtitles in a real session.
+
+## 25. The page on a real phone, the TV app improved, and version 0.4.2 (added 2026-11-18)
+
+The user installed the phone app 0.4.1 and found errors; they asked for the TV app to be
+updated and improved and installed on the TV.
+
+- **The page was wider than a real phone.** The Galaxy S20 FE shows the page 360 points wide
+  (1080 px at density 3.0); the phone screenshots of section 23 were taken at 520 (headless
+  Chrome's smallest window) and showed nothing. Measured with Chrome's device emulation at
+  360: «المظهر» stuck out 53 points on the left (its single-column grid was `1fr`, which grows
+  to its widest card), the name rows of «الأسماء» 6, the guide's steps 51, and the game picker
+  and two buttons a little. Grids now use `minmax(0, 1fr)`, the picker and the steps can
+  shrink, button rows wrap; on the phone the sample line and «جرّب على التلفزيون» take a row
+  each. After: nothing sticks out on any page at 360 (home, look, names, guide steps 0–3,
+  library, shelf). `app.css` only; copied to the phone app.
+- **The TV app (0.4.2, versionCode 4)**, its own screen:
+  - the graphite and white look of the two apps;
+  - text sized for the sofa (titles 30–44 sp, details 18 sp);
+  - wording for the laptop and the phone;
+  - the device that is sending now («الجهاز المتصل», from the server's connection);
+  - the version at the bottom;
+  - «جرّب سطر»: a sample Arabic line drawn for 4 s by the same windows the laptop and the phone
+    use. It feeds the watchdog only while it lasts, so it cannot stay on the screen.
+
+  Installed on the TV with `tarjim tv setup` (the adb allowlist unchanged; the log is in
+  `docs/adb-log.md`): the service runs, windows A and B are there.
+- **The phone app's errors** were the hotspot's new network, fixed in the phone app (its
+  report, section 19).
+- **Version 0.4.2** of the laptop program carries the page and the TV app.
+
+**Not verified:** the TV app's new screen and «جرّب سطر» on the TV itself (it can only be
+opened from the TV's launcher; the allowlist does not start activities), and the page on the
+phone after the fix (the phone was locked).
+
+## 26. Ready for another PC: what failed there, and the official 0.4.2 (added 2026-11-18)
+
+The user downloaded the program on a second PC and had problems, and Windows' protection
+refused to download or start it. They asked for an official, error-free release of all three
+apps, and asked why the TV app was not published.
+
+### Found and fixed
+
+| Problem | Cause | Fix |
+| --- | --- | --- |
+| Translation and the reader can fail on a PC without the Visual C++ runtime | `ctranslate2` and `onnxruntime` need `msvcp140.dll` / `msvcp140_1.dll`; the other libraries carry their own, these two did not, and this laptop has them from other software | The installer puts the Visual C++ 2015-2022 runtime (8 DLLs) next to the program, next to Python and inside both packages. Checked in an installed copy: all three DLLs load from the program's folder, not from Windows |
+| No translation and no Arabic at all when the install path has Arabic letters (a Windows user named in Arabic) | SentencePiece and FreeType open files by narrow path: "NOT_FOUND: ...source.spm" and "cannot open resource" | Both now read the file into memory first (`model_proto=`, a `BytesIO` face); also the server's Latin font. In a copy under `...\ترجم تجربة 2\Tarjim`: translation, reader and Arabic font all work. ctranslate2, onnxruntime (the reader) and HarfBuzz were fine |
+| A broken window on a Windows 10 without WebView2 | pywebview silently falls back to Internet Explorer's engine, which cannot show the page | Without the WebView2 runtime the page opens in the browser instead |
+| A deep install folder stopped the copy halfway (exit 1, no model) | The deepest file was 131 characters below the folder; Windows stops at 259 | onnxruntime's unused `tools/` is left out (deepest now 114); a folder over 140 characters is refused at once, with a message |
+| Windows' "unknown publisher" warnings (SmartScreen, the browser's download check) | The installer has no paid code-signing certificate | Not fixable without one. Microsoft Defender finds no threat in the installer. The README and the release notes say how to keep and run it |
+
+### The three apps
+
+- The TV app (0.4.2, versionCode 5) is now its own download, `Tarjim-TV-0.4.2.apk`, in this
+  release and in the phone app's release.
+- Its screen was rebuilt for the TV's real size: 960 x 540 dp (1920 x 1080 at density 320).
+  The version of section 25 put three buttons, 498 dp, in a column of about 314 dp. Now it
+  has two rows of two buttons in a column of about 450 dp, and a narrower card.
+- A «الإعدادات» button opens the TV's accessibility settings, so the second window can be
+  switched on without the laptop.
+- The phone app's release is a release build (section 20 of its report).
+
+### Verified
+
+- 252 tests pass.
+- A silent install of the final installer into a folder with Arabic letters: done in 19 s,
+  self-test OK.
+- Every Visual C++ DLL loaded from the program's own folder.
+- A translation, the reader (0.998) and the Arabic font work from that copy.
+- A folder that is too deep is refused, and nothing is written.
+- Defender: no threat.
+- The user's own installed 0.4.1 was left as it was: its registry entry was exported and
+  imported again, and its shortcuts were copied back.
+
+### Not verified
+
+- A really clean PC: here the Visual C++ runtime is installed, so loading from the
+  program's folder was checked by which file was loaded, not by its absence.
+- The TV app's new screen on the TV: the TV was off when it was to be installed.

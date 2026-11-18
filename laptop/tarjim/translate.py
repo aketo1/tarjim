@@ -780,7 +780,8 @@ class NllbTranslator:
         d = model_dir or MODELS_DIR / "nllb-200-distilled-600M-ct2-int8"
         if not (d / "model.bin").exists():
             raise TranslateError(f"translation model missing: {d}")
-        self._sp = spm.SentencePieceProcessor(model_file=str(d / "sentencepiece.bpe.model"))
+        # From bytes, not by path: SentencePiece cannot open a path with Arabic letters on Windows.
+        self._sp = spm.SentencePieceProcessor(model_proto=(d / "sentencepiece.bpe.model").read_bytes())
         self._tr = ctranslate2.Translator(str(d), device="cpu", compute_type="int8", intra_threads=_threads())
 
     def translate(self, text: str, context: list[tuple[str, str]] | None = None) -> str:
@@ -828,8 +829,10 @@ class OpusTranslator:
         d = model_dir or MODELS_DIR / "opus-mt-tc-big-en-ar-ct2"
         if not (d / "model.bin").exists():
             raise TranslateError(f"translation model missing: {d}")
-        self._src = spm.SentencePieceProcessor(model_file=str(d / "source.spm"))
-        self._tgt = spm.SentencePieceProcessor(model_file=str(d / "target.spm"))
+        # From bytes, not by path: SentencePiece cannot open a path with Arabic letters on Windows
+        # (a Windows user named in Arabic installs the program under such a path).
+        self._src = spm.SentencePieceProcessor(model_proto=(d / "source.spm").read_bytes())
+        self._tgt = spm.SentencePieceProcessor(model_proto=(d / "target.spm").read_bytes())
         self._tr = ctranslate2.Translator(str(d), device="cpu", compute_type="int8", intra_threads=_threads())
 
     def translate(self, text: str, context: list[tuple[str, str]] | None = None) -> str:
@@ -1260,7 +1263,7 @@ def _swap_proxy(raw: str, swaps: list[tuple[str, str]]) -> tuple[str, bool]:
     return raw, all_found
 
 
-RULES = "r5"  # raise when the rules around the engine change, so the cache does not serve old output
+RULES = "r6"  # raise when the rules around the engine change, so the cache does not serve old output
 
 
 class CachedTranslator:

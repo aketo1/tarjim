@@ -31,8 +31,10 @@ using Microsoft.Win32;
 [assembly: AssemblyTitle("Tarjim Setup")]
 [assembly: AssemblyProduct("Tarjim")]
 [assembly: AssemblyCompany("Tarjim")]
-[assembly: AssemblyVersion("0.4.1.0")]
-[assembly: AssemblyFileVersion("0.4.1.0")]
+[assembly: AssemblyDescription("Installer for Tarjim: Arabic subtitles over PS5 games")]
+[assembly: AssemblyCopyright("Copyright 2026 Tarjim")]
+[assembly: AssemblyVersion("0.4.2.0")]
+[assembly: AssemblyFileVersion("0.4.2.0")]
 
 /// <summary>A window onto one part of a file, so the appended zip reads as a file of its own.</summary>
 sealed class SubStream : Stream
@@ -68,7 +70,7 @@ sealed class SubStream : Stream
 
 static class Installer
 {
-    public const string Version = "0.4.1";
+    public const string Version = "0.4.2";
     public const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\Tarjim";
     static readonly byte[] Magic = Encoding.ASCII.GetBytes("TARJIMZ1");
 
@@ -151,8 +153,14 @@ static class Installer
     }
 
     /// <summary>Does everything. `report(fraction, step)` is called from this (worker) thread.</summary>
+    const int MaxFolder = 140;
+
     public static void Install(string folder, bool desktopShortcut, Action<double, string> report)
     {
+        // The program's deepest file is 114 characters below the folder and Windows stops at 259:
+        // a deeper folder used to stop the copy halfway.
+        if (Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar).Length > MaxFolder)
+            throw new PathTooLongException(@"مكان التثبيت طويل. اختر مجلد أقصر، مثل C:\Tarjim.");
         report(0, "أتأكد إن ترجِم مقفول…");
         CloseRunningApp();
         Directory.CreateDirectory(folder);
@@ -736,6 +744,7 @@ sealed class SetupForm : Form
                 Thread.Sleep(450);  // let the bar reach the end
                 page = remove ? Page.Removed : Page.Done;
             }
+            catch (PathTooLongException ex) { error = ex.Message; page = Page.Failed; }
             catch (UnauthorizedAccessException)
             {
                 error = "ما قدرت أكتب في هذا المجلد. اقفل ترجِم لو كان مفتوح، أو اختر مكان ثاني."; page = Page.Failed;

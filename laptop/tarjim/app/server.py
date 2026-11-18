@@ -277,7 +277,7 @@ def _preview_scene():
         g = 26 + 34 * (yy / h) + 22 * np.exp(-(((xx - 500) / 500) ** 2 + ((yy - 800) / 260) ** 2))
         b = 46 + 44 * (1 - yy / h)
         img = Image.fromarray(np.clip(np.dstack([r, g, b]), 0, 255).astype(np.uint8))
-        latin = ImageFont.truetype(str(FONT_DIR / "NotoSans-VF.ttf"), 40)
+        latin = ImageFont.truetype(io.BytesIO((FONT_DIR / "NotoSans-VF.ttf").read_bytes()), 40)  # any install path
         line = "We should leave before the storm gets here."
         tw = ImageDraw.Draw(img).textlength(line, font=latin)
         x, y = int((w - tw) / 2), 940

@@ -167,6 +167,26 @@ def close() -> None:
             pass
 
 
+def _has_webview2() -> bool:
+    """Microsoft's WebView2 runtime is installed (always on Windows 11; not on every Windows 10)."""
+    try:
+        import winreg
+    except ImportError:
+        return False
+    guid = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+    for root, key in ((winreg.HKEY_LOCAL_MACHINE, rf"SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{guid}"),
+                      (winreg.HKEY_LOCAL_MACHINE, rf"SOFTWARE\Microsoft\EdgeUpdate\Clients\{guid}"),
+                      (winreg.HKEY_CURRENT_USER, rf"Software\Microsoft\EdgeUpdate\Clients\{guid}")):
+        try:
+            with winreg.OpenKey(root, key) as k:
+                version, _ = winreg.QueryValueEx(k, "pv")
+                if version and version != "0.0.0.0":
+                    return True
+        except OSError:
+            continue
+    return False
+
+
 def run(url: str, icon: Path, may_close) -> bool:
     """Show the window and block until it is closed. Returns False when no window could be made.
 
@@ -174,6 +194,10 @@ def run(url: str, icon: Path, may_close) -> bool:
     (the page then shows its own question).
     """
     global _window
+    if not _has_webview2():
+        # Without the WebView2 runtime pywebview falls back to Internet Explorer's engine, which
+        # cannot show this page: the caller opens the page in the browser instead.
+        return False
     try:
         import webview
     except Exception:

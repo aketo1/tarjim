@@ -288,7 +288,7 @@ AR_FIXES: dict[str, tuple[tuple["re.Pattern | None", str, str], ...]] = {
 _SHOOT_EN = re.compile(r"\b(?:shoot|shoots|shot|shooting|fire|fires|fired|firing)\b", _I)
 # Arabic patterns the model gets wrong: (English that must be in the line or None, wrong, right).
 AR_PATTERNS: tuple[tuple["re.Pattern | None", re.Pattern, str], ...] = (
-    (None, re.compile(r"(?<![ء-ي])[اإأ]بقى(?![ء-ي])"), "ابق"),  # «إبقى خلفي» → «ابق خلفي»
+    (None, re.compile(r"(?<![ء-ي])([وف]?)[اإأ]بقى(?![ء-ي])"), r"\1ابق"),  # «إبقى خلفي» → «ابق خلفي», «وابقى» → «وابق»
     # "unless they shoot first" → «إلا إذا أطلقوا أولاً»: the fire went missing
     (_SHOOT_EN, re.compile(r"(?<![ء-ي])((?:و|ف)?[أا]طلق(?:وا|ت|نا)?) (?=(?:أولاً|أولا|أولًا|علي(?:ه|ها|هم|نا|ك|كم)|عليّ)(?![ء-ي]))"),
      r"\1 النار "),

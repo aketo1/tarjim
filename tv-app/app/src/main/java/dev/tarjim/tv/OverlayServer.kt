@@ -29,6 +29,12 @@ class OverlayServer(private val context: Context) {
     @Volatile var clientAddress: String? = null
         private set
 
+    companion object {
+        /** The address of the device sending subtitles now (the laptop or the phone), for the TV's own screen. */
+        @Volatile var connectedFrom: String? = null
+            private set
+    }
+
     fun start() {
         if (serverSocket != null) return
         val socket = ServerSocket()
@@ -59,6 +65,7 @@ class OverlayServer(private val context: Context) {
             val conn = Connection(socket)
             current = conn
             clientAddress = socket.inetAddress?.hostAddress
+            connectedFrom = clientAddress
             OverlayHub.runOnMain { OverlayHub.clearAll() }
             Thread({ conn.readLoop() }, "tarjim-conn").start()
         }
@@ -105,6 +112,7 @@ class OverlayServer(private val context: Context) {
             if (current === this) {
                 current = null
                 clientAddress = null
+                connectedFrom = null
                 OverlayHub.runOnMain { OverlayHub.clearAll() }
             }
         }

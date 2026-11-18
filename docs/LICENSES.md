@@ -38,3 +38,9 @@ Arabic fonts (Harmattan, Noto, IBM Plex Sans Arabic) OFL-1.1.
   Sony Interactive Entertainment, Sega, Square Enix, Atlus, Larian, Warhorse, 2K, Konami, and
   the other owners of each game). Shown only to tell the player which game is which, in this
   personal, non-distributed project. Remove them (and `art.js`) before sharing anything.
+
+## Microsoft Visual C++ runtime
+
+The installer puts `msvcp140*.dll`, `vcruntime140*.dll` and `concrt140.dll` (Visual C++ 2015-2022, x64)
+next to the program, as Microsoft allows for its redistributable runtime ("app-local"
+deployment). They come from the build PC's `C:\Windows\System32`.
