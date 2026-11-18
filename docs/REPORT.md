@@ -1109,3 +1109,85 @@ the GitHub release `v0.4.0`.
 unit tests (`TermsTest`, `GenderTest`) pass on the computer. The installer: see the release
 notes of `v0.4.0` and below. **Not verified:** a real play session with these words, and
 anything on the phone, whose translator (ML Kit) makes other mistakes.
+
+## 22. Words for every game of the library, more GTA VI, and fixes (added 2026-11-18)
+
+The user asked for the words of every game in the library (not only Red Dead, GTA, Yakuza
+and The Last of Us), for more about GTA VI, and for the remaining mistakes to be fixed.
+
+### What changed for the user
+
+- **Every game has its series** (`terms.SERIES_IDS`): Silent Hill 2, Max Payne 3, L.A.
+  Noire, Bully, Baldur's Gate 3, Final Fantasy VII, Kingdom Come II, Mafia: The Old Country
+  and Persona 5 Royal join the four from section 21; a profile made by hand is matched by its
+  title.
+- **Words every game gets**, put into plain English before the model reads the line
+  (118 rules now):
+  - western speech: howdy, much obliged («شكراً جزيلاً», was «ممتنة جداً»), skedaddle,
+    high-tail it, the jig is up («انتهى الأمر», was «الرقصة جاهزة»), greenhorn, yonder;
+  - gangster and police slang: packing a heater («يحمل مسدساً», was «يحزم المدفأة»), a made
+    man («عضو كامل في المافيا», was «رجل مصطنع»), rub out, sleeps with the fishes, omertà
+    («قانون الصمت»), pizzo («مال الحماية»), picciotto, consigliere, speakeasy, moonshine
+    (was «ضوء القمر»), sweat him (was «لنتعرّق منه»), rat out, squeal;
+  - street slang: strapped («مسلّح», was «مربوط»), opps, rolling up on, hit a lick (was
+    «نلعق»), five-o;
+  - old English: hold thy tongue («اصمت», was «احفظ لسانك»), prithee, methinks, mayhap
+    (was «مايهاب»), verily, naught, milord;
+  - soldiers' calls: tango down, man down, frag out, roger that, clear!;
+  - idioms: crawling with («مليئة بـ», was «تزحف مع»), wants a word («يريد التحدث معك»),
+    worry about yourself («اعتن بنفسك»).
+- **Words of one series**:
+  - GTA: whip (a car, was «سوط»), cap him;
+  - GTA, Mafia, L.A. Noire, Max Payne: whacked him = killed him (in Bully, "hit");
+  - Persona: honorifics («فوتابا»، not «فوتابا تشان»), calling card («بطاقة التحذير», was
+    «بطاقة الاتصال»);
+  - Silent Hill: the radio's static («ضجيج», was «ثابت»);
+  - Bully: detention («ستعاقب بعد المدرسة», was «ستعتقل»), the prefects («المراقبون», was
+    «المحافظون»);
+  - Kingdom Come, Baldur's Gate: "ere";
+  - Yakuza: lieutenant («نائب», was «ملازم»);
+  - The Last of Us: "Clickers!" as a warning («الكليكرز قادمون!», was «أيها الكليكرز!»).
+- **GTA VI: 59 names (was 35)**, only from Rockstar's own material (its site, the trailers,
+  the "Extended Look" of 27 August 2026), checked against news coverage of those; nothing from
+  the 2022 leak. New: Lori Heder, Valentina, Andrés de León, Méndez, Ocean Beach, Little Cuba,
+  Tisha-Wocka, VC Port, Vice-Dale County, Leonida Penitentiary, Leonida Department of
+  Corrections, Vice City Police Department / VCPD, Megamundo, Only Raw Records, Jack of Hearts,
+  Liberty City. The game comes out on 19 November 2026.
+- **Names and words in other lists**: Kingdom Come's groschen and Saviour Schnapps («مشروب
+  المنقذ», was left in English), Bully's prefects and jocks, Persona, Materia, Mako.
+
+### Mistakes fixed
+
+- **A man's name ending in "a"** ("Majima", "Kasuga", "Luca") always gets a man's stand-in:
+  alone, the model took it for a woman's («ماجيما تريد» → «ماجيما يريد»).
+- **A title spoken to**: "Uncle, wake up" → «يا عم، استيقظ» (was «العم، استيقظ»), "Reverend,
+  ..." → «يا قس، ...», also when the model brackets the name.
+- **«إدفعي»**: a feminine command written with «إ» is now made masculine too (a command never
+  starts with «إ»; «أذهب», "I go", is left alone).
+- **«اعتني بنفسك»** and three like it are commands wherever they stand.
+- **«إبقى» / «ابقى»** → «ابق».
+- **«إلا إذا أطلقوا أولاً»** → «إلا إذا أطلقوا النار أولاً» when the English is about shooting.
+- English words now keep their capital when replaced ("Hold thy tongue" → "Be quiet"): the
+  model translates a capitalised command better.
+
+### Measured
+
+- **Quality:** 33 lines from 13 games, written after the rules, the version published
+  earlier the same day (0.4.0, commit d0a6480) against this one: 24 better, 2 the same in
+  other words, 7 unchanged (4 already right; 3 wrong: "Uncle, get up", "Reverend, ..." and
+  "Tango down", all three fixed afterwards, so they are no longer a blind test).
+- **Speed:** the game words take 0.13 ms per line (median; 0.06 ms before this section)
+  against about 105 ms for the translation.
+- 248 tests pass; on the phone, `TermsTest` (9) and `GenderTest` pass.
+
+### Files
+
+| File | What it holds |
+| --- | --- |
+| `laptop/tarjim/terms.py` | 13 series, 118 general rules, 48 series rules, Arabic patterns, capitals kept |
+| `laptop/tarjim/translate.py` | A man's stand-in for names ending in "a"; «يا» for a title spoken to; `RULES = "r5"` |
+| `laptop/tarjim/gender.py` | «إ» commands; commands that stand anywhere |
+| `packs/source/2-gta.txt`, `6-rockstar-more.txt`, `7-more.txt` | GTA VI and the other new names |
+| `laptop/tests/test_terms.py` | The new words, what must stay, the fixes |
+
+**Not verified:** a play session with any of these games, and anything on the phone.

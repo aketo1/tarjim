@@ -212,3 +212,17 @@ Non-obvious choices and the evidence behind them. Newest last.
 - **Verbal noun → command only when the English opens with that verb** and the next word is
   not "is", "was", "of"...: "Escape is impossible" keeps «الهروب».
 - **Dropped after trying:** "pelt → fur" and "skin X → remove the skin from X" (worse grammar).
+
+## Words for every game, and GTA VI (2026-11-18)
+
+- **Slang by kind, not by game**: western, gangster, street, old English and soldiers' calls
+  apply to every game, because they appear across games (a western word in GTA, gangster slang
+  in Mafia and L.A. Noire). A word goes to one series only when it means something else
+  elsewhere: "whip" (a car in GTA, a whip in a western), "whacked" (killed in a crime story,
+  hit in Bully), "lieutenant" (a Yakuza rank, an army rank elsewhere), "calling card".
+- **GTA VI names only from Rockstar's own material** (site, trailers, the Extended Look),
+  never from the 2022 leak, even when fan sites list them.
+- **A man's name ending in "a" always gets a stand-in**, at the price of a place that ends in
+  "a" ("Okinawa") sometimes getting a masculine adjective: people are spoken about far more
+  often than places in dialogue.
+- **"Don" was not added to Mafia's list**: it would also match the start of "Don't".

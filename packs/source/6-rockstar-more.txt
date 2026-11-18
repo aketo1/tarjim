@@ -158,3 +158,9 @@ Jocks = الجوكس
 Nerds = النيردز
 Bullies = المتنمرون
 Townies = التاونيز
+
+# Game words (added 2026-11-18).
+[shared]
+prefects = المراقبون @ bully
+prefect = المراقب @ bully
+jocks = الجوكس @ bully

@@ -387,3 +387,30 @@ Ammu-Nation = أمو نيشن @ gta-sa gta4 gta5 gta6
 Cluckin' Bell = كلاكين بيل @ gta-sa gta4 gta5 gta6
 Burger Shot = برغر شوت @ gta-sa gta4 gta5 gta6
 Triads = الثالوث @ gta6
+
+# GTA VI: names from Rockstar's site, the trailers and the Extended Look (Aug 2026), collected 2026-11-18. Not from leaks.
+[shared]
+Lori Heder = لوري هيدر ♀ @ gta6
+Lori = لوري ♀ @ gta6
+Valentina = فالنتينا ♀ @ gta6
+Andrés de León = أندريس دي ليون @ gta6
+Andres de Leon = أندريس دي ليون @ gta6
+Andrés = أندريس @ gta6
+Andres = أندريس @ gta6
+Méndez = منديز @ gta6
+Mendez = منديز @ gta6
+Ocean Beach = أوشن بيتش @ gta6
+Little Cuba = ليتل كوبا @ gta6
+Tisha-Wocka = تيشا ووكا @ gta6
+VC Port = ميناء فايس سيتي @ gta6
+Vice-Dale County = مقاطعة فايس ديل @ gta6
+Vice-Dale = فايس ديل @ gta6
+Leonida Penitentiary = سجن ليونيدا @ gta6
+Leonida Department of Corrections = إدارة سجون ليونيدا @ gta6
+Vice City Police Department = شرطة فايس سيتي @ gta6
+VCPD = شرطة فايس سيتي @ gta6
+Megamundo = ميغاموندو @ gta6
+Only Raw Records = أونلي رو ريكوردز @ gta6
+Only Raw = أونلي رو @ gta6
+Jack of Hearts = جاك أوف هارتس @ gta6
+Liberty City = ليبرتي سيتي @ gta6

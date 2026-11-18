@@ -9,7 +9,8 @@ from tarjim.translate import Cache, CachedTranslator
 @pytest.mark.parametrize("profile, title, series", [
     ("rdr2", "", "rdr"), ("gta5", "", "gta"), ("tlou2", "", "tlou"), ("lad8", "", "yakuza"),
     ("my-rdr", "Red Dead Redemption 2", "rdr"), ("x", "Like a Dragon Gaiden", "yakuza"), ("default", "", ""),
-    ("bg3", "Baldur's Gate 3", ""),
+    ("bg3", "Baldur's Gate 3", "bg3"), ("kcd2", "", "kcd"), ("mafia-toc", "", "mafia"), ("p5r", "", "persona"),
+    ("my-sh", "Silent Hill 2", "sh"), ("x", "Some Other Game", ""),
 ])
 def test_series(profile, title, series):
     assert terms.series_of(profile, title) == series
@@ -104,3 +105,85 @@ def test_translator_uses_the_series(tmp_path):
     plain = CachedTranslator(engine, Cache(tmp_path / "d.sqlite"), profile="bg3")
     plain.translate("Take it to the fence and sell it.")
     assert engine.seen[-1] == "Take it to the fence and sell it."
+
+
+@pytest.mark.parametrize("en, series, out", [
+    ("Howdy, partner. Much obliged.", "rdr", "Hello, partner. Thank you very much."),
+    ("We gotta high-tail it outta here.", "rdr", "We gotta run away outta here."),
+    ("The jig is up, Dutch.", "rdr", "It's over, Dutch."),
+    ("Yonder's the cabin.", "rdr", "Over there is the cabin."),
+    ("He's packing a heater, be careful.", "lanoire", "He's carrying a gun, be careful."),
+    ("Let's sweat him a little.", "lanoire", "Let's pressure him a little."),
+    ("He's a made man now.", "mafia", "He's a full member of the mafia now."),
+    ("Omertà is everything.", "mafia", "The law of silence is everything."),
+    ("Pay the pizzo.", "mafia", "Pay the protection money."),
+    ("They whacked him last night.", "mafia", "They killed him last night."),
+    ("He ratted us out.", "gta", "He informed on us to the police."),
+    ("You strapped?", "gta", "You armed?"),
+    ("The opps are rolling up on us.", "gta", "The enemies are coming at us."),
+    ("We gotta hit a lick tonight.", "gta", "We gotta do a robbery tonight."),
+    ("Nice whip, bro.", "gta", "Nice car, bro."),
+    ("Five-O! Run!", "gta", "Police! Run!"),
+    ("Hold thy tongue, peasant!", "kcd", "Be quiet, peasant!"),
+    ("Methinks he lies.", "kcd", "I think he lies."),
+    ("Wait here ere nightfall.", "kcd", "Wait here before nightfall."),
+    ("Tango down.", "", "The enemy is dead."),
+    ("Roger that.", "", "Understood."),
+    ("Clear!", "", "The area is clear!"),
+    ("The favela is crawling with gangsters.", "maxpayne", "The favela is full of gangsters."),
+    ("The boss wants a word with you.", "", "The boss wants to talk to you."),
+    ("Don't worry about me, worry about yourself.", "", "Don't worry about me, take care of yourself."),
+    ("The radio is making static again.", "sh", "The radio is making noise again."),
+    ("Go to class or you'll get detention.", "bully", "Go to class or you'll get punished after school."),
+    ("Don't let them give you a wedgie.", "bully", "Don't let them humiliate you."),
+    ("We need to send the calling card.", "persona", "We need to send the warning card."),
+    ("Makoto-senpai, wait!", "persona", "Makoto, wait!"),
+    ("The lieutenant wants to see you.", "yakuza", "The deputy wants to see you."),
+    ("Runners! Get behind me.", "tlou", "Runners are coming! Get behind me."),
+])
+def test_slang_and_series_words(en, series, out):
+    assert terms.rewrite(en, series) == out
+
+
+@pytest.mark.parametrize("en, series", [
+    ("He's a self-made man.", "mafia"),
+    ("He whacked him with a stick.", "bully"),  # killed only in a crime story
+    ("Use your whip on the horse.", "rdr"),  # a car only in GTA
+    ("I'm strapped for cash.", "gta"),
+    ("The coast is clear, let's go.", ""),
+    ("I'll wait here.", "kcd"),
+    ("The lieutenant wants to see you.", "maxpayne"),  # deputy only in Yakuza
+    ("We need to send the calling card.", "gta"),
+    ("Runners are fast.", "tlou"),
+    ("The static on his shirt.", "rdr"),
+])
+def test_slang_left_alone(en, series):
+    assert terms.rewrite(en, series) == en
+
+
+@pytest.mark.parametrize("ar, en, out", [
+    ("الرانرز قادمون! إبقى خلفي.", "Runners are coming! Get behind me.", "الرانرز قادمون! ابق خلفي."),
+    ("لا تطلق النار إلا إذا أطلقوا أولاً.", "Don't shoot unless they shoot first.", "لا تطلق النار إلا إذا أطلقوا النار أولاً."),
+    ("أطلقوا سراحه.", "They shot him free.", "أطلقوا سراحه."),
+    ("أطلقوا أولاً.", "They released it first.", "أطلقوا أولاً."),  # not about shooting
+])
+def test_arabic_patterns(ar, en, out):
+    assert terms.fix_arabic(ar, en, "") == out
+
+
+def test_vocative_title_and_names_ending_in_a():
+    from tarjim.translate import _reads_female, _vocative_title
+    assert _vocative_title("العم، استيقظ.", "Uncle, wake up.", [("Uncle", "العم")]) == "يا عم، استيقظ."
+    assert _vocative_title("(العم)، انهض.", "Uncle, get up.", [("Uncle", "العم")]) == "يا عم، انهض."
+    assert _vocative_title("العم نائم.", "Uncle is asleep.", [("Uncle", "العم")]) == "العم نائم."
+    assert _vocative_title("الذئاب، اسمعوا.", "Wolves, listen.", [("Wolves", "الذئاب")]) == "الذئاب، اسمعوا."
+    assert _reads_female("Majima", "ماجيما") and _reads_female("Luca", "لوكا")
+    assert not _reads_female("Kiryu", "كيريو") and not _reads_female("Hosea Matthews", "هوزيا ماثيوز")
+
+
+def test_gender_hamza_and_anywhere():
+    from tarjim import gender
+    assert gender.masculinize("إدفعي للحماية وإلا سيحرقون متجرك.") == "ادفع للحماية وإلا سيحرقون متجرك."
+    assert gender.masculinize("إذا أردت، أذهب معك.") == "إذا أردت، أذهب معك."  # "I go" stays
+    assert gender.masculinize("لا تقلق بشأني اعتني بنفسك.") == "لا تقلق بشأني اعتن بنفسك."
+    assert gender.feminize("لا تقلقي بشأني، اعتن بنفسك.") == "لا تقلقي بشأني، اعتني بنفسك."

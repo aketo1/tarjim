@@ -343,3 +343,13 @@ Hifumi = هيفومي ♀
 Chihaya = تشيهايا ♀
 Yoshida = يوشيدا
 Shinya = شينيا
+
+# Game words (added 2026-11-18).
+[shared]
+groschen = غروشن @ kcd2
+Saviour Schnapps = مشروب المنقذ @ kcd2
+Savior Schnapps = مشروب المنقذ @ kcd2
+Persona = بيرسونا @ p5r
+Personas = البيرسونات @ p5r
+Materia = ماتيريا @ ff7r
+Mako = ماكو @ ff7r

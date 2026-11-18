@@ -136,6 +136,12 @@ CONTEXT = (
 )
 
 
+def _look(table: dict[str, str], tok: str) -> str | None:
+    """A command in the table, also when the model wrote its first alef with a hamza below
+    («إدفعي»): a command never starts with «إ», while «أ» can be "I" («أذهب», I go)."""
+    return table.get(tok) or (table.get("ا" + tok[1:]) if tok[:1] == "إ" else None)
+
+
 def _swap(text: str, table: dict[str, str], ctx: dict[str, tuple[str, re.Pattern]],
           prohibit: dict[str, str] | None = None) -> str:
     tokens = _TOKEN.findall(text)
@@ -157,9 +163,9 @@ def _swap(text: str, table: dict[str, str], ctx: dict[str, tuple[str, re.Pattern
                 out.append(new)
                 at_cmd, after_not = False, False
                 continue
-        joined = tok[0] in "وف" and len(tok) > 3 and table.get(tok[1:])
+        joined = tok[0] in "وف" and len(tok) > 3 and _look(table, tok[1:])
         if at_cmd:
-            new = table.get(tok) or (tok[0] + joined if joined else None)
+            new = _look(table, tok) or (tok[0] + joined if joined else None)
             if new is None and tok in ctx:
                 after = "".join(tokens[i + 1:i + 3])
                 other, rx = ctx[tok]
@@ -178,6 +184,12 @@ _CTX_MASC = {f: (m, rx) for m, f, rx in CONTEXT}
 _PRESENT = re.compile(rf"(?<![{_AR}])(" + "|".join(sorted(PRESENT_FEM, key=len, reverse=True)) + rf")(?![{_AR}])")
 
 
+# Commands that are commands wherever they stand, even when the model drops the comma before
+# them («لا تقلق بشأني اعتني بنفسك»).
+ANYWHERE = {"اعتني بنفسك": "اعتن بنفسك", "اهتمي بنفسك": "اهتم بنفسك", "انتبهي لنفسك": "انتبه لنفسك",
+            "حافظي على نفسك": "حافظ على نفسك"}
+
+
 def masculinize(arabic: str) -> str:
     """Commands and "you" verbs said to a woman, turned to a man (or to nobody in particular)."""
     if "ي" not in arabic:
@@ -185,6 +197,9 @@ def masculinize(arabic: str) -> str:
     for wrong, right in SPELLING.items():
         if wrong in arabic:
             arabic = arabic.replace(wrong, right)
+    for fem, masc in ANYWHERE.items():
+        if fem in arabic:
+            arabic = arabic.replace(fem, masc)
     arabic = _swap(_HARAKAT.sub("", arabic), TO_MASC, _CTX_MASC, PROHIBIT_MASC)
     return _PRESENT.sub(lambda m: PRESENT_FEM[m.group(1)], arabic) if "ين" in arabic else arabic
 
@@ -195,4 +210,7 @@ def feminize(arabic: str) -> str:
     for wrong, right in SPELLING.items():
         if wrong in arabic:
             arabic = arabic.replace(wrong, right)
+    for fem, masc in ANYWHERE.items():
+        if masc in arabic and fem not in arabic:
+            arabic = arabic.replace(masc, fem)
     return arabic

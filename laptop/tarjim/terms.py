@@ -6,9 +6,10 @@ scouting it (not «نقاضي البنك»), "lose the law" for escaping the pol
 are put into plain English before it reads the line, and the few Arabic words it still gets
 wrong are put right after it.
 
-Every game gets GENERAL; a series (Red Dead, GTA, The Last of Us, Yakuza / Like a Dragon)
-gets its own words as well. Names of people, places and gangs are in the game's list
-(packs/) instead. The phone app has the same lists in Terms.kt: keep the two alike.
+Every game gets GENERAL (western, gangster, street and old English, soldiers' calls,
+idioms); every game of the library belongs to a series that gets its own words as well.
+Names of people, places and gangs are in the game's list (packs/) instead. The phone app
+has the same lists in Terms.kt: keep the two alike.
 """
 
 from __future__ import annotations
@@ -21,9 +22,21 @@ SERIES_IDS = {
     "tlou": ("tlou1", "tlou2"),
     "yakuza": ("yakuza0", "yakuza-kiwami", "yakuza-kiwami2", "yakuza3", "yakuza4", "yakuza5", "yakuza6",
                "lad7", "lad8", "lad-gaiden", "lad-pirate"),
+    "sh": ("sh2r",),
+    "maxpayne": ("max-payne-3",),
+    "lanoire": ("la-noire",),
+    "bully": ("bully",),
+    "bg3": ("bg3",),
+    "ff7": ("ff7r",),
+    "kcd": ("kcd2",),
+    "mafia": ("mafia-toc",),
+    "persona": ("p5r",),
 }
 _TITLE_HINTS = (("red dead", "rdr"), ("grand theft auto", "gta"), ("gta", "gta"), ("last of us", "tlou"),
-                ("yakuza", "yakuza"), ("like a dragon", "yakuza"))
+                ("yakuza", "yakuza"), ("like a dragon", "yakuza"), ("silent hill", "sh"), ("max payne", "maxpayne"),
+                ("l.a. noire", "lanoire"), ("la noire", "lanoire"), ("bully", "bully"), ("canis canem", "bully"),
+                ("baldur", "bg3"), ("final fantasy", "ff7"), ("kingdom come", "kcd"), ("mafia", "mafia"),
+                ("persona", "persona"))
 
 
 def series_of(profile: str, title: str = "") -> str:
@@ -104,6 +117,89 @@ GENERAL: tuple[Rule, ...] = (
     (re.compile(r"\bhold(?:ing)? up (the|a|that) (stagecoach|coach|train|bank|store|shop|wagon|stage)\b", _I), r"rob \1 \2"),
     (re.compile(r"\b(run|runs|ran|running) off\b(?! (?:the|a) (?:road|bridge|cliff|edge|track))", _I), r"\1 away"),
     (re.compile(r"\b(the|a|that|your) gunsmith\b", _I), r"\1 gun shop"),
+    # western speech
+    (re.compile(r"\bhowdy\b", _I), "hello"),
+    (re.compile(r"\bmuch obliged\b", _I), "thank you very much"),
+    (re.compile(r"\b(?:skedaddle|vamoose)\b", _I), "run away"),
+    (re.compile(r"\bhigh-?tailed it\b", _I), "ran away"),
+    (re.compile(r"\bhigh-?tail(?:ing)? it\b", _I), "run away"),
+    (re.compile(r"\bthe jig(?:'s| is) up\b", _I), "it's over"),
+    (re.compile(r"\b(?:greenhorn|tenderfoot)s\b", _I), "beginners"),
+    (re.compile(r"\b(?:greenhorn|tenderfoot)\b", _I), "beginner"),
+    (re.compile(r"\byonder's\b", _I), "over there is"),
+    (re.compile(r"\b(?:over |out )?yonder\b", _I), "over there"),
+    # gangster and police slang
+    (re.compile(r"\bpacking heat\b", _I), "carrying a gun"),
+    (re.compile(r"\bpacking (a|his|her|their|the|my|your) (?:heater|gat|rod|roscoe|piece|gun|pistol|revolver)\b", _I),
+     r"carrying \1 gun"),
+    (re.compile(r"\b(has|had|got|with|pulled|pulls|drew|draws) (a|his|her|their|the|my|your) (?:heater|gat|roscoe|piece)\b",
+                _I), r"\1 \2 gun"),
+    (re.compile(r"(?<!self-)\bmade men\b", _I), "full members of the mafia"),
+    (re.compile(r"(?<!self-)\ba made man\b", _I), "a full member of the mafia"),
+    (re.compile(r"\b(?:rub|bump) (him|her|them|you|me|us) (?:out|off)\b", _I), r"kill \1"),
+    (re.compile(r"\b(?:rubbed|bumped) (him|her|them|you|me|us) (?:out|off)\b", _I), r"killed \1"),
+    (re.compile(r"\brub out (the|that|this) (\w+)\b", _I), r"kill \1 \2"),
+    (re.compile(r"\brubbed out (the|that|this) (\w+)\b", _I), r"killed \1 \2"),
+    (re.compile(r"\bsleeps with the fishes\b", _I), "is dead at the bottom of the sea"),
+    (re.compile(r"\bsleeping with the fishes\b", _I), "dead at the bottom of the sea"),
+    (re.compile(r"\bsleep with the fishes\b", _I), "be dead at the bottom of the sea"),
+    (re.compile(r"\bomert[àa]\b", _I), "the law of silence"),
+    (re.compile(r"\bpizzo\b", _I), "protection money"),
+    (re.compile(r"\bpicciotti\b", _I), "young men"),
+    (re.compile(r"\bpicciotto\b", _I), "young man"),
+    (re.compile(r"\bconsiglieres?\b", _I), "advisor"),
+    (re.compile(r"\bspeakeasies\b", _I), "secret bars"),
+    (re.compile(r"\bspeakeasy\b", _I), "secret bar"),
+    (re.compile(r"\b(?:hooch|moonshine)\b", _I), "illegal alcohol"),
+    (re.compile(r"\bbootleg (liquor|booze|whiskey|alcohol)\b", _I), r"illegal \1"),
+    (re.compile(r"\bsweat (him|her|them)\b(?! out)", _I), r"pressure \1"),
+    (re.compile(r"\brats? (us|him|her|them|me|you) out\b", _I), r"inform on \1 to the police"),
+    (re.compile(r"\bratted (us|him|her|them|me|you) out\b", _I), r"informed on \1 to the police"),
+    (re.compile(r"\bratting (us|him|her|them|me|you) out\b", _I), r"informing on \1 to the police"),
+    (re.compile(r"\bsquealed on (us|him|her|them|me|you)\b", _I), r"informed on \1 to the police"),
+    (re.compile(r"\bsqueals? on (us|him|her|them|me|you)\b", _I), r"inform on \1 to the police"),
+    # street slang
+    (re.compile(r"\b(you|you're|he's|she's|they're|we're|I'm|are you|is he|is she|y'all) strapped\b(?! for)", _I),
+     r"\1 armed"),
+    (re.compile(r"\bopps\b", _I), "enemies"),
+    (re.compile(r"\b(?:rolling|rollin') up on\b", _I), "coming at"),
+    (re.compile(r"\brolled up on\b", _I), "came at"),
+    (re.compile(r"\bhit (?:a|another|one more|this|that) lick\b", _I), "do a robbery"),
+    (re.compile(r"\bfive-o\b", _I), "police"),
+    (re.compile(r"\btrap houses?\b", _I), "drug house"),
+    (re.compile(r"\bgive (you|him|her|me|them|us) (?:a )?wedgies?\b", _I), r"humiliate \1"),
+    (re.compile(r"\bgives (you|him|her|me|them|us) (?:a )?wedgies?\b", _I), r"humiliates \1"),
+    (re.compile(r"\bgave (you|him|her|me|them|us) (?:a )?wedgies?\b", _I), r"humiliated \1"),
+    (re.compile(r"\bgiving (you|him|her|me|them|us) (?:a )?wedgies?\b", _I), r"humiliating \1"),
+    # old English (Kingdom Come, Baldur's Gate and the like)
+    (re.compile(r"\bhold (?:thy|your|thine) tongue\b", _I), "be quiet"),
+    (re.compile(r"\bprithee\b", _I), "please"),
+    (re.compile(r"\bmethinks\b", _I), "I think"),
+    (re.compile(r"\b(?:mayhap|perchance)\b", _I), "maybe"),
+    (re.compile(r"\bverily\b", _I), "truly"),
+    (re.compile(r"\bforsooth\b", _I), "indeed"),
+    (re.compile(r"\bnaught\b", _I), "nothing"),
+    (re.compile(r"\b(?:m'lord|milord)\b", _I), "my lord"),
+    (re.compile(r"\b(?:m'lady|milady)\b", _I), "my lady"),
+    (re.compile(r"\bwherefore\b", _I), "why"),
+    (re.compile(r"\bwhence\b", _I), "from where"),
+    (re.compile(r"\bthither\b", _I), "there"),
+    (re.compile(r"\bhither\b", _I), "here"),
+    # soldiers' calls
+    (re.compile(r"\btango down\b", _I), "the enemy is dead"),
+    (re.compile(r"(?<=, )moving (to|up|out|in)\b", _I), r"we're moving \1"),
+    (re.compile(r"^man down\b", _I), "a man has fallen"),
+    (re.compile(r"\bfrag out\b", _I), "grenade"),
+    (re.compile(r"\b(?:roger|copy) that\b", _I), "understood"),
+    (re.compile(r"^move out\b", _I), "let's go"),
+    (re.compile(r"^(?:all |room |area )?clear(?=!*$)", _I), "the area is clear"),
+    # idioms
+    (re.compile(r"\b(is|are|was|were|it's|it is) (?:crawling|swarming) with\b", _I), r"\1 full of"),
+    (re.compile(r"\b(want|wants|wanted|need|needs|needed|'d like|would like) a (?:quick )?word with "
+                r"(you|him|her|them|me|us)\b", _I), r"\1 to talk to \2"),
+    (re.compile(r"\b(want|wants|wanted|need|needs|needed|'d like|would like) a (?:quick )?word\b", _I),
+     r"\1 to talk to you"),
+    (re.compile(r"\bworry about yourself\b", _I), "take care of yourself"),
 )
 
 # A rule of a series, with an optional condition the whole line must meet.
@@ -115,7 +211,48 @@ _LAW_KEEP_BEFORE = ("against", "above", "break", "breaking", "broke", "broken", 
                     "enforce", "I'm", "am", "letter of", "according to", "eyes of")
 _LAW_KEEP = "".join(f"(?<!\\b{w} )" for w in _LAW_KEEP_BEFORE)
 
+_HONORIFICS: tuple[SeriesRule, ...] = (
+    # "-san" stays: without it the model takes a name like "Majima" for a woman's
+    (re.compile(r"\b([A-Z][a-z]+)-(?:chan|kun|sama|senpai|sensei|dono|han|bo)\b"), r"\1", None),
+    (re.compile(r"\b(?:nii-?san|nii-?chan|onii-?san|onii-?chan|aniki)\b", _I), "big brother", None),
+    (re.compile(r"\b(?:nee-?san|onee-?san|onee-?chan|ane-?san)\b", _I), "big sister", None),
+)
+_KILLED: tuple[SeriesRule, ...] = (  # "whacked him" is killed him in a crime story, hit him elsewhere
+    (re.compile(r"\bwhacks? (him|her|them|you|me|us|the \w+|that \w+)\b", _I), r"kill \1", None),
+    (re.compile(r"\bwhacked (him|her|them|you|me|us|the \w+|that \w+)\b", _I), r"killed \1", None),
+    (re.compile(r"\bwhacking (him|her|them|you|me|us)\b", _I), r"killing \1", None),
+    (re.compile(r"\b(got|get|gets|getting) whacked\b", _I), r"\1 killed", None),
+)
+
 SERIES: dict[str, tuple[SeriesRule, ...]] = {
+    "gta": _KILLED + (
+        (re.compile(r"\b(nice|new|sweet|fancy|my|your|his|her|that|this) whip\b", _I), r"\1 car", None),
+        (re.compile(r"\bcap (him|her|them|you|that \w+)\b", _I), r"shoot \1", None),
+        (re.compile(r"\bcapped (him|her|them|you|that \w+)\b", _I), r"shot \1", None),
+    ),
+    "mafia": _KILLED,
+    "lanoire": _KILLED,
+    "maxpayne": _KILLED,
+    "persona": _HONORIFICS + (
+        (re.compile(r"\bcalling cards\b", _I), "warning cards", None),
+        (re.compile(r"\bcalling card\b", _I), "warning card", None),
+    ),
+    "sh": (
+        (re.compile(r"\bstatic\b", _I), "noise", None),  # the radio's warning
+    ),
+    "bully": (
+        (re.compile(r"\b(get|got|getting|gets) detention\b", _I), r"\1 punished after school", None),
+        (re.compile(r"\bdetention\b", _I), "after-school punishment", None),
+    ),
+    "kcd": (
+        (re.compile(r"\bere\b", _I), "before", None),
+    ),
+    "bg3": (
+        (re.compile(r"\bere\b", _I), "before", None),
+    ),
+    "tlou": (
+        (re.compile(r"^(Runners|Clickers|Stalkers|Bloaters|Shamblers|Infected)!", _I), r"\1 are coming!", None),
+    ),
     "rdr": (
         # in a western "the law" is the lawmen, except "against the law", "it's the law", ...
         (re.compile(rf"{_LAW_KEEP}\bthe law\b(?!\s+(?:of|says|said|is clear|and order|is the law))", _I), "the police", None),
@@ -125,12 +262,10 @@ SERIES: dict[str, tuple[SeriesRule, ...]] = {
         (re.compile(r"\b(a|the|any|your|that) fence\b", _I), r"\1 stolen goods dealer", _SELLING),
         (re.compile(r"\bfence (it|them|this|that|these|those)\b(?! off| in)", _I), r"sell \1 as stolen goods", None),
     ),
-    "yakuza": (
-        # "-san" stays: without it the model takes a name like "Majima" for a woman's
-        (re.compile(r"\b([A-Z][a-z]+)-(?:chan|kun|sama|senpai|sensei|dono|han|bo)\b"), r"\1", None),
-        (re.compile(r"\b(?:nii-?san|nii-?chan|onii-?san|aniki)\b", _I), "big brother", None),
-        (re.compile(r"\b(?:nee-?san|onee-?san|ane-?san)\b", _I), "big sister", None),
+    "yakuza": _HONORIFICS + (
         (re.compile(r"\b(?:oyaji|oyassan)\b", _I), "old man", None),
+        (re.compile(r"\blieutenants\b", _I), "deputies", None),
+        (re.compile(r"\blieutenant\b", _I), "deputy", None),
         (re.compile(r"\boyabun\b", _I), "boss", None),
         (re.compile(r"\bkyodai\b", _I), "brother", None),
         (re.compile(r"\bpatriarch of\b", _I), "head of", None),
@@ -150,17 +285,36 @@ AR_FIXES: dict[str, tuple[tuple["re.Pattern | None", str, str], ...]] = {
         (re.compile(r"\bspores?\b", _I), "جراثيم", "أبواغ"),
     ),
 }
+_SHOOT_EN = re.compile(r"\b(?:shoot|shoots|shot|shooting|fire|fires|fired|firing)\b", _I)
+# Arabic patterns the model gets wrong: (English that must be in the line or None, wrong, right).
+AR_PATTERNS: tuple[tuple["re.Pattern | None", re.Pattern, str], ...] = (
+    (None, re.compile(r"(?<![ء-ي])[اإأ]بقى(?![ء-ي])"), "ابق"),  # «إبقى خلفي» → «ابق خلفي»
+    # "unless they shoot first" → «إلا إذا أطلقوا أولاً»: the fire went missing
+    (_SHOOT_EN, re.compile(r"(?<![ء-ي])((?:و|ف)?[أا]طلق(?:وا|ت|نا)?) (?=(?:أولاً|أولا|أولًا|علي(?:ه|ها|هم|نا|ك|كم)|عليّ)(?![ء-ي]))"),
+     r"\1 النار "),
+)
 _ANY = re.compile("|".join(f"(?:{rx.pattern})" for rx, _ in GENERAL), _I)
+
+
+def _sub(rx: re.Pattern, repl: str, text: str) -> str:
+    """Replace, keeping a capital where the replaced words had one ("Howdy" → "Hello"): the
+    model translates "Be quiet, peasant!" better than "be quiet, peasant!"."""
+    def one(m: re.Match) -> str:
+        out = m.expand(repl)
+        if m.group(0)[:1].isupper() and out[:1].islower():
+            out = out[:1].upper() + out[1:]
+        return out
+    return rx.sub(one, text)
 
 
 def rewrite(english: str, series: str = "") -> str:
     """The line in plain English for the model: game words, then the series' words."""
     if _ANY.search(english):
         for rx, repl in GENERAL:
-            english = rx.sub(repl, english)
+            english = _sub(rx, repl, english)
     for rx, repl, cond in SERIES.get(series, ()):
         if cond is None or cond.search(english):
-            english = rx.sub(repl, english)
+            english = _sub(rx, repl, english)
     return english
 
 
@@ -169,6 +323,9 @@ def fix_arabic(arabic: str, english: str, series: str = "") -> str:
         for rx, wrong, right in AR_FIXES.get(group, ()):
             if wrong in arabic and (rx is None or rx.search(english)):
                 arabic = arabic.replace(wrong, right)
+    for en_rx, rx, right in AR_PATTERNS:
+        if (en_rx is None or en_rx.search(english)) and rx.search(arabic):
+            arabic = rx.sub(right, arabic)
     return arabic
 
 

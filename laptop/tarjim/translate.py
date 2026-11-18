@@ -933,6 +933,27 @@ def _is_group(en: str, ar: str) -> bool:
     return en.endswith("s") and not en.endswith("ss") and bool(_GROUP_AR.match(ar))
 
 
+def _reads_female(en: str, ar: str) -> bool:
+    """A one-word name not marked as a woman's that ends in "a" ("Majima", "Kasuga", "Luca"):
+    alone, the engine takes it for a woman's and writes her verbs («ماجيما تريد»)."""
+    return " " not in en.strip() and en[-1:].lower() == "a" and not _is_group(en, ar)
+
+
+def _vocative_title(arabic: str, english: str, matched: list[tuple[str, str]]) -> str:
+    """"Uncle, wake up" → «يا عم، استيقظ», not «العم، استيقظ»: a name or title written with
+    «ال», spoken to at the start of the line."""
+    for en, ar in matched:
+        if not ar.startswith("ال") or " " in ar or _is_group(en, ar):
+            continue
+        if not re.match(rf"[\s\"'-]*{re.escape(en)}\s*,", english, flags=re.IGNORECASE):
+            continue
+        # the engine sometimes brackets the name: «(العم)، انهض»
+        m = re.match(rf"\s*[(«\"]?{re.escape(ar)}[)»\"]?(\s*[،,])", arabic)
+        if m:
+            return "يا " + ar[2:] + m.group(1) + arabic[m.end():]
+    return arabic
+
+
 _PROBES = ("Hello, {}.", "{} is thinking about it.", "I told {} to wait.", "We got {}.")
 _AR_EDGE = "()«»\"'.,،؛؟!:… "
 _FEMALE_TITLE = re.compile(r"\b(?:Mrs|Miss|Ms|Lady|Madam|Sister|Aunt|Queen|Princess)\.?\s+$", flags=re.IGNORECASE)
@@ -1239,7 +1260,7 @@ def _swap_proxy(raw: str, swaps: list[tuple[str, str]]) -> tuple[str, bool]:
     return raw, all_found
 
 
-RULES = "r4"  # raise when the rules around the engine change, so the cache does not serve old output
+RULES = "r5"  # raise when the rules around the engine change, so the cache does not serve old output
 
 
 class CachedTranslator:
@@ -1332,7 +1353,8 @@ class CachedTranslator:
             fem_flags[en] = is_fem
             pool = free_f if is_fem else (free_g if _is_group(en, ar) and free_g else free)
             # A woman's name always goes through a stand-in: the engine then gets her verbs right.
-            if (modes[en][0] == "proxy" or is_fem) and pool:
+            # So does a man's name the engine would take for a woman's ("Majima" → «ماجيما تريد»).
+            if (modes[en][0] == "proxy" or is_fem or _reads_female(en, ar)) and pool:
                 if not pattern.search(source):
                     continue  # it sat inside a longer name that already has its stand-in
                 proxy_en, proxy_ar = pool.pop(0)
@@ -1376,6 +1398,7 @@ class CachedTranslator:
                 if ok2:
                     raw = apply_glossary(swapped2, key, dict(matched))
         raw = terms.commands_not_nouns(raw, key)
+        raw = _vocative_title(raw, key, matched)
         raw = _PLURAL_GROUP_VERB.sub(r"\1 \2وا", raw)
         raw = _PLURAL_GROUP_PRESENT.sub(lambda m: f"{m.group(1)} {m.group(2)}ي{m.group(3)}ون", raw)
         if "mill" in key.lower() and "المصنع" in raw:
