@@ -33,6 +33,13 @@ LAYER_TTL_MS = 700
 FILL_REFRESH_MS = 85  # about 12 fill refreshes per second
 HOLD_KEEP_MS = 200
 SAME_BLOCK_IOU = 0.80  # an early job belongs to the line that later became stable
+# A plate at least this dark hides white English letters on its own (under 85% black they are
+# within a few levels of the ground): it needs no fill made from the picture underneath.
+PLATE_HIDES = 0.85
+# The Arabic comes up and goes away softly instead of popping (the TV app animates it).
+# Short: the line is still readable at once, and nothing stays on screen after the English.
+FADE_IN_MS = 90
+FADE_OUT_MS = 140
 SIZE_LOCK_AFTER = 5  # lines measured before the Arabic font size is fixed for good
 
 
@@ -282,7 +289,7 @@ class Pipeline:
         layers = []
         mode = self.background
         b = self.tracker.shown
-        covers = mode in ("cover", "plate")
+        covers = self._uses_fill()
         if still_there and covers:
             # The fill comes from the newest frame, so it matches the picture as closely as possible.
             # Plate mode needs it too: a translucent plate alone leaves the English readable through it.
@@ -300,6 +307,8 @@ class Pipeline:
         if stale and self._text_up:
             self.link.clear(stale)
         t_sent = now_ms()
+        if not self._text_up:  # coming up from nothing fades in; a line replacing another swaps at once
+            layers = [dataclasses.replace(layer, fade_ms=FADE_IN_MS) for layer in layers]
         seq = self.link.show(self.window, layers)
         self._text_up = True
         self._holding = not still_there
@@ -323,6 +332,10 @@ class Pipeline:
 
     # -- while a line is up -------------------------------------------------------
 
+    def _uses_fill(self) -> bool:
+        """Cover mode always; plate mode only while the plate is too light to hide the English."""
+        return self.background == "cover" or (self.background == "plate" and self.plate_opacity < PLATE_HIDES)
+
     def _on_refresh(self, frame: np.ndarray) -> None:
         if not self._text_up or not self.enabled or self._holding:
             return
@@ -330,7 +343,7 @@ class Pipeline:
         if now - self._last_fill < FILL_REFRESH_MS:
             return
         t = time.perf_counter()
-        if self.background in ("cover", "plate"):
+        if self._uses_fill():
             fill = self._to_overlay(render.make_fill(frame, self.tracker.shown), frame.shape)
             self.link.show(self.window, [fill])
         self.link.keep(["text", "plate"])
@@ -350,7 +363,7 @@ class Pipeline:
             # which also hides the next English line until its own Arabic is ready.
             plate = render.make_plate(self._text_layer, self._frame_shape, self.plate_opacity)
             self.link.show(self.window, [self._to_overlay(plate, self._frame_shape)])
-        if self.background in ("cover", "plate"):
+        if self._uses_fill():
             self.link.clear(["fill"])  # nothing left to cover
         self.link.keep(["text", "plate"])
         self._holding = True
@@ -367,7 +380,7 @@ class Pipeline:
 
     def _clear(self) -> None:
         if self._text_up:
-            self.link.clear(None)
+            self.link.clear(None, fade_ms=FADE_OUT_MS)
         self._text_up = False
         self._holding = False
 

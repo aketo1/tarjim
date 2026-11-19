@@ -346,11 +346,12 @@ def test_font_size_is_locked_after_the_first_lines(ocr):
         pipe.close()
 
 
-@pytest.mark.parametrize("mode,shown,held", [
-    ("plate", ["fill", "plate", "text"], ["plate", "text"]),  # the English is erased under the plate
-    ("none", ["text"], ["text"]),
+@pytest.mark.parametrize("mode,opacity,shown,held", [
+    ("plate", 0.62, ["fill", "plate", "text"], ["plate", "text"]),  # a light plate: the English is erased under it
+    ("plate", 0.9, ["plate", "text"], ["plate", "text"]),  # a dark plate hides it alone: nothing made from the picture
+    ("none", 0.62, ["text"], ["text"]),
 ])
-def test_background_modes(ocr, mode, shown, held):
+def test_background_modes(ocr, mode, opacity, shown, held):
     s = synth.make_samples(1, 1, seed=41)
     line, empty = s[0], s[1]
 
@@ -362,7 +363,8 @@ def test_background_modes(ocr, mode, shown, held):
 
     with FakeTv() as tv, TvLink(tv.host, tv.port) as link:
         link.connect()
-        pipe = Pipeline(link, CachedTranslator(Engine(), Cache(":memory:")), ocr, background=mode)
+        pipe = Pipeline(link, CachedTranslator(Engine(), Cache(":memory:")), ocr, background=mode,
+                        plate_opacity=opacity)
         for i in range(12):
             pipe.process(line.frame, 30.0 + i * 0.033)
         assert _wait(lambda: tv.layer_ids() == shown)

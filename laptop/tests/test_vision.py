@@ -73,6 +73,24 @@ def test_typewriter_triggers_once_after_last_character():
     assert Event.GONE not in events
 
 
+def test_long_settle_waits_only_for_growing_text():
+    """With a long settle (a game whose goals are written word by word), a line that appears
+    whole still goes up after the short wait; typed text waits the full time after its last letter."""
+    from tarjim.vision.tracker import TrackParams
+
+    params = TrackParams(settle_ms=280, quick_ms=100)
+    s = synth.make_samples(1, 0, seed=7)[0]
+    tracker = SubtitleTracker(params)
+    events = [tracker.update(detect(f), i * 33.3) for i, f in enumerate([s.frame] * 15)]
+    assert 3 <= events.index(Event.NEW) <= 4  # about 100 ms, not 280
+    line = "Head to the docks and find the boat."
+    frames = synth.typewriter_frames(line, hold=16)
+    tracker = SubtitleTracker(params)
+    events = [tracker.update(detect(f), i * 33.3) for i, f in enumerate(frames)]
+    new_at = [i for i, e in enumerate(events) if e is Event.NEW]
+    assert len(new_at) == 1 and new_at[0] >= len(line) - 1 + 8  # 280 ms after the last letter
+
+
 def test_tracker_shows_refreshes_and_clears():
     s = synth.make_samples(2, 1, seed=11)
     with_text, other_text, empty = s[0].frame, s[1].frame, s[2].frame
