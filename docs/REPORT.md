@@ -1430,3 +1430,60 @@ Two rules made lines worse on this measure and were changed back or narrowed:
 - "bro-bro" → "bro": the model then writes «وإخوانه»; "brother" works.
 
 The new rules reach the user with the next installer; the line fixes already work in the installed 0.4.1.
+
+## 30. A faster, smoother engine, and a screen-text test taken back (added 2026-11-19)
+
+### The screen-text test
+
+The second session's screen text (menus, phone, prompts) was merged onto 0.4.3 on branch
+`hud-screen-text`. Its 295 tests passed, and it was copied over the installed program to try
+it on the TV while the user played. The user called it ugly: the letters covered over the moving
+scene showed as smudges, and much speech went untranslated.
+
+The session log showed 57 screen-text lines and **no** subtitle line at all, so the subtitles had
+stopped. Several things in that branch narrow or filter the subtitle path when screen text is on;
+which one caused it is not settled.
+
+The installed code was put back to 0.4.3 at once. The branch stays unmerged; screen text will be
+rebuilt as a separate add-on that cannot touch the subtitle path, draws only on flat panels and
+never over the scene, and stays off until it is shown to work.
+
+### The subtitle look
+
+Pictures of three looks were made from a recorded GTA VI frame:
+- the cover (the colour around the letters);
+- a dark translucent plate;
+- an edgeless soft shadow.
+
+The soft shadow left the English readable and showed as a grey cloud. The user chose the cover
+and turned the plate down ("no black band"), so the cover stays the default.
+
+### Faster: a short wait for whole lines
+
+Today's session had a median 347 ms from first sight to the Arabic on the TV. Of that, 280 ms
+was GTA VI's settle time. That setting is for its goals, which are written word by word. Reading
+and translating already start at first sight, so the wait was the cost.
+
+The tracker now waits the full settle time only for a line it has seen growing. A line that
+appeared whole goes up after `quick_ms`, 100 ms. A typed line still waits the full time after
+its last letter. This should take about 180 ms off most GTA VI lines; it has not yet been
+measured in play.
+
+### Cleaner: a dark plate without a fill
+
+A plate at least 85% dark (`PLATE_HIDES`) hides white English letters by itself. No fill made
+from the stream (which lags the TV's picture) is drawn under it any more, and no fill refreshes
+are sent. Under 85%, and in cover mode, nothing changed.
+
+### Smoother: fades
+
+The TV app could always fade layers; the engine never asked for it. Now:
+- a line coming up from nothing fades in over 90 ms;
+- a line that leaves fades out over 140 ms;
+- a line replacing another swaps at once (a fade would flash).
+
+### Tests and version
+
+- New tests: a whole line under a 280 ms settle goes up in about 100 ms, and typed text waits
+  280 ms after its last letter; a dark plate sends no fill layer. 283 tests pass.
+- 0.4.4 was installed on the user's laptop.

@@ -4,7 +4,7 @@
 
 <br>
 
-[![Download](https://img.shields.io/badge/Download-v0.4.3-f4f4f5?style=for-the-badge&labelColor=111114&logo=windows&logoColor=white)](../../releases/latest)
+[![Download](https://img.shields.io/badge/Download-v0.4.4-f4f4f5?style=for-the-badge&labelColor=111114&logo=windows&logoColor=white)](../../releases/latest)
 ![PS5](https://img.shields.io/badge/PS5-Remote%20Play-f4f4f5?style=for-the-badge&labelColor=111114&logo=playstation&logoColor=white)
 ![Offline](https://img.shields.io/badge/100%25-offline-f4f4f5?style=for-the-badge&labelColor=111114)
 [![Built with AI](https://img.shields.io/badge/Built%20with-AI%20%C2%B7%20Claude-d97757?style=for-the-badge&labelColor=111114&logo=anthropic&logoColor=white)](#ai)
@@ -194,13 +194,13 @@ flowchart LR
 
 | الملف | لمين |
 | --- | --- |
-| **`Tarjim-Setup-0.4.3.exe`** | **اللابتوب أو الكمبيوتر** (ويندوز ١٠ أو ١١، ٦٤-بت). فيه البرنامج والمترجم وبرنامج الشاشة، حوالي ٦٧٠ ميقا |
+| **`Tarjim-Setup-0.4.4.exe`** | **اللابتوب أو الكمبيوتر** (ويندوز ١٠ أو ١١، ٦٤-بت). فيه البرنامج والمترجم وبرنامج الشاشة، حوالي ٦٧٠ ميقا |
 | **`Tarjim-TV-0.4.2.apk`** | **التلفزيون**: برنامج الشاشة لحاله. اللابتوب يركّبه لحاله من الدليل، وهذا لو تبي تركّبه بنفسك |
 | **`Tarjim-Phone-Remote-0.4.2.apk`** | **الجوال**: تتحكم باللابتوب من الكنبة |
 
 وتبي الجوال يسوي كل شي بدون لابتوب؟ [ترجِم للجوال](https://github.com/aketo1/tarjim-phone/releases/latest).
 
-1. شغّل `Tarjim-Setup-0.4.3.exe` واضغط **«ثبّت ترجِم»**. ما يحتاج صلاحيات مدير، وياخذ أقل من دقيقة.
+1. شغّل `Tarjim-Setup-0.4.4.exe` واضغط **«ثبّت ترجِم»**. ما يحتاج صلاحيات مدير، وياخذ أقل من دقيقة.
 2. افتح ترجِم. أول مرة يمشّيك **الدليل** خطوتين، مرة وحدة بس:
    - **التلفزيون:** تكتب عنوانه، والبرنامج يركّب برنامج الشاشة ويفعّله.
    - **الـPS5:** تسجّل دخول بالحساب الثاني في صفحة Sony وتكتب رقم الربط.
@@ -264,6 +264,7 @@ flowchart LR
 | ١٧ نوفمبر | مكتبة الألعاب، والإكس بوكس (تجريبي) |
 | ١٨ نوفمبر | الشكل الجديد بصور الألعاب، عربي أوضح، ترجمة أسرع، كلمات ٢٨ لعبة، والإصدار 0.4.2 |
 | ١٩ نوفمبر | أول جلسة GTA 6: مراجعة ٣٣٤٧ سطر، كلام الشوارع وأزرار اللعبة وأوامر المهمات، والإصدار 0.4.3 |
+| ١٩ نوفمبر (مساءً) | محرك أسرع وأنعم: السطر يطلع خلال ١٠٠ ملي ثانية بدل ٢٨٠، وظهور واختفاء ناعم، والإصدار 0.4.4 |
 
 <sub>كل رقم في هذي الصفحة مقاس، وكل صورة وGIF فيها مصنوعة بكود البرنامج نفسه (`laptop/launcher/make_readme_media.py`).</sub>
 
