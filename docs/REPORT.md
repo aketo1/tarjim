@@ -1367,3 +1367,66 @@ Detail was measured as the variance of the Laplacian, old against new, at the si
 - Rockstar offers its wallpapers only as one 250 MB zip. `zip_member()` reads a single picture out of it with HTTP byte ranges.
 - Downloads, with the user's permission: Rockstar's pictures came to 5 MB and the 27 Steam covers to 4.8 MB.
 - The phone app's own live picture stays 960 x 540. It is encoded on the phone, and a bigger one was not tested there.
+
+## 28. A GTA VI session reviewed line by line (added 2026-11-19)
+
+The user played GTA VI on its release day with the installed 0.4.1. They asked for the lines that appeared to be collected and translated correctly, by their meaning.
+
+### What the session left
+
+The translation cache (`~/.tarjim/translations.sqlite`, profile `gta6`) held 3,347 different English keys from about four hours of play.
+
+| Kind | Lines | What it is |
+| --- | --- | --- |
+| Speech, goals, prompts | 2,768 | Includes many slightly different readings of the same line, and the in-game phone's screens |
+| Reading noise | 426 | Mostly the game's phone messages read as text |
+| Caught while appearing | 111 | The start of a line that was still being written on screen |
+| Two lines read as one | 42 | Both halves are also lines of their own |
+
+### The review
+
+Every line was read with its neighbours, so the reviewer knew who was speaking and to whom. A line was rewritten wherever the model had missed the meaning:
+- idioms translated word for word;
+- slang ("dude" as a dandy, "baby" as an infant);
+- mission goals written as nouns ("the driving to ...");
+- the gender of the person spoken to;
+- place names taken as words ("Key Lento" as a key);
+- the game's prompts with their button left out.
+
+The reviewed Arabic went into the user's own line fixes (the `fix` table, which wins over the engine): 2,187 lines, 2,045 of them different from what was shown. Two lines read as one get both halves' Arabic.
+
+These are the game's own lines. They stay in the user's data and are not in this repository, its tests or this report. A copy of the database from before is kept outside the repository.
+
+### What changed for every line, not only these
+
+- **44 names and places** were added to the GTA VI list (`packs/source/2-gta.txt`) and to the user's own `gta6` profile. Examples: Key Lento, Maroon Key, Gambit Bay, the Rusty Anchor, Lori, Kenton, Kat, Andy. Fleeca is now shared with GTA VI.
+- **Street talk and swearing** (`terms.py` = `Terms.kt`, every game):
+  - catch you on the flip, say less, got another thing coming, pull the plug on;
+  - ghosted me, hooking up with, I got you;
+  - "dude", and "baby" or "bro" said to someone;
+  - "oh, shit!" as "damn", "my shit" as "my stuff", "get your shit together", "piece of shit", "fuckin' A".
+- **GTA's own words:** chick, dope, lame, yeyo, stay on his ass, the Keys as islands, "Chase X" as a goal.
+- **Button prompts:** the reader leaves the button picture out, so the model saw "Hold to sprint" and wrote «عقد». Now:
+  - "Hold" becomes "Press and hold";
+  - "Release to" becomes "Let go of the button to";
+  - "Press to" becomes "Press the button to";
+  - "loadout" becomes "equipment".
+- **Mission goals as commands:** escort, choose, select, sit, move, dance, examine, pick up, deal with, chase, change, visit, enter, equip, order, «القيادة» and «البحث» (`VERB_NOUNS`).
+- **«حزب البكالوريوس» → «حفلة توديع العزوبية»** for a bachelor party.
+- **A woman named but not spoken to** ("Buy Maria a ring", "Don't you like Maria?"): the one spoken to is now a man by default, as in every other line. The model had written «اطلبي» and «تحبين».
+- **All-caps lines without a sentence's end are not speech.** These are the radio's song captions, menu bars and signs (179 of the session's lines). They are no longer translated. The rule for short labels was there before; it now holds at any length. This is laptop only: the phone app reads text another way.
+- `RULES` is "r7".
+
+### Measured
+
+The current code translated the session's reviewed lines again, with a fresh cache and no line fixes. These were the 1,785 lines with three or more words. Each translation was scored against the review with chrF (character n-grams, 100 = the same):
+- before the rules: 48.1;
+- after them: 49.1.
+
+The rest of the distance is wording that only a reader of the whole scene can choose, and that is what the line fixes hold.
+
+Two rules made lines worse on this measure and were changed back or narrowed:
+- "that shit" → "that stuff": the model already writes «هذا الهراء» there;
+- "bro-bro" → "bro": the model then writes «وإخوانه»; "brother" works.
+
+The new rules reach the user with the next installer; the line fixes already work in the installed 0.4.1.

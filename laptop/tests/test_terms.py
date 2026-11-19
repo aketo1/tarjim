@@ -122,7 +122,7 @@ def test_translator_uses_the_series(tmp_path):
     ("You strapped?", "gta", "You armed?"),
     ("The opps are rolling up on us.", "gta", "The enemies are coming at us."),
     ("We gotta hit a lick tonight.", "gta", "We gotta do a robbery tonight."),
-    ("Nice whip, bro.", "gta", "Nice car, bro."),
+    ("Nice whip, bro.", "gta", "Nice car, brother."),
     ("Five-O! Run!", "gta", "Police! Run!"),
     ("Hold thy tongue, peasant!", "kcd", "Be quiet, peasant!"),
     ("Methinks he lies.", "kcd", "I think he lies."),
@@ -187,6 +187,54 @@ def test_gender_hamza_and_anywhere():
     assert gender.masculinize("إذا أردت، أذهب معك.") == "إذا أردت، أذهب معك."  # "I go" stays
     assert gender.masculinize("لا تقلق بشأني اعتني بنفسك.") == "لا تقلق بشأني اعتن بنفسك."
     assert gender.feminize("لا تقلقي بشأني، اعتن بنفسك.") == "لا تقلقي بشأني، اعتني بنفسك."
+
+
+@pytest.mark.parametrize("en, series, out", [
+    ("Okay, catch you on the flip side!", "gta", "Okay, see you later!"),
+    ("Oh, shit! The car!", "", "Oh, damn! The car!"),
+    ("Was it really fuckin' him?", "", "Was it really him?"),
+    ("Hold to sprint", "", "Press and hold to sprint"),
+    ("Hold R2 to speed up", "", "Press and hold R2 to speed up"),
+    ("Release to throw the grenade", "", "Let go of the button to throw the grenade"),
+    ("Keep Right 120 ft", "", "stay on the Right 120 ft"),
+    ("My sister ghosted me last week.", "", "My sister cut off all contact with me last week."),
+    ("Drinks for everyone, baby!", "", "Drinks for everyone, darling!"),
+    ("Dude, where is the car?", "", "Man, where is the car?"),
+    ("That party was so dope!", "gta", "That party was so cool!"),
+    ("Chase Marcus", "gta", "Pursue Marcus"),
+    ("Stay on her ass, she's getting away!", "gta", "Stay right behind her, she's getting away!"),
+    ("He hid the money somewhere in the Keys.", "gta", "He hid the money somewhere in the islands."),
+    ("You need to get your shit together, man.", "", "You need to get your life in order, man."),
+    ("Can your friend hook us up?", "", "Can your friend introduce us to someone?"),
+    ("He's got another thing coming if he thinks that.", "", "He is badly mistaken if he thinks that."),
+])
+def test_street_talk_and_button_prompts(en, series, out):
+    assert terms.rewrite(en, series).lower() == out.lower()
+
+
+@pytest.mark.parametrize("en, series", [
+    ("The baby needs a nap.", ""),
+    ("She wants to hold the baby.", ""),
+    ("Keep the change.", ""),
+    ("Release the hostages!", ""),
+    ("We hang out at the pier.", ""),
+    ("A chick hatched today.", "rdr"),  # a girl only in GTA
+    ("I got you a present.", ""),
+    ("The keys are on the table.", "gta"),
+    ("It'll be a cold day in hell before I pay him.", ""),  # the long form is left to the model
+    ("Shitty weather today.", ""),
+])
+def test_street_talk_left_alone(en, series):
+    assert terms.rewrite(en, series) == en
+
+
+def test_mission_goals_are_commands():
+    assert terms.commands_not_nouns("مرافقة الشاحنة إلى الميناء.", "Escort the truck to the port.") == "رافق الشاحنة إلى الميناء."
+    assert terms.commands_not_nouns("البحث عن المفتاح.", "Find the key.") == "ابحث عن المفتاح."
+    assert terms.commands_not_nouns("القيادة إلى المطار.", "Drive to the airport.") == "قد إلى المطار."
+    assert terms.fix_arabic("خذ حزب البكالوريوس إلى الحانة.", "Take the bachelor party to the bar.") == \
+        "خذ حفلة توديع العزوبية إلى الحانة."
+    assert terms.starts_with_command("Buy Maria a ring") and not terms.starts_with_command("Maria will like this")
 
 
 def test_stay_joined_to_and():

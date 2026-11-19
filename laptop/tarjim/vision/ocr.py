@@ -34,9 +34,10 @@ def looks_like_subtitle(text: str) -> bool:
         return False
     if any(c.isdigit() for c in text) and len(letters) < 4:
         return False  # "PS5", "x2", "L1": interface labels, not speech
-    words = text.split()
-    if text.isupper() and len(words) <= 3 and not text.rstrip().endswith(("!", "?", ".")):
-        return False  # short all-caps labels (names, places, button prompts)
+    if text.isupper() and not text.rstrip().endswith(("!", "?", ".", "…")):
+        # all-caps labels: names, places and button prompts, and longer ones too: the radio's
+        # song captions and menu bars ("SELECT  ZOOM  BACK") are not speech
+        return False
     latin = sum(1 for c in letters if c.isascii())
     return latin / len(letters) >= 0.7
 

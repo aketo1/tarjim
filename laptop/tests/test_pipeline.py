@@ -67,6 +67,10 @@ def test_text_helpers():
     assert not looks_like_subtitle("12:45") and not looks_like_subtitle("警告 危険")
     assert not looks_like_subtitle("PS5") and not looks_like_subtitle("OLD TOWN")
     assert looks_like_subtitle("No.") and looks_like_subtitle("RUN!") and looks_like_subtitle("We have 12 men.")
+    # a radio caption or a menu bar, however long, is not speech; a shouted line still is
+    assert not looks_like_subtitle("NIGHT FM SUMMER SONG THE MIDNIGHT BAND")
+    assert not looks_like_subtitle("SELECT  ZOOM  BACK")
+    assert looks_like_subtitle("GET DOWN, ALL OF YOU!") and looks_like_subtitle("THEY'RE COMING...")
 
 
 # -- translation plumbing (no model) ------------------------------------------------

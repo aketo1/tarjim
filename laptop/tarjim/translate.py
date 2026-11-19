@@ -1263,7 +1263,7 @@ def _swap_proxy(raw: str, swaps: list[tuple[str, str]]) -> tuple[str, bool]:
     return raw, all_found
 
 
-RULES = "r6"  # raise when the rules around the engine change, so the cache does not serve old output
+RULES = "r7"  # raise when the rules around the engine change, so the cache does not serve old output
 
 
 class CachedTranslator:
@@ -1409,6 +1409,10 @@ class CachedTranslator:
         if all(fem_flags.values()):
             if any(_is_vocative(key, en) for en, _ in matched):
                 raw = _feminize_vocative(raw)
+            else:
+                # "Buy Maria a ring", "Don't you like Maria?": she is named, not spoken to, so the
+                # one spoken to is a man by default, as everywhere («اطلبي» → «اطلب», «تحبين» → «تحب»)
+                raw = _masculinize_default(raw)
             if len(matched) >= 2:
                 raw = _feminize_plural(raw)
         elif not any(fem_flags.values()) and not _FEMALE_EN_WORD.search(key):

@@ -200,6 +200,62 @@ GENERAL: tuple[Rule, ...] = (
     (re.compile(r"\b(want|wants|wanted|need|needs|needed|'d like|would like) a (?:quick )?word\b", _I),
      r"\1 to talk to you"),
     (re.compile(r"\bworry about yourself\b", _I), "take care of yourself"),
+    (re.compile(r"\bcatch you on the flip(?: ?side)?\b", _I), "see you later"),
+    (re.compile(r"\bsay less\b", _I), "understood"),
+    (re.compile(r"^do what now\?", _I), "what do you mean?"),
+    (re.compile(r"\b(?:it'?ll|it will) be a cold day in (?:\w+ )?hell(?=[.!?]|$)", _I), "that will never happen"),
+    (re.compile(r"\b(he|she|it)(?:'s| has| is) got another thing coming\b", _I), r"\1 is badly mistaken"),
+    (re.compile(r"\b(you|they|we)(?:'ve| have)? got another thing coming\b", _I), r"\1 are badly mistaken"),
+    (re.compile(r"\bpull(?:ed)? the plug on\b", _I), "cut ties with"),
+    (re.compile(r"\bpulling the plug on\b", _I), "cutting ties with"),
+    (re.compile(r"\bpull up (?:in )?front of\b", _I), "stop in front of"),
+    (re.compile(r"\bblackball(ed|ing)?\b", _I), r"blacklist\1"),
+    (re.compile(r"\bpoof!", _I), "just like that!"),
+    (re.compile(r"\bwith your bun in her oven\b", _I), "pregnant with your baby"),
+    (re.compile(r"\b(?:a|your|his|my) bun in (?:the|her) oven\b", _I), "a baby on the way"),
+    (re.compile(r"\bhang(ing)? out with\b", _I), r"spend\1 time with"),
+    # someone who stops answering: "she ghosted me"
+    (re.compile(r"\bghosted (me|you|him|her|us|them)\b", _I), r"cut off all contact with \1"),
+    (re.compile(r"\bghosting (me|you|him|her|us|them)\b", _I), r"cutting off all contact with \1"),
+    (re.compile(r"\bghost (me|you|him|her|us|them)\b", _I), r"cut off all contact with \1"),
+    (re.compile(r"\bgot ghosted\b", _I), "was abandoned"),
+    (re.compile(r"\bpeaced out\b", _I), "left"),
+    (re.compile(r"\bhook (me|us) up(?=[?!.,]|$)", _I), r"introduce \1 to someone"),
+    (re.compile(r"\bhooking up with\b", _I), "dating"),
+    (re.compile(r"\bhooked up with\b", _I), "dated"),
+    (re.compile(r"\bhook up with\b", _I), "date"),
+    # "I got you": I understand, or I'm here for you, not "I caught you"
+    (re.compile(r"(?:^|(?<=[.!?] ))I got you(?=[.!]|$)", _I), "I'm with you"),
+    (re.compile(r"\bmy guy\b", _I), "my friend"),
+    (re.compile(r"(?<=[,!] )bro(?:-bro)?(?=[.!?,]|$)", _I), "brother"),
+    (re.compile(r"\bdude\b", _I), "man"),
+    # "baby" said to someone, not a child: "Drinks for everyone, baby!" «وطفل رضيع»
+    (re.compile(r"(?<=[,!] )baby(?=[.!?,]|$)", _I), "darling"),
+    (re.compile(r"^baby(?=, )", _I), "darling"),
+    # swearing the model takes word for word
+    (re.compile(r"\bget fucked\b", _I), "go to hell"),
+    (re.compile(r"\byou fuck(?=[!.?,]|$)", _I), "you bastard"),
+    (re.compile(r"\bfuckin'? A\b", _I), "absolutely"),
+    (re.compile(r"\b(really|just|so|even) fuckin'?\s+(?=(?:you|me|him|her|it|us|them)\b)", _I), r"\1 "),
+    (re.compile(r"\byou fuckin'? (understand|hear|listen|get|know|think|want|see)\b", _I), r"you \1"),
+    (re.compile(r"\bfuckin'(?=\s)", _I), "fucking"),
+    (re.compile(r"(?:^|(?<=[.!?\u2026] ))((?:oh|ah|aw|aww|ooh|uh),? )?shit(?=[!.\u2026,]|$)", _I), r"\1damn"),
+    (re.compile(r"\bholy shit\b", _I), "oh my God"),
+    (re.compile(r"^no shit\b", _I), "obviously"),
+    (re.compile(r"\bget (my|your|his|her|our|their) shit together\b", _I), r"get \1 life in order"),
+    (re.compile(r"\b(my|your|his|her|our|their) shit\b", _I), r"\1 stuff"),
+    (re.compile(r"\bpiece of shit (car|truck|boat|phone|place|house|gun)\b", _I), r"junk \1"),
+    (re.compile(r"\bpiece of shit\b", _I), "bastard"),
+    (re.compile(r"\b(is|'s|are|'re) shitting (?:his|her|their|your) pants\b", _I), r"\1 terrified"),
+    (re.compile(r"\bdon't shit yourself\b", _I), "don't panic"),
+    # button prompts: the button is a picture the reader leaves out, "Hold to sprint"
+    (re.compile(r"\b(Press|Hold|Use)to\b", _I), r"\1 to"),
+    (re.compile(r"^Hold(?= (?:[LR][123]|or|and|to|down)\b)", _I), "Press and hold"),
+    (re.compile(r"^Press to\b", _I), "Press the button to"),
+    (re.compile(r"^Release to\b", _I), "Let go of the button to"),
+    (re.compile(r"\bloadout\b", _I), "equipment"),
+    (re.compile(r"^Keep (left|right)\b", _I), r"stay on the \1"),
+    (re.compile(r"^Stash (the|your)\b", _I), r"hide \1"),
 )
 
 # A rule of a series, with an optional condition the whole line must meet.
@@ -227,6 +283,21 @@ _KILLED: tuple[SeriesRule, ...] = (  # "whacked him" is killed him in a crime st
 SERIES: dict[str, tuple[SeriesRule, ...]] = {
     "gta": _KILLED + (
         (re.compile(r"\b(nice|new|sweet|fancy|my|your|his|her|that|this) whip\b", _I), r"\1 car", None),
+        (re.compile(r"\bchicks\b", _I), "girls", None),
+        (re.compile(r"\bchick\b", _I), "girl", None),
+        (re.compile(r"\b(so|real|really|pretty|damn|fucking) dope\b", _I), r"\1 cool", None),
+        (re.compile(r"\bdope!", _I), "cool!", None),
+        (re.compile(r"\b(?:a )?lame(?=[,.!?]|$)", _I), "boring", None),
+        (re.compile(r"\b(?:yeyo|yayo)\b", _I), "cocaine", None),
+        (re.compile(r"\bsome blanco\b", _I), "some cocaine", None),
+        (re.compile(r"\bstay on his ass\b", _I), "stay right behind him", None),
+        (re.compile(r"\bstay on her ass\b", _I), "stay right behind her", None),
+        (re.compile(r"\bstay on their ass(?:es)?\b", _I), "stay right behind them", None),
+        (re.compile(r"\bthe Keys\b"), "the islands", None),  # Leonida's islands, not keys
+        (re.compile(r"\ball over the keys\b", _I), "all over the islands", None),
+        (re.compile(r"(?<=, )(?:dog|dawg)(?=[.!?,]|$)", _I), "man", None),
+        (re.compile(r"(?<=, )mama(?=[.!?,]|$)", _I), "girl", None),
+        (re.compile(r"^Chase(?= [A-Z]|$)"), "Pursue", None),  # a mission goal, not a name
         (re.compile(r"\bcap (him|her|them|you|that \w+)\b", _I), r"shoot \1", None),
         (re.compile(r"\bcapped (him|her|them|you|that \w+)\b", _I), r"shot \1", None),
     ),
@@ -279,6 +350,8 @@ SERIES: dict[str, tuple[SeriesRule, ...]] = {
 AR_FIXES: dict[str, tuple[tuple["re.Pattern | None", str, str], ...]] = {
     "": (
         (None, "بطاقات التموينية", "بطاقات التموين"),
+        (re.compile(r"\bbachelor part(?:y|ies)\b", _I), "حزب البكالوريوس", "حفلة توديع العزوبية"),
+        (re.compile(r"\bbachelor part(?:y|ies)\b", _I), "حفلة البكالوريوس", "حفلة توديع العزوبية"),
     ),
     "tlou": (
         (re.compile(r"\bspores?\b", _I), "الجراثيم", "الأبواغ"),
@@ -359,7 +432,7 @@ VERB_NOUNS: dict[str, dict[str, str]] = {
     "clean": {"تنظيف": "نظّف"},
     "brush": {"تنظيف": "نظّف"},
     "save": {"حفظ": "احفظ", "إنقاذ": "أنقذ"},
-    "rescue": {"إنقاذ": "أنقذ"},
+    "rescue": {"إنقاذ": "أنقذ", "الإنقاذ": "أنقذ"},
     "collect": {"جمع": "اجمع"},
     "gather": {"جمع": "اجمع"},
     "carry": {"حمل": "احمل"},
@@ -377,7 +450,7 @@ VERB_NOUNS: dict[str, dict[str, str]] = {
     "return": {"إعادة": "أعد", "العودة": "عد"},
     "deliver": {"تسليم": "سلّم"},
     "hand": {"تسليم": "سلّم"},
-    "drive": {"قيادة": "قد"},
+    "drive": {"قيادة": "قد", "القيادة": "قد"},
     "draw": {"سحب": "اسحب"},
     "pull": {"سحب": "اسحب"},
     "take": {"أخذ": "خذ", "اتخاذ": "خذ"},
@@ -387,7 +460,7 @@ VERB_NOUNS: dict[str, dict[str, str]] = {
     "leave": {"ترك": "اترك", "مغادرة": "غادر"},
     "shoot": {"إطلاق": "أطلق"},
     "fire": {"إطلاق": "أطلق"},
-    "find": {"العثور": "اعثر", "إيجاد": "جد"},
+    "find": {"العثور": "اعثر", "إيجاد": "جد", "البحث": "ابحث"},
     "locate": {"تحديد": "حدد"},
     "wait": {"الانتظار": "انتظر", "انتظار": "انتظر"},
     "check": {"التحقق": "تحقق", "فحص": "افحص"},
@@ -421,6 +494,24 @@ VERB_NOUNS: dict[str, dict[str, str]] = {
     "track": {"تعقب": "تعقب", "تتبع": "تتبع"},
     "sneak": {"التسلل": "تسلل"},
     "climb": {"تسلق": "تسلق"},
+    "escort": {"مرافقة": "رافق"},
+    "choose": {"اختيار": "اختر"},
+    "select": {"اختيار": "اختر", "تحديد": "حدد"},
+    "sit": {"الجلوس": "اجلس", "جلوس": "اجلس"},
+    "move": {"التحرك": "تحرك", "تحريك": "حرّك", "نقل": "انقل"},
+    "dance": {"الرقص": "ارقص"},
+    "examine": {"فحص": "افحص"},
+    "pick": {"التقاط": "التقط", "إلتقاط": "التقط", "اختيار": "اختر"},
+    "deal": {"التعامل": "تعامل"},
+    "pursue": {"مطاردة": "طارد", "ملاحقة": "لاحق"},
+    "chase": {"مطاردة": "طارد", "ملاحقة": "لاحق"},
+    "change": {"تغيير": "غيّر", "التغيير": "غيّر"},
+    "visit": {"زيارة": "زر"},
+    "enter": {"الدخول": "ادخل", "دخول": "ادخل"},
+    "equip": {"تجهيز": "جهّز"},
+    "investigate": {"التحقيق": "حقق"},
+    "order": {"طلب": "اطلب"},
+    "spend": {"قضاء": "اقض"},
 }
 # The word after the first one shows it is a noun, not a command: "Escape is impossible".
 _NOT_A_COMMAND_NEXT = {"is", "was", "are", "were", "will", "would", "can", "could", "should", "has", "have", "had",
@@ -436,6 +527,14 @@ def _command(token: str, nouns: dict[str, str]) -> str | None:
         if token.startswith(noun) and token[len(noun):] in _SUFFIX:
             return cmd + token[len(noun):]
     return None
+
+
+def starts_with_command(english: str) -> bool:
+    """The line opens with a command we know ("Buy Maria a ring"), not with a noun."""
+    words = english.lstrip(" \"'-–—").split()
+    if len(words) < 2:
+        return False
+    return words[0].lower().strip(",.!?") in VERB_NOUNS and words[1].lower().strip(",.!?") not in _NOT_A_COMMAND_NEXT
 
 
 def commands_not_nouns(arabic: str, english: str) -> str:
