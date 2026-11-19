@@ -123,6 +123,11 @@ class _Track:
         return self.cand.panel_bgr is not None
 
 
+def _capitals_only(text: str) -> bool:
+    letters = [c for c in text if c.isalpha()]
+    return len(letters) >= 3 and sum(c.isupper() for c in letters) >= 0.9 * len(letters)
+
+
 def outlined_light(item: Item) -> bool:
     """True when the dark strokes are only the edges of light letters: they close around holes
     as tall as a letter. A real message's letters close only around small holes (o, e, a); the
@@ -719,8 +724,27 @@ class ScreenText:
     def _finish_one(self, frame: np.ndarray, t: _Track, now: float, engine: bool) -> None:
         """Translate a read text and draw it; without `engine`, only what needs no engine."""
         text, item = t.english, t.item
+        words = text.split()
+        if len(words) >= 2 and len(words[-1]) == 1 and words[-1].isalpha() and item.icon_r is None:
+            # "ADD M": the search lost the end of a word ("ADD MARKER"). Translated, the rest of
+            # the word would stick out beside the Arabic.
+            t.state = "rejected"
+            return
+        if t.card and _capitals_only(text):
+            # A message is written in sentences. Capitals only on a light ground are buttons
+            # with a dark edge over a bright map, taken for a card: left to be found as buttons.
+            t.state = "rejected"
+            return
         t_mt = time.perf_counter()
-        ar = self._arabic(text, head=t.cand.head, known_only=t.cand.zone in self._known_only, engine=engine)
+        # The busy parts of the screen take only the game's own words, unless the text sits on a
+        # panel of its own (an info box over the map): then it is read like any other.
+        # Only sentences count (small letters, more than one word): a sign in the world on a plain
+        # wall ("Barracho" in neon) is the game's picture, not its text.
+        sentence = len(text.split()) >= 2 and any(c.islower() for c in text)
+        on_panel = sentence and (item.panel_bgr is not None
+                                 or _even_ground(frame, item, 7.0 if len(item.lines) > 1 else 3.5))
+        known_only = t.cand.zone in self._known_only and not on_panel
+        ar = self._arabic(text, head=t.cand.head, known_only=known_only, engine=engine)
         mt_ms = (time.perf_counter() - t_mt) * 1000.0
         if ar is _LATER:
             return  # the engine's turn comes
@@ -785,14 +809,20 @@ class ScreenText:
             word = game.ui_word(game.fix_reading(text)) if game is not None else None
             single = len(text.split()) == 1
             name = self._name_for(text) if single else None
-            if word is not None:
+            first = next((c for c in text if c.isalpha()), "")
+            if first.islower():
+                # The middle of a sentence ("to view your current", "and check your cash
+                # balance.", "on" out of a spoken line): half a sentence translated on its own
+                # reads wrong, even a word the table knows, so it stays as it is.
+                ar = None
+            elif word is not None:
                 ar = word
             elif name is not None:
                 ar = name
-            elif single and (text[:1].islower() or len(text.strip(".,!?:")) <= 3
-                             or (text.isupper() and len(text.strip(".,!?:")) <= 5)):
-                # A piece of a word ("pdate", "ALK"), or a short label the table does not know
-                # (a car's brand): drawn wrong it would break the screen, left alone it does not.
+            elif single:
+                # One word the table and the names do not know: a piece of a word ("pdate"),
+                # two words read as one ("Getthe" became «غيث»), or a brand. Drawn wrong it would
+                # break the screen; left alone it does not.
                 ar = None
             elif game is not None and game.keep_english(game.fix_reading(text)):
                 ar = None

@@ -310,9 +310,10 @@ class LiveSession:
 
             from .. import gta6
 
-            if gta6.is_gta6(profile, str(prof.get("title") or "")):
+            if gta6.screen_text_on(profile, prof):
                 # Menus and messages on their own thread, reader and translator (screen_text.py).
-                # Attached for GTA VI even when switched off, so the switch works while translating.
+                # Loaded only when switched on (its reader takes memory); switched off while
+                # translating it stops at once, switched on it starts with the next session.
                 from .. import screen_text
 
                 if self._ocr_screen is None:

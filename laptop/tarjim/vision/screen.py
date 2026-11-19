@@ -471,6 +471,9 @@ def build_item(frame: np.ndarray, cand: Cand, p: FindParams | None = None) -> It
                 icon_l=runs[0].icon_l if len(runs) == 1 else None, icon_r=runs[0].icon_r if len(runs) == 1 else None)
 
 
+EDGE_REACH = 90  # px at 1080p: how far past a zone's sides a crossing phrase is followed
+
+
 def find_items(frame: np.ndarray, zone: Zone, p: FindParams | None = None,
                skip: list[tuple[int, int, int, int]] | None = None) -> list[Cand]:
     """Every row of light text in the zone (and of dark text on light rows), split into items."""
@@ -478,8 +481,12 @@ def find_items(frame: np.ndarray, zone: Zone, p: FindParams | None = None,
     fh, fw = frame.shape[:2]
     s = fh / 1080.0
     zx0, zy0, zx1, zy1 = zone.box(fw, fh)
-    crop = frame[zy0:zy1, zx0:zx1]
-    blank = [(x0 - zx0, y0 - zy0, x1 - zx0, y1 - zy0) for x0, y0, x1, y1 in (skip or [])]
+    # Searched a little beyond the zone's sides: a phrase that crosses its edge ("BUY" outside,
+    # "FLOWERS" inside) is found whole, and kept by the zone that holds its middle.
+    m = int(round(EDGE_REACH * s))
+    ex0, ex1 = max(0, zx0 - m), min(fw, zx1 + m)
+    crop = frame[zy0:zy1, ex0:ex1]
+    blank = [(x0 - ex0, y0 - zy0, x1 - ex0, y1 - zy0) for x0, y0, x1, y1 in (skip or [])]
     out: list[Cand] = []
     for dark in ((True, False) if zone.dark else (False,)):
         if not dark:
@@ -487,15 +494,17 @@ def find_items(frame: np.ndarray, zone: Zone, p: FindParams | None = None,
             # light strokes: that row was read as dark text already.
             for c in out:
                 bx0, by0, bx1, by1 = c.box
-                blank.append((bx0 - zx0, by0 - zy0, bx1 - zx0, by1 - zy0))
+                blank.append((bx0 - ex0, by0 - zy0, bx1 - ex0, by1 - zy0))
         cw, ch = crop.shape[1], crop.shape[0]
         for row in _runs(crop, dark, p, s, zone.align, p.item_gap, blank):
             for run, ground in row:
                 # A line the zone's edge cuts ("ICK UP GROCERIES") is left alone: half a word
                 # translated would break the screen. The picture's own edge cuts nothing.
-                if (run.x0 <= 3 and zx0 > 0) or (run.x1 >= cw - 3 and zx1 < fw) \
+                if (run.x0 <= 3 and ex0 > 0) or (run.x1 >= cw - 3 and ex1 < fw) \
                         or (run.y0 <= 2 and zy0 > 0) or (run.y1 >= ch - 2 and zy1 < fh):
                     continue
+                if not zx0 <= ex0 + (run.x0 + run.x1) / 2.0 < zx1:
+                    continue  # its middle is in the zone beside: that zone keeps it
                 if any(min(run.y1, b1) - max(run.y0, b0) > 0 and (abs(run.x0 - a1) <= 4 or abs(run.x1 - a0) <= 4)
                        for a0, b0, a1, b1 in blank[:len(skip or [])]):
                     continue  # cut by a place that is not searched (the subtitles')
@@ -505,14 +514,13 @@ def find_items(frame: np.ndarray, zone: Zone, p: FindParams | None = None,
                     level, spread, _bgr = ground
                     if level < p.ground_min or spread > p.ground_flat:
                         continue
-                run = _shift(run, zx0, zy0)
+                run = _shift(run, ex0, zy0)
                 align = zone.align if zone.align == "left" else _align_by_icons(run, zone.align)
                 out.append(Cand(zone.name, [run], dark, align))
     out = _same_line(out)
     if zone.align == "left":
         _icon_column(out)
-    if not zone.known_only:  # a hint box's lines are one text, at the left or the right
-        out = _paragraphs(out)
+    out = _paragraphs(out)  # a hint box's (or an info panel's) lines are one text
     return out
 
 
