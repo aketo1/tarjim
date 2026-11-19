@@ -204,3 +204,29 @@ Every adb command Tarjim ran against the TV, oldest first.
 - 2026-11-18 14:03:48 [192.168.136.251:5555] `adb shell am start-foreground-service -n dev.tarjim.tv/.OverlayService` -> exit 0
 - 2026-11-18 14:03:49 [192.168.136.251:5555] `adb shell dumpsys activity services dev.tarjim.tv` -> exit 0
 - 2026-11-18 18:30:53 [192.168.136.251:5555] `adb connect 192.168.136.251:5555` -> exit 0
+- 2026-11-19 14:11:36 [192.168.136.251:5555] `adb connect 192.168.136.251:5555` -> exit 0
+- 2026-11-19 14:11:36 [192.168.136.251:5555] `adb devices` -> exit 0
+- 2026-11-19 14:11:36 [192.168.136.251:5555] `adb shell am start-foreground-service -n dev.tarjim.tv/.OverlayService` -> exit 0
+- 2026-11-19 14:11:37 [192.168.136.251:5555] `adb shell dumpsys activity services dev.tarjim.tv` -> exit 0
+- 2026-11-19 14:45:01 [192.168.136.251:5555] `adb connect 192.168.136.251:5555` -> exit 0
+- 2026-11-19 14:45:01 [192.168.136.251:5555] `adb devices` -> exit 0
+- 2026-11-19 14:45:01 [192.168.136.251:5555] `adb shell getprop ro.product.model` -> exit 0
+- 2026-11-19 14:45:01 [192.168.136.251:5555] `adb shell getprop ro.product.brand` -> exit 0
+- 2026-11-19 14:45:02 [192.168.136.251:5555] `adb shell getprop ro.build.version.sdk` -> exit 0
+- 2026-11-19 14:45:02 [192.168.136.251:5555] `adb shell getprop ro.build.version.release` -> exit 0
+- 2026-11-19 14:45:02 [192.168.136.251:5555] `adb shell wm size` -> exit 0
+- 2026-11-19 14:45:02 [192.168.136.251:5555] `adb shell wm density` -> exit 0
+- 2026-11-19 14:45:03 [192.168.136.251:5555] `adb install -r C:\Users\mmda9\tarjim\tv-app\app\build\outputs\apk\debug\app-debug.apk` -> exit 0
+- 2026-11-19 14:45:04 [192.168.136.251:5555] `adb shell pm path dev.tarjim.tv` -> exit 0
+- 2026-11-19 14:45:04 [192.168.136.251:5555] `adb shell appops set dev.tarjim.tv SYSTEM_ALERT_WINDOW allow` -> exit 0
+- 2026-11-19 14:45:04 [192.168.136.251:5555] `adb shell appops get dev.tarjim.tv SYSTEM_ALERT_WINDOW` -> exit 0
+- 2026-11-19 14:45:04 [192.168.136.251:5555] `adb shell appops get dev.tarjim.tv` -> exit 0
+- 2026-11-19 14:45:05 [192.168.136.251:5555] `adb shell appops set dev.tarjim.tv APP_AUTO_START allow` -> exit 0
+- 2026-11-19 14:45:05 [192.168.136.251:5555] `adb shell appops get dev.tarjim.tv APP_AUTO_START` -> exit 0
+- 2026-11-19 14:45:05 [192.168.136.251:5555] `adb shell settings get secure enabled_accessibility_services` -> exit 0
+- 2026-11-19 14:45:06 [192.168.136.251:5555] `adb shell settings get secure accessibility_enabled` -> exit 0
+- 2026-11-19 14:45:06 [192.168.136.251:5555] `adb shell settings put secure accessibility_enabled 1` -> exit 0
+- 2026-11-19 14:45:06 [192.168.136.251:5555] `adb shell settings get secure enabled_accessibility_services` -> exit 0
+- 2026-11-19 14:45:07 [192.168.136.251:5555] `adb shell dumpsys accessibility` -> exit 0
+- 2026-11-19 14:45:07 [192.168.136.251:5555] `adb shell am start-foreground-service -n dev.tarjim.tv/.OverlayService` -> exit 0
+- 2026-11-19 14:45:07 [192.168.136.251:5555] `adb shell dumpsys activity services dev.tarjim.tv` -> exit 0
