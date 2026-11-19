@@ -44,6 +44,15 @@ def test_profile_roundtrip_and_limits(sandbox):
     assert view["font_auto"] is True and view["font_size"] is None  # back to automatic
 
 
+def test_screen_text_switch_is_for_gta6_only_and_off_by_default(sandbox):
+    server.profile_save({"name": "gta6", "title": "Grand Theft Auto VI"})
+    assert server.profile_view("gta6")["screen_text"] is False  # off until switched on
+    server.profile_save({"name": "gta6", "screen_text": True})
+    assert server.profile_view("gta6")["screen_text"] is True
+    server.profile_save({"name": "rdr2", "title": "Red Dead Redemption 2"})
+    assert server.profile_view("rdr2")["screen_text"] is None  # no switch for other games
+
+
 def test_profile_names_cannot_escape_the_folder(sandbox):
     from tarjim.translate import TranslateError, save_profile
 

@@ -98,6 +98,7 @@ class LiveSession:
         self.xbox = None  # the Xbox frame source while an Xbox session runs
         self._pipe = None
         self._ocr = None
+        self._ocr_screen = None  # screen text's own reader (GTA VI), never shared with the subtitles
         self._engines: dict[str, object] = {}
         self._lock = threading.Lock()
 
@@ -181,6 +182,13 @@ class LiveSession:
             pipe.detect_params = settings.detect_params(prof)
             pipe.translator.glossary = {str(k): str(v) for k, v in (prof.get("glossary") or {}).items()}
             pipe.translator.female = {str(n) for n in (prof.get("female") or [])}
+            if pipe.screen is not None:  # the switch works while translating
+                from .. import gta6
+
+                pipe.screen.translator.glossary = dict(pipe.translator.glossary)
+                pipe.screen.translator.female = set(pipe.translator.female)
+                pipe.screen.wanted = gta6.screen_text_on(name, prof)
+                pipe.screen.set_enabled(pipe.screen.wanted and pipe.enabled)
         # New names are tried against the engine now, off the frame loop, so no line waits for it.
         threading.Thread(target=self._prepare_names, args=(pipe.translator,), daemon=True).start()
         return True
@@ -299,6 +307,23 @@ class LiveSession:
 
             pipe.on_line = on_line
             pipe.on_size_locked = on_size
+
+            from .. import gta6
+
+            if gta6.is_gta6(profile, str(prof.get("title") or "")):
+                # Menus and messages on their own thread, reader and translator (screen_text.py).
+                # Attached for GTA VI even when switched off, so the switch works while translating.
+                from .. import screen_text
+
+                if self._ocr_screen is None:
+                    self._ocr_screen = OcrEngine()
+                screen_tr = CachedTranslator(self._engines[name], Cache(), profile=profile,
+                                             style=str(prof.get("style", "msa")), glossary=dict(glossary),
+                                             female={str(n) for n in (prof.get("female") or [])},
+                                             series=series_of(profile, str(prof.get("title") or "")))
+                st = screen_text.attach(pipe, screen_tr, self._ocr_screen)
+                st.wanted = gta6.screen_text_on(profile, prof)
+                st.set_enabled(st.wanted)
 
             last_stats = 0.0
             first = True

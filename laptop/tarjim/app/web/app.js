@@ -571,6 +571,9 @@ async function loadProfile() {
   renderRegion();
   $("#typewriter").checked = p.settle_ms >= 200;
   $("#typewriter").onchange = e => save({ settle_ms: e.target.checked ? 280 : 40 });
+  $("#screen-text-box").hidden = p.screen_text == null;  // GTA VI only
+  $("#screen-text").checked = !!p.screen_text;
+  $("#screen-text").onchange = e => save({ screen_text: e.target.checked });
   const read = $("#read");
   read.value = p.read_scale;
   const readLabel = () => $("#read-val").textContent = Number(read.value) === 1 ? "عادي" : `×${Number(read.value).toFixed(1)}`;

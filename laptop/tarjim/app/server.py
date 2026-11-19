@@ -157,6 +157,7 @@ def _xbox_checks(cfg: dict, tv_ip, tv_reach: bool, tv_app: bool, models: bool) -
 
 def profile_view(name: str) -> dict:
     from .. import settings
+    from .. import gta6
     from ..translate import load_profile
 
     prof = load_profile(name)
@@ -179,6 +180,8 @@ def profile_view(name: str) -> dict:
         "read_scale": float(prof.get("read_scale", 1.0)),
         "settle_ms": float(prof.get("settle_ms", 60)),
         "style": prof.get("style", "msa"),
+        # GTA VI's menus and messages (screen_text.py): None for every other game
+        "screen_text": gta6.screen_text_on(name, prof) if gta6.is_gta6(name, str(prof.get("title") or "")) else None,
     }
 
 
@@ -238,6 +241,8 @@ def profile_save(body: dict) -> dict:
         prof["read_scale"] = max(0.5, min(2.5, float(body["read_scale"])))
     if "settle_ms" in body:
         prof["settle_ms"] = max(0.0, min(600.0, float(body["settle_ms"])))
+    if "screen_text" in body:
+        prof["screen_text"] = bool(body["screen_text"])
     save_profile(name, prof)
     live.apply_profile(name)  # a running session picks the new look up at once
     return profile_view(name)

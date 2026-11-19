@@ -131,6 +131,9 @@ class Pipeline:
         self.held = 0
         self.early_ready = 0  # lines whose Arabic was ready before the settle time ended
         self.on_line = None  # optional callback(english, arabic) when a line goes up
+        # Optional screen text (screen_text.py: a game's menus and messages) on its own thread.
+        # It is handed the newest picture and nothing else: the subtitles never wait for it.
+        self.screen = None
         self.on_size_locked = None  # optional callback(size) once the font size is fixed
         self._sizes: list[int] = []
         self._lock = threading.RLock()
@@ -195,7 +198,16 @@ class Pipeline:
                 self._text_up = False  # the TV clears by itself when the link drops
                 self._holding = False
             self._collect_acks()
+        if self.screen is not None:
+            self.screen.feed(frame)  # it searches on its own thread; nothing waits for it here
+            self.screen.tick()
         return event
+
+    @property
+    def busy(self) -> bool:
+        """True while a subtitle line is being read and translated (screen text waits for it)."""
+        job = self._job
+        return job is not None and not job.done
 
     # -- the worker -------------------------------------------------------------
 
@@ -380,11 +392,19 @@ class Pipeline:
 
     def _clear(self) -> None:
         if self._text_up:
-            self.link.clear(None, fade_ms=FADE_OUT_MS)
+            # With screen text beside it, only the subtitles' own layers go.
+            self.link.clear(None if self.screen is None else ["fill", "text", "plate"], fade_ms=FADE_OUT_MS)
         self._text_up = False
         self._holding = False
 
+    def log_record(self, rec: dict) -> None:
+        """A line of the session log from another thread (screen text)."""
+        with self._lock:
+            self._write_log(rec)
+
     def set_enabled(self, on: bool) -> None:
+        if self.screen is not None:
+            self.screen.set_enabled(on and self.screen.wanted)
         with self._lock:
             self.enabled = on
             if not on:
@@ -433,6 +453,11 @@ class Pipeline:
             self._log.flush()
 
     def close(self) -> None:
+        if self.screen is not None:
+            try:
+                self.screen.close()
+            except TvLinkError:
+                pass
         self.wait_idle(2.0)
         self._pool.shutdown(wait=False, cancel_futures=True)
         with self._lock:
