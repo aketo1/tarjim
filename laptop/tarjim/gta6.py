@@ -489,12 +489,33 @@ def ui_key(text: str) -> str:
     return _END.sub("", t).lower()
 
 
+UI.update({
+    # seen in the second GTA VI session (2026-11-19): items, places and notices
+    "metal detector": "جهاز كشف المعادن", "last watercraft": "آخر قارب", "last vehicle": "آخر سيارة",
+    "atlantic ocean": "المحيط الأطلسي", "antique candlestick": "شمعدان أثري",
+    "a solid silver candle holder.": "شمعدان من الفضة الخالصة.", "serpentine statue": "تمثال الأفعى",
+    "underwater discoveries": "اكتشافات تحت الماء", "treasure found": "عُثر على كنز",
+    "treasures found": "كنوز عُثر عليها", "eviction notice!": "إنذار بالإخلاء!",
+    "view video": "عرض الفيديو", "view bio": "عرض النبذة", "greet": "تحية", "taunt": "استفزاز",
+})
+
+# A number before or after a known word: "1/7 TREASURES FOUND", "Underwater Discoveries 2 / 33"
+_COUNTER = re.compile(r"^(\d+\s*/\s*\d+)\s+(.+)$|^(.+?)\s+(\d+\s*/\s*\d+)$")
+
+
 def ui_word(text: str) -> str | None:
     """The Arabic of a screen word (menu item, prompt, phone app, notice), or None."""
     t = re.sub(r"\s+", " ", text).strip().lower()
     hit = UI.get(t)
     if hit is None:
         hit = UI.get(ui_key(text))
+    if hit is None:
+        m = _COUNTER.match(t)
+        if m:
+            count, word = (m.group(1), m.group(2)) if m.group(1) else (m.group(4), m.group(3))
+            known = UI.get(word.strip())
+            if known is not None:
+                hit = f"{known} {re.sub(r'\s+', '', count)}"
     return hit
 
 

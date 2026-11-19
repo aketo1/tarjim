@@ -123,6 +123,9 @@ class _Track:
         return self.cand.panel_bgr is not None
 
 
+_DANGLING = {"of", "to", "the", "a", "an", "and", "or", "with", "for", "in", "on", "at", "from", "by", "your", "his", "her"}
+
+
 def _capitals_only(text: str) -> bool:
     letters = [c for c in text if c.isalpha()]
     return len(letters) >= 3 and sum(c.isupper() for c in letters) >= 0.9 * len(letters)
@@ -826,6 +829,10 @@ class ScreenText:
                 ar = None
             elif game is not None and game.keep_english(game.fix_reading(text)):
                 ar = None
+            elif not self._engine_may(text):
+                # Everything else the engine read word by word: item and place names ("Corsair
+                # Key" «مفتاح القرصان»), cut lines, the phone's social posts. Left in English.
+                ar = None
             elif not engine:
                 return _LATER
             else:
@@ -838,6 +845,18 @@ class ScreenText:
                     ar = None
         self._memo[key] = ar
         return ar
+
+    def _engine_may(self, text: str) -> bool:
+        """Only where the engine does well: a mission goal that starts with a command ("Take
+        treasure to Kenton"), or a whole sentence (four words or more, ending like one)."""
+        from . import terms
+
+        words = text.split()
+        if words and words[-1].lower().strip(",") in _DANGLING:
+            return False  # "Search a shipwreck with a hoard of": the line goes on below
+        if len(words) >= 2 and terms.starts_with_command(text) and not text.isupper():
+            return True
+        return len(words) >= 4 and text.rstrip().endswith((".", "!", "?")) and any(c.islower() for c in text)
 
     def _name_for(self, word: str) -> str | None:
         """A name from the game's list for a one-word item, also when its end was cut off

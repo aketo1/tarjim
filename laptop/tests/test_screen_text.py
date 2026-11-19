@@ -172,3 +172,26 @@ def test_subtitles_clear_only_their_own_layers(ocr):
         assert not hasattr(pipe, "not_speech")
         pipe.close()
         assert _wait(lambda: tv.layer_ids() == [])
+
+
+def test_screen_words_come_from_the_game_or_stay_english():
+    """The engine read menus word by word ("Corsair Key" «مفتاح القرصان»): screen text takes the
+    game's own words, a counter around them, and the engine only for a goal that starts with a
+    command or a whole sentence. Everything else stays as it is (words written for this test)."""
+
+    class Tr:
+        glossary = {"Marla": "مارلا"}
+
+        def translate(self, text):
+            return "<engine>", False, 0.0
+
+    st = screen_text.ScreenText.__new__(screen_text.ScreenText)
+    st.translator, st.game, st._memo, st.busy = Tr(), gta6, {}, (lambda: False)
+    assert st._arabic("SET DESTINATION") == "تحديد الوجهة"
+    assert st._arabic("3/9 TREASURES FOUND") == "كنوز عُثر عليها 3/9"
+    assert st._arabic("Marla") == "مارلا"
+    assert st._arabic("Take the boat to Marla") == "<engine>"  # a goal: a command
+    assert st._arabic("The storm is coming tonight.") == "<engine>"  # a whole sentence
+    for left_alone in ("Coral Key", "Silver Lantern", "WHEN YOU SEE IT", "Bring the crate to the",
+                       "and check your", "Getthe"):
+        assert st._arabic(left_alone) is None, left_alone
